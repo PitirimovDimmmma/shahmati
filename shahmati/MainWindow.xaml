@@ -1,0 +1,272 @@
+﻿<Window x:Class="shahmati.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:shahmati"
+        Title="Шахматный тренажер" Height="750" Width="1000"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <!-- Стиль для скругленных кнопок -->
+        <Style x:Key="RoundedButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#8B4513"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Стиль для зеленой кнопки -->
+        <Style x:Key="GreenButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Background" Value="#27AE60"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Стиль для синей кнопки -->
+        <Style x:Key="BlueButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Background" Value="#3498DB"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Стиль для фиолетовой кнопки -->
+        <Style x:Key="PurpleButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Background" Value="#9B59B6"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Background="#2F4F4F">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="300"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ШАХМАТНАЯ ДОСКА - ПО ЦЕНТРУ И МАСШТАБИРУЕМАЯ -->
+        <Viewbox Grid.Column="0" Stretch="Uniform" Margin="20" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <Border Background="#2C2C2C" CornerRadius="5" BorderBrush="#2C2C2C" BorderThickness="3" Padding="15">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="25"/>
+                        <ColumnDefinition Width="480"/>
+                        <ColumnDefinition Width="25"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="25"/>
+                        <RowDefinition Height="480"/>
+                        <RowDefinition Height="25"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- САМА ДОСКА С КЛЕТКАМИ -->
+                    <Border Grid.Row="1" Grid.Column="1" Background="#2C2C2C">
+                        <ItemsControl ItemsSource="{Binding Board.CellsFlat}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Rows="8" Columns="8"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Width="60" Height="60" 
+                                           BorderBrush="Transparent" BorderThickness="0"
+                                           Background="{Binding BackgroundColor}">
+
+                                        <Image Source="{Binding Piece.ImagePath}" 
+                                               Width="45" Height="45"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+
+                    <!-- ЦИФРЫ СЛЕВА (8-1) -->
+                    <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="8" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
+                        <TextBlock Text="7" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
+                        <TextBlock Text="6" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
+                        <TextBlock Text="5" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
+                        <TextBlock Text="4" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
+                        <TextBlock Text="3" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
+                        <TextBlock Text="2" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
+                        <TextBlock Text="1" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial"/>
+                    </StackPanel>
+
+                    <!-- ЦИФРЫ СПРАВА (8-1) -->
+                    <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="8" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
+                        <TextBlock Text="7" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
+                        <TextBlock Text="6" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
+                        <TextBlock Text="5" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
+                        <TextBlock Text="4" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
+                        <TextBlock Text="3" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
+                        <TextBlock Text="2" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
+                        <TextBlock Text="1" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial"/>
+                    </StackPanel>
+
+                    <!-- БУКВЫ СВЕРХУ (a-h) -->
+                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="a" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="25,0,55,0"/>
+                        <TextBlock Text="b" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,55,0"/>
+                        <TextBlock Text="c" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,55,0"/>
+                        <TextBlock Text="d" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,55,0"/>
+                        <TextBlock Text="e" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,55,0"/>
+                        <TextBlock Text="f" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,55,0"/>
+                        <TextBlock Text="g" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,55,0"/>
+                        <TextBlock Text="h" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial"/>
+                    </StackPanel>
+
+                    <!-- БУКВЫ СНИЗУ (a-h) -->
+                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="a" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="25,0,55,0"/>
+                        <TextBlock Text="b" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,55,0"/>
+                        <TextBlock Text="c" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,55,0"/>
+                        <TextBlock Text="d" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,55,0"/>
+                        <TextBlock Text="e" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,55,0"/>
+                        <TextBlock Text="f" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,55,0"/>
+                        <TextBlock Text="g" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,55,0"/>
+                        <TextBlock Text="h" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Viewbox>
+
+        <!-- Панель управления -->
+        <Border Grid.Column="1" Background="#F5F5DC" Margin="10" CornerRadius="10">
+            <StackPanel Margin="15">
+                <!-- Информация о пользователе -->
+                <Border Background="#8B4513" CornerRadius="5" Padding="10" Margin="0,0,0,15">
+                    <StackPanel Orientation="Horizontal">
+                        <Image x:Name="UserAvatar" Width="40" Height="40" 
+                              Source="/Resources/default_avatar.png" Stretch="Uniform"/>
+                        <StackPanel Margin="10,0,0,0">
+                            <TextBlock x:Name="UserNameText" Text="Гость" 
+                                      Foreground="White" FontWeight="Bold"/>
+                            <TextBlock x:Name="UserRatingText" Text="Рейтинг: 1200" 
+                                      Foreground="#E0E0E0" FontSize="11"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Text="ШАХМАТНЫЙ ТРЕНАЖЁР" 
+                          FontSize="16" FontWeight="Bold" 
+                          HorizontalAlignment="Center" 
+                          Margin="0,0,0,25" Foreground="#8B4513"/>
+
+                <Button Content="♛ НОВАЯ ИГРА" 
+                       Command="{Binding StartNewGameCommand}"
+                       Height="40" Margin="0,5" 
+                       Style="{StaticResource RoundedButtonStyle}"
+                       FontSize="14"/>
+
+                <TextBlock Text="Режим игры:" 
+                          Margin="0,20,0,8" FontWeight="Bold" Foreground="#333"/>
+                <ComboBox x:Name="GameModeComboBox" SelectedIndex="0" Height="30" FontSize="12">
+                    <ComboBoxItem>♟ Человек vs Человек</ComboBoxItem>
+                    <ComboBoxItem>🤖 Человек vs Компьютер</ComboBoxItem>
+                    <ComboBoxItem>⚡ Компьютер vs Компьютер</ComboBoxItem>
+                </ComboBox>
+
+                <TextBlock Text="Уровень сложности:" 
+                          Margin="0,15,0,8" FontWeight="Bold" Foreground="#333"/>
+                <ComboBox x:Name="DifficultyComboBox" SelectedIndex="0" Height="30" FontSize="12">
+                    <ComboBoxItem>🥉 Новичок</ComboBoxItem>
+                    <ComboBoxItem>🥈 Лёгкий</ComboBoxItem>
+                    <ComboBoxItem>🥇 Средний</ComboBoxItem>
+                    <ComboBoxItem>🏅 Сложный</ComboBoxItem>
+                    <ComboBoxItem>🎯 Эксперт</ComboBoxItem>
+                </ComboBox>
+
+                <TextBlock Text="Текущий игрок:" 
+                          Margin="0,25,0,8" FontWeight="Bold" Foreground="#333"/>
+                <Border Background="#8B4513" Padding="10" Margin="0,0,0,20" CornerRadius="5">
+                    <TextBlock Text="{Binding CurrentPlayerText}" FontSize="14" FontWeight="Bold" 
+                              Foreground="White" HorizontalAlignment="Center"/>
+                </Border>
+
+                <!-- История ходов -->
+                <TextBlock Text="История ходов:" 
+                          Margin="0,0,0,8" FontWeight="Bold" Foreground="#333"/>
+                <Border BorderBrush="#CCC" BorderThickness="1" Height="200" 
+                       Background="White" CornerRadius="5">
+                    <ScrollViewer>
+                        <ItemsControl x:Name="MoveHistoryList" ItemsSource="{Binding MoveHistory}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" Margin="5,2" FontFamily="Consolas" FontSize="11"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- Кнопки управления -->
+                <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
+                    <Button Content="💾 Сохранить" 
+                           Style="{StaticResource GreenButtonStyle}"
+                           Margin="0,0,5,0" Click="SaveGameButton_Click"/>
+
+                    <Button Content="📂 Загрузить" 
+                           Style="{StaticResource BlueButtonStyle}"
+                           Margin="5,0,0,0" Click="LoadGameButton_Click"/>
+                </StackPanel>
+
+                <Button Content="📚 Режим обучения" 
+                       Style="{StaticResource PurpleButtonStyle}"
+                       Margin="0,10,0,0" Click="LearningModeButton_Click"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
