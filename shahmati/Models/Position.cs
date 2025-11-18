@@ -2,7 +2,7 @@
 
 namespace shahmati.models
 {
-    public struct Position
+    public struct Position : IEquatable<Position>
     {
         public int Row { get; set; }
         public int Column { get; set; }
@@ -22,8 +22,13 @@ namespace shahmati.models
             => !(a == b);
 
         public override bool Equals(object obj) => obj is Position position && this == position;
+
+        public bool Equals(Position other) => this == other;
+
         public override int GetHashCode() => HashCode.Combine(Row, Column);
 
         public override string ToString() => $"{(char)('a' + Column)}{8 - Row}";
+
+        public static Position Invalid => new Position(-1, -1);
     }
 }

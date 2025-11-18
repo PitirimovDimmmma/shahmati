@@ -1,28 +1,29 @@
-﻿using Npgsql;
-using shahmati.ViewModels;
-using shahmati.Views;
+﻿using System;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using Npgsql;
 
-namespace shahmati
+namespace shahmati.Views
 {
-    public partial class MainWindow : Window
+    public partial class DashboardWindow : Window
     {
-        private int _userId;
         private string connectionString = "Host=localhost;Port=5436;Database=kursovoi;Username=postgres;Password=2005";
+        private int _userId;
 
-        public MainWindow(int userId)
+        // Конструктор с параметром userId
+        public DashboardWindow(int userId)
         {
             InitializeComponent();
             _userId = userId;
             LoadUserData();
-            DataContext = new MainViewModel();
         }
 
-        public MainWindow()
+        // Конструктор без параметров для дизайнера
+        public DashboardWindow()
         {
             InitializeComponent();
-            DataContext = new MainViewModel();
+            // Для дизайнера используем тестовые данные
             UserNameText.Text = "Тестовый пользователь";
             UserRatingText.Text = "Рейтинг: 1200";
         }
@@ -53,53 +54,61 @@ namespace shahmati
                                     string photoPath = reader.GetString(2);
                                     if (System.IO.File.Exists(photoPath))
                                     {
-                                        UserAvatar.Source = new BitmapImage(new Uri(photoPath));
+                                        UserAvatarImage.Source = new BitmapImage(new Uri(photoPath));
                                     }
+                                }
+                                else
+                                {
+                                    // Установка дефолтного аватара
+                                    SetDefaultAvatar();
                                 }
                             }
                         }
                     }
                 }
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка загрузки данных пользователя: {ex.Message}");
+                SetDefaultAvatar();
             }
         }
 
-        private void SaveGameButton_Click(object sender, RoutedEventArgs e)
+        private void SetDefaultAvatar()
         {
-            MessageBox.Show("Функция сохранения игры будет реализована позже");
+            try
+            {
+                // Пытаемся загрузить дефолтный аватар
+                UserAvatarImage.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/default_avatar.png"));
+            }
+            catch
+            {
+                // Если ресурс не найден, просто оставляем пустым
+            }
         }
 
-        private void LoadGameButton_Click(object sender, RoutedEventArgs e)
+        private void GameCard_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            MessageBox.Show("Функция загрузки игры будет реализована позже");
-        }
-
-      
-
-        private void HomeButton_Click(object sender, RoutedEventArgs e)
-        {
-            DashboardWindow dashboardWindow = new DashboardWindow(_userId);
-            dashboardWindow.Show();
+            // Открываем главное окно с шахматами
+            MainWindow gameWindow = new MainWindow(_userId);
+            gameWindow.Show();
             this.Close();
         }
 
-      
-
-        private void RestartGameButton_Click(object sender, RoutedEventArgs e)
+        private void RulesCard_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            var result = MessageBox.Show("Вы уверены, что хотите начать новую игру?",
-                                "Новая игра",
-                                MessageBoxButton.YesNo,
-                                MessageBoxImage.Question);
+            // Открываем окно с правилами
+            RulesWindow rulesWindow = new RulesWindow(_userId);
+            rulesWindow.Show();
+            this.Close();
+        }
 
-            if (result == MessageBoxResult.Yes)
-            {
-                DataContext = new MainViewModel();
-                MessageBox.Show("Новая игра начата!");
-            }
+        private void LogoutButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Возвращаемся к окну входа
+            LoginWindow loginWindow = new LoginWindow();
+            loginWindow.Show();
+            this.Close();
         }
     }
 }

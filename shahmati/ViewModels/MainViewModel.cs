@@ -1,8 +1,9 @@
-﻿using System.ComponentModel;
+﻿using System;
+using System.ComponentModel;
 using System.Windows.Input;
+using System.Windows.Threading;
 using shahmati.Helpers;
 using shahmati.models;
-using System.Collections.ObjectModel;
 
 namespace shahmati.ViewModels
 {
@@ -10,14 +11,22 @@ namespace shahmati.ViewModels
     {
         private Board _board;
         private PieceColor _currentPlayer;
-        private ObservableCollection<string> _moveHistory;
+        private Position _selectedPosition;
+        private DispatcherTimer _animationTimer;
+        private double _animationProgress;
+        private Position _animationFrom;
+        private Position _animationTo;
+        private ChessPiece _animatingPiece;
 
         public MainViewModel()
         {
             _board = new Board();
             _currentPlayer = PieceColor.White;
-            _moveHistory = new ObservableCollection<string>();
+            _selectedPosition = Position.Invalid;
+
+            InitializeAnimationTimer();
             StartNewGameCommand = new RelayCommand(StartNewGame);
+            CellClickCommand = new RelayCommand<Position>(HandleCellClick);
         }
 
         public Board Board
@@ -32,39 +41,154 @@ namespace shahmati.ViewModels
 
         public string CurrentPlayerText => _currentPlayer == PieceColor.White ? "⚪ БЕЛЫЕ" : "⚫ ЧЁРНЫЕ";
 
-        public ObservableCollection<string> MoveHistory
+        public Position SelectedPosition
         {
-            get => _moveHistory;
+            get => _selectedPosition;
             set
             {
-                _moveHistory = value;
-                OnPropertyChanged(nameof(MoveHistory));
+                _selectedPosition = value;
+                OnPropertyChanged(nameof(SelectedPosition));
             }
         }
 
         public ICommand StartNewGameCommand { get; }
+        public ICommand CellClickCommand { get; }
+
+        public double AnimationProgress => _animationProgress;
+        public bool IsAnimating => _animationTimer?.IsEnabled ?? false;
+
+        private void InitializeAnimationTimer()
+        {
+            _animationTimer = new DispatcherTimer();
+            _animationTimer.Interval = TimeSpan.FromMilliseconds(50);
+            _animationTimer.Tick += AnimationTimer_Tick;
+        }
+
+        private void AnimationTimer_Tick(object sender, EventArgs e)
+        {
+            _animationProgress += 0.1;
+            if (_animationProgress >= 1.0)
+            {
+                _animationProgress = 0;
+                _animationTimer.Stop();
+                CompleteAnimation();
+            }
+            OnPropertyChanged(nameof(AnimationProgress));
+        }
 
         private void StartNewGame()
         {
             Board = new Board();
             _currentPlayer = PieceColor.White;
-            MoveHistory.Clear();
-            MoveHistory.Add("1. --- ---");
+            SelectedPosition = Position.Invalid;
             OnPropertyChanged(nameof(CurrentPlayerText));
-            System.Windows.MessageBox.Show("Новая игра начата!");
         }
 
-        // Метод для добавления хода в историю
-        public void AddMoveToHistory(string moveNotation)
+        public void HandleCellClick(Position position)
         {
-            MoveHistory.Add($"{MoveHistory.Count + 1}. {moveNotation}");
+            if (IsAnimating || !position.IsValid()) return;
+
+            var clickedPiece = Board.GetPieceAt(position);
+
+            if (clickedPiece != null && clickedPiece.Color == _currentPlayer)
+            {
+                SelectPiece(position);
+                return;
+            }
+
+            if (SelectedPosition.IsValid() && clickedPiece?.Color != _currentPlayer)
+            {
+                TryMakeMove(SelectedPosition, position);
+            }
         }
 
-        // Метод для смены игрока
+        private void SelectPiece(Position position)
+        {
+            ResetSelection();
+
+            SelectedPosition = position;
+            var piece = Board.GetPieceAt(position);
+
+            if (piece != null)
+            {
+                var possibleMoves = piece.GetPossibleMoves(position, Board);
+                foreach (var move in possibleMoves)
+                {
+                    var cell = GetCellAt(move);
+                    if (cell != null)
+                    {
+                        cell.IsPossibleMove = true;
+                    }
+                }
+
+                var selectedCell = GetCellAt(position);
+                if (selectedCell != null)
+                {
+                    selectedCell.IsSelected = true;
+                }
+            }
+
+            OnPropertyChanged(nameof(Board));
+        }
+
+        private void ResetSelection()
+        {
+            foreach (var cell in Board.CellsFlat)
+            {
+                cell.IsSelected = false;
+                cell.IsPossibleMove = false;
+            }
+            SelectedPosition = Position.Invalid;
+        }
+
+        private void TryMakeMove(Position from, Position to)
+        {
+            if (Board.IsValidMove(from, to, _currentPlayer))
+            {
+                StartAnimation(from, to);
+            }
+            else
+            {
+                ResetSelection();
+            }
+        }
+
+        private void StartAnimation(Position from, Position to)
+        {
+            _animationFrom = from;
+            _animationTo = to;
+            _animatingPiece = Board.GetPieceAt(from);
+            _animationProgress = 0;
+            _animationTimer.Start();
+            PlayMoveSound();
+        }
+
+        private void CompleteAnimation()
+        {
+            var piece = Board.GetPieceAt(_animationFrom);
+            var capturedPiece = Board.GetPieceAt(_animationTo);
+
+            Board.MovePiece(_animationFrom, _animationTo);
+            SwitchPlayer();
+            ResetSelection();
+            OnPropertyChanged(nameof(Board));
+        }
+
+        private BoardCell GetCellAt(Position position)
+        {
+            if (!position.IsValid()) return null;
+            return Board.Cells[position.Row, position.Column];
+        }
+
         public void SwitchPlayer()
         {
             _currentPlayer = _currentPlayer == PieceColor.White ? PieceColor.Black : PieceColor.White;
             OnPropertyChanged(nameof(CurrentPlayerText));
+        }
+
+        private void PlayMoveSound()
+        {
+            // System.Media.SystemSounds.Beep.Play();
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

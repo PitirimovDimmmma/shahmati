@@ -40,9 +40,9 @@ namespace shahmati.Views
                 }
                 else
                 {
-                    // Переходим к главному окну
-                    MainWindow mainWindow = new MainWindow(userId);
-                    mainWindow.Show();
+                    // ИСПРАВЛЕНИЕ: Переходим к ГЛАВНОМУ ЭКРАНУ (Dashboard)
+                    DashboardWindow dashboardWindow = new DashboardWindow(userId);
+                    dashboardWindow.Show();
                 }
                 this.Close();
             }

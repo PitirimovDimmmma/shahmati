@@ -1,0 +1,311 @@
+﻿<Window x:Class="shahmati.Views.RulesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Правила шахмат" 
+        Height="700" Width="900"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResizeWithGrip"
+        Background="#2C3E50">
+
+    <Window.Resources>
+        <!-- Стиль для заголовков разделов -->
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#2C3E50"/>
+            <Setter Property="Margin" Value="0,20,0,10"/>
+        </Style>
+
+        <!-- Стиль для подзаголовков -->
+        <Style x:Key="SubtitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#34495E"/>
+            <Setter Property="Margin" Value="0,15,0,8"/>
+        </Style>
+
+        <!-- Стиль для обычного текста -->
+        <Style x:Key="NormalTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="#2C3E50"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,5,0,5"/>
+        </Style>
+
+        <!-- Стиль для карточек с фигурами -->
+        <Style x:Key="PieceCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="15"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="BorderBrush" Value="#BDC3C7"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <!-- Стиль для кнопки возврата -->
+        <Style x:Key="BackButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Background" Value="#3498DB"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Шапка -->
+        <Border Grid.Row="0" Background="#34495E" Padding="20">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Заголовок -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock Text="♛" FontSize="28" Foreground="White" Margin="0,0,15,0"/>
+                    <TextBlock Text="Правила классических шахмат" 
+                              Foreground="White" FontSize="22" FontWeight="Bold"/>
+                </StackPanel>
+
+                <!-- Кнопка возврата -->
+                <Button Grid.Column="2" Content="← Назад" 
+                       Style="{StaticResource BackButtonStyle}"
+                       Click="BackButton_Click"/>
+            </Grid>
+        </Border>
+
+        <!-- Основное содержимое -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="20">
+            <StackPanel>
+                <!-- Введение -->
+                <Border Style="{StaticResource PieceCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Введение в шахматы" Style="{StaticResource SectionTitleStyle}"/>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            Шахматы - это настольная игра для двух игроков на квадратной доске 8×8 клеток. 
+                            Цель игры - поставить мат королю противника.
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            Каждый игрок начинает партию с 16 фигурами: король, ферзь, две ладьи, два слона, 
+                            два коня и восемь пешек.
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- Шахматная доска -->
+                <Border Style="{StaticResource PieceCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Шахматная доска" Style="{StaticResource SectionTitleStyle}"/>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Доска состоит из 64 клеток (8×8)
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Клетки чередуются светлые и темные
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Вертикальные ряды называются вертикалями (обозначаются буквами a-h)
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Горизонтальные ряды называются горизонталями (обозначаются цифрами 1-8)
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- Расстановка фигур -->
+                <Border Style="{StaticResource PieceCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Начальная расстановка" Style="{StaticResource SectionTitleStyle}"/>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            Белые фигуры занимают горизонтали 1 и 2, черные - 7 и 8.
+                        </TextBlock>
+
+                        <TextBlock Text="Первая горизонталь (белые):" Style="{StaticResource SubtitleStyle}"/>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            a1: ладья, b1: конь, c1: слон, d1: ферзь, e1: король, f1: слон, g1: конь, h1: ладья
+                        </TextBlock>
+
+                        <TextBlock Text="Вторая горизонталь (белые):" Style="{StaticResource SubtitleStyle}"/>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            Все 8 клеток заняты пешками
+                        </TextBlock>
+
+                        <TextBlock Text="Восьмая горизонталь (черные):" Style="{StaticResource SubtitleStyle}"/>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            a8: ладья, b8: конь, c8: слон, d8: ферзь, e8: король, f8: слон, g8: конь, h8: ладья
+                        </TextBlock>
+
+                        <TextBlock Text="Седьмая горизонталь (черные):" Style="{StaticResource SubtitleStyle}"/>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            Все 8 клеток заняты пешками
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- Ходы фигур -->
+                <Border Style="{StaticResource PieceCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Ходы фигур" Style="{StaticResource SectionTitleStyle}"/>
+
+                        <!-- Король -->
+                        <TextBlock Text="♔ Король" Style="{StaticResource SubtitleStyle}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Ходит на одну клетку в любом направлении" Style="{StaticResource NormalTextStyle}"/>
+                        </StackPanel>
+
+                        <!-- Ферзь -->
+                        <TextBlock Text="♕ Ферзь" Style="{StaticResource SubtitleStyle}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Ходит на любое расстояние по вертикали, горизонтали и диагонали" Style="{StaticResource NormalTextStyle}"/>
+                        </StackPanel>
+
+                        <!-- Ладья -->
+                        <TextBlock Text="♖ Ладья" Style="{StaticResource SubtitleStyle}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Ходит на любое расстояние по вертикали и горизонтали" Style="{StaticResource NormalTextStyle}"/>
+                        </StackPanel>
+
+                        <!-- Слон -->
+                        <TextBlock Text="♗ Слон" Style="{StaticResource SubtitleStyle}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Ходит на любое расстояние по диагонали" Style="{StaticResource NormalTextStyle}"/>
+                        </StackPanel>
+
+                        <!-- Конь -->
+                        <TextBlock Text="♘ Конь" Style="{StaticResource SubtitleStyle}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Ходит буквой 'Г' (2 клетки в одном направлении и 1 в перпендикулярном)" Style="{StaticResource NormalTextStyle}"/>
+                        </StackPanel>
+
+                        <!-- Пешка -->
+                        <TextBlock Text="♙ Пешка" Style="{StaticResource SubtitleStyle}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Ходит вперед на одну клетку, первый ход - на 1 или 2 клетки. Бьет по диагонали." Style="{StaticResource NormalTextStyle}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Специальные правила -->
+                <Border Style="{StaticResource PieceCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Специальные правила" Style="{StaticResource SectionTitleStyle}"/>
+
+                        <TextBlock Text="Рокировка" Style="{StaticResource SubtitleStyle}"/>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Одновременный ход короля и ладьи
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Король перемещается на 2 клетки в сторону ладьи, ладья перепрыгивает через короля
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Условия: король и ладья не двигались, между ними нет фигур, король не под шахом
+                        </TextBlock>
+
+                        <TextBlock Text="Взятие на проходе" Style="{StaticResource SubtitleStyle}"/>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Специальный ход пешки, когда она бьет пешку противника, которая прошла мимо нее
+                        </TextBlock>
+
+                        <TextBlock Text="Превращение пешки" Style="{StaticResource SubtitleStyle}"/>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Когда пешка достигает последней горизонтали, она превращается в любую фигуру (кроме короля)
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- Цель игры -->
+                <Border Style="{StaticResource PieceCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Цель игры и завершение" Style="{StaticResource SectionTitleStyle}"/>
+
+                        <TextBlock Text="Шах" Style="{StaticResource SubtitleStyle}"/>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Когда король атакован фигурой противника
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Игрок должен убрать короля из-под шаха (уйти, закрыться или побить атакующую фигуру)
+                        </TextBlock>
+
+                        <TextBlock Text="Мат" Style="{StaticResource SubtitleStyle}"/>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Шах, от которого нет защиты
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Игра заканчивается победой атакующей стороны
+                        </TextBlock>
+
+                        <TextBlock Text="Пат" Style="{StaticResource SubtitleStyle}"/>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Позиция, когда игрок не может сделать ход, но его король не под шахом
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Игра заканчивается вничью
+                        </TextBlock>
+
+                        <TextBlock Text="Ничья" Style="{StaticResource SubtitleStyle}"/>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • По взаимному согласию
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • При пате
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • При троекратном повторении позиции
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • По правилу 50 ходов
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- Нотация -->
+                <Border Style="{StaticResource PieceCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Шахматная нотация" Style="{StaticResource SectionTitleStyle}"/>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Каждая клетка имеет координаты (например, e4, d5)
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Фигуры обозначаются: K - король, Q - ферзь, R - ладья, B - слон, N - конь
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Пешки не обозначаются буквами
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • x - взятие, + - шах, # - мат, 0-0 - короткая рокировка, 0-0-0 - длинная рокировка
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource NormalTextStyle}">
+                            • Пример: e4 (пешка на e4), Nf3 (конь на f3), Qxd5 (ферзь бьет на d5)
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Футер -->
+        <Border Grid.Row="2" Background="#34495E" Padding="10">
+            <TextBlock Text="Шахматный тренажёр - Правила классических шахмат" 
+                      Foreground="#BDC3C7" 
+                      HorizontalAlignment="Center" 
+                      FontSize="10"/>
+        </Border>
+    </Grid>
+</Window>

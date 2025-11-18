@@ -15,12 +15,20 @@ namespace shahmati.Views
         private int _userId;
         private string _photoPath;
 
+        // Конструктор с параметром userId
         public ProfileSetupWindow(int userId)
         {
             InitializeComponent();
             _userId = userId;
 
             // Добавляем обработчик изменения текста
+            NicknameTextBox.TextChanged += NicknameTextBox_TextChanged;
+        }
+
+        // Конструктор без параметров для дизайнера
+        public ProfileSetupWindow()
+        {
+            InitializeComponent();
             NicknameTextBox.TextChanged += NicknameTextBox_TextChanged;
         }
 
@@ -105,9 +113,9 @@ namespace shahmati.Views
 
                         MessageBox.Show("Профиль успешно создан!");
 
-                        // Переходим к главному окну
-                        MainWindow mainWindow = new MainWindow(_userId);
-                        mainWindow.Show();
+                        // Переходим к ГЛАВНОМУ ЭКРАНУ (Dashboard)
+                        DashboardWindow dashboardWindow = new DashboardWindow(_userId);
+                        dashboardWindow.Show();
                         this.Close();
                     }
                 }
