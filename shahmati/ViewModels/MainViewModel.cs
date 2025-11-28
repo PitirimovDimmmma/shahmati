@@ -4,29 +4,37 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using shahmati.Helpers;
 using shahmati.models;
+using shahmati.Services;
+using System.Threading.Tasks;
 
 namespace shahmati.ViewModels
 {
     public class MainViewModel : INotifyPropertyChanged
     {
         private Board _board;
-        private PieceColor _currentPlayer;
+        private GameManager _gameManager;
         private Position _selectedPosition;
         private DispatcherTimer _animationTimer;
         private double _animationProgress;
         private Position _animationFrom;
         private Position _animationTo;
         private ChessPiece _animatingPiece;
+        private string _gameMode = "Человек vs Человек";
+        private string _difficulty = "Средний";
+        private bool _isAITurn;
 
         public MainViewModel()
         {
-            _board = new Board();
-            _currentPlayer = PieceColor.White;
+            _gameManager = new GameManager();
+            _board = _gameManager.Board;
             _selectedPosition = Position.Invalid;
 
             InitializeAnimationTimer();
             StartNewGameCommand = new RelayCommand(StartNewGame);
             CellClickCommand = new RelayCommand<Position>(HandleCellClick);
+
+            // Подписываемся на события GameManager
+            _gameManager.PropertyChanged += GameManager_PropertyChanged;
         }
 
         public Board Board
@@ -39,7 +47,37 @@ namespace shahmati.ViewModels
             }
         }
 
-        public string CurrentPlayerText => _currentPlayer == PieceColor.White ? "⚪ БЕЛЫЕ" : "⚫ ЧЁРНЫЕ";
+        public string CurrentPlayerText => _gameManager.CurrentPlayer == PieceColor.White ? "⚪ БЕЛЫЕ" : "⚫ ЧЁРНЫЕ";
+
+        public bool IsAITurn
+        {
+            get => _isAITurn;
+            private set
+            {
+                _isAITurn = value;
+                OnPropertyChanged(nameof(IsAITurn));
+            }
+        }
+
+        public string GameMode
+        {
+            get => _gameMode;
+            set
+            {
+                _gameMode = value;
+                OnPropertyChanged(nameof(GameMode));
+            }
+        }
+
+        public string Difficulty
+        {
+            get => _difficulty;
+            set
+            {
+                _difficulty = value;
+                OnPropertyChanged(nameof(Difficulty));
+            }
+        }
 
         public Position SelectedPosition
         {
@@ -64,6 +102,39 @@ namespace shahmati.ViewModels
             _animationTimer.Tick += AnimationTimer_Tick;
         }
 
+        private void GameManager_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(GameManager.CurrentPlayer))
+            {
+                OnPropertyChanged(nameof(CurrentPlayerText));
+                CheckAITurn();
+            }
+            else if (e.PropertyName == nameof(GameManager.Board))
+            {
+                Board = _gameManager.Board;
+            }
+        }
+
+        private void CheckAITurn()
+        {
+            IsAITurn = (_gameMode == "Человек vs Компьютер" && _gameManager.CurrentPlayer == PieceColor.Black) ||
+                       (_gameMode == "Компьютер vs Компьютер");
+
+            if (IsAITurn && _gameManager.IsGameInProgress)
+            {
+                // Запускаем ход ИИ
+                _ = MakeAIMoveAsync();
+            }
+        }
+
+        private async Task MakeAIMoveAsync()
+        {
+            await Task.Delay(500); // Задержка для реалистичности
+
+            // Используем GameManager для хода ИИ
+            await _gameManager.MakeAIMoveAsync();
+        }
+
         private void AnimationTimer_Tick(object sender, EventArgs e)
         {
             _animationProgress += 0.1;
@@ -78,27 +149,28 @@ namespace shahmati.ViewModels
 
         private void StartNewGame()
         {
-            Board = new Board();
-            _currentPlayer = PieceColor.White;
+            _gameManager.StartNewGame(GameMode, Difficulty);
+            Board = _gameManager.Board;
             SelectedPosition = Position.Invalid;
             OnPropertyChanged(nameof(CurrentPlayerText));
+            CheckAITurn(); // Проверяем, должен ли ИИ ходить первым
         }
 
-        public void HandleCellClick(Position position)
+        public async void HandleCellClick(Position position)
         {
-            if (IsAnimating || !position.IsValid()) return;
+            if (IsAnimating || !position.IsValid() || IsAITurn) return;
 
             var clickedPiece = Board.GetPieceAt(position);
 
-            if (clickedPiece != null && clickedPiece.Color == _currentPlayer)
+            if (clickedPiece != null && clickedPiece.Color == _gameManager.CurrentPlayer)
             {
                 SelectPiece(position);
                 return;
             }
 
-            if (SelectedPosition.IsValid() && clickedPiece?.Color != _currentPlayer)
+            if (SelectedPosition.IsValid() && clickedPiece?.Color != _gameManager.CurrentPlayer)
             {
-                TryMakeMove(SelectedPosition, position);
+                await TryMakeMove(SelectedPosition, position);
             }
         }
 
@@ -141,9 +213,10 @@ namespace shahmati.ViewModels
             SelectedPosition = Position.Invalid;
         }
 
-        private void TryMakeMove(Position from, Position to)
+        private async Task TryMakeMove(Position from, Position to)
         {
-            if (Board.IsValidMove(from, to, _currentPlayer))
+            bool moveMade = await _gameManager.MakeMove(from, to);
+            if (moveMade)
             {
                 StartAnimation(from, to);
             }
@@ -165,25 +238,16 @@ namespace shahmati.ViewModels
 
         private void CompleteAnimation()
         {
-            var piece = Board.GetPieceAt(_animationFrom);
-            var capturedPiece = Board.GetPieceAt(_animationTo);
-
-            Board.MovePiece(_animationFrom, _animationTo);
-            SwitchPlayer();
-            ResetSelection();
+            // Обновляем UI после анимации
             OnPropertyChanged(nameof(Board));
+            OnPropertyChanged(nameof(CurrentPlayerText));
+            ResetSelection();
         }
 
         private BoardCell GetCellAt(Position position)
         {
             if (!position.IsValid()) return null;
             return Board.Cells[position.Row, position.Column];
-        }
-
-        public void SwitchPlayer()
-        {
-            _currentPlayer = _currentPlayer == PieceColor.White ? PieceColor.Black : PieceColor.White;
-            OnPropertyChanged(nameof(CurrentPlayerText));
         }
 
         private void PlayMoveSound()

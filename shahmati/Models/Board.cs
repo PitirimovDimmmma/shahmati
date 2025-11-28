@@ -8,7 +8,6 @@ namespace shahmati.models
         public ChessPiece[,] Squares { get; private set; }
         public BoardCell[,] Cells { get; private set; }
 
-        // ДОБАВИТЬ ЭТО СВОЙСТВО
         public List<BoardCell> CellsFlat
         {
             get
@@ -81,7 +80,8 @@ namespace shahmati.models
             UpdateSquaresFromCells();
         }
 
-        private void UpdateSquaresFromCells()
+        // ИЗМЕНИТЕ ЭТОТ МЕТОД С private НА internal
+        internal void UpdateSquaresFromCells()
         {
             for (int row = 0; row < 8; row++)
             {

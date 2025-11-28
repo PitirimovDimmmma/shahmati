@@ -10,6 +10,7 @@
     <Window.Resources>
         <converters:SelectionToColorConverter x:Key="SelectionToColorConverter"/>
         <converters:PossibleMoveConverter x:Key="PossibleMoveConverter"/>
+        <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
 
         <Style x:Key="BoardCellStyle" TargetType="Border">
             <Setter Property="Background" Value="{Binding BackgroundColor}"/>
@@ -244,22 +245,32 @@
                        Style="{StaticResource RoundedButtonStyle}"
                        FontSize="14"/>
 
+                <!-- Индикатор хода ИИ -->
+                <Border Background="#FF6B6B" Padding="8" Margin="0,10,0,10" CornerRadius="5" 
+                        Visibility="{Binding IsAITurn, Converter={StaticResource NullToVisibilityConverter}}">
+                    <TextBlock Text="🤖 Компьютер думает..." 
+                              Foreground="White" FontWeight="Bold" 
+                              HorizontalAlignment="Center" FontSize="11"/>
+                </Border>
+
                 <TextBlock Text="Режим игры:" 
                           Margin="0,20,0,8" FontWeight="Bold" Foreground="#333"/>
-                <ComboBox x:Name="GameModeComboBox" SelectedIndex="0" Height="30" FontSize="12">
-                    <ComboBoxItem>♟ Человек vs Человек</ComboBoxItem>
-                    <ComboBoxItem>🤖 Человек vs Компьютер</ComboBoxItem>
-                    <ComboBoxItem>⚡ Компьютер vs Компьютер</ComboBoxItem>
+                <ComboBox SelectedItem="{Binding GameMode, Mode=TwoWay}" 
+                          Height="30" FontSize="12">
+                    <ComboBoxItem>Человек vs Человек</ComboBoxItem>
+                    <ComboBoxItem>Человек vs Компьютер</ComboBoxItem>
+                    <ComboBoxItem>Компьютер vs Компьютер</ComboBoxItem>
                 </ComboBox>
 
                 <TextBlock Text="Уровень сложности:" 
                           Margin="0,15,0,8" FontWeight="Bold" Foreground="#333"/>
-                <ComboBox x:Name="DifficultyComboBox" SelectedIndex="0" Height="30" FontSize="12">
-                    <ComboBoxItem>🥉 Новичок</ComboBoxItem>
-                    <ComboBoxItem>🥈 Лёгкий</ComboBoxItem>
-                    <ComboBoxItem>🥇 Средний</ComboBoxItem>
-                    <ComboBoxItem>🏅 Сложный</ComboBoxItem>
-                    <ComboBoxItem>🎯 Эксперт</ComboBoxItem>
+                <ComboBox SelectedItem="{Binding Difficulty, Mode=TwoWay}" 
+                          Height="30" FontSize="12">
+                    <ComboBoxItem>Новичок</ComboBoxItem>
+                    <ComboBoxItem>Лёгкий</ComboBoxItem>
+                    <ComboBoxItem>Средний</ComboBoxItem>
+                    <ComboBoxItem>Сложный</ComboBoxItem>
+                    <ComboBoxItem>Эксперт</ComboBoxItem>
                 </ComboBox>
 
                 <TextBlock Text="Текущий игрок:" 
@@ -280,13 +291,10 @@
                            Margin="5,0,0,0" Click="LoadGameButton_Click"
                            Width="90"/>
                     <Button Content="🔄 Начать заново" 
-       Style="{StaticResource BlueButtonStyle}"
-       Margin="5,0,0,0" Click="RestartGameButton_Click"
-       Width="90"/>
-                    
+                           Style="{StaticResource BlueButtonStyle}"
+                           Margin="5,0,0,0" Click="RestartGameButton_Click"
+                           Width="90"/>
                 </StackPanel>
-
-                
 
                 <Button Content="🏠 На главную" 
                        Style="{StaticResource GreenButtonStyle}"
