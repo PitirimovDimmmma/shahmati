@@ -98,14 +98,22 @@
             <Border Background="#FFFFFF" CornerRadius="10" Padding="25" Margin="0,0,0,20">
                 <StackPanel>
                     <TextBlock Text="Логин" FontWeight="SemiBold" Margin="0,0,0,5" Foreground="#333"/>
-                    <TextBox x:Name="UsernameTextBox" Style="{StaticResource InputFieldStyle}"/>
+                    <TextBox x:Name="UsernameTextBox" 
+                           Style="{StaticResource InputFieldStyle}"
+                           KeyDown="UsernameTextBox_KeyDown"/>
+                    <!-- Добавлено KeyDown -->
 
                     <TextBlock Text="Пароль" FontWeight="SemiBold" Margin="0,15,0,5" Foreground="#333"/>
-                    <PasswordBox x:Name="PasswordBox" Style="{StaticResource PasswordFieldStyle}"/>
+                    <PasswordBox x:Name="PasswordBox" 
+                               Style="{StaticResource PasswordFieldStyle}"
+                               KeyDown="PasswordBox_KeyDown"/>
+                    <!-- Добавлено KeyDown -->
 
-                    <Button Content="Войти" 
+                    <Button x:Name="LoginButton"
+                           Content="Войти" 
                            Style="{StaticResource LoginButtonStyle}"
-                           Margin="0,25,0,0" Click="LoginButton_Click"/>
+                           Margin="0,25,0,0" 
+                           Click="LoginButton_Click"/>
                 </StackPanel>
             </Border>
 

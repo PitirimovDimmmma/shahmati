@@ -1,71 +1,49 @@
 ﻿using System;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
-using Npgsql;
-using System.Text.RegularExpressions;
-using System.IO;
+using shahmati.Services;
+using shahmati.Models;
 
 namespace shahmati.Views
 {
     public partial class ProfileSetupWindow : Window
     {
-        private string connectionString = "Host=localhost;Port=5436;Database=kursovoi;Username=postgres;Password=2005";
-        private int _userId;
+        private readonly ApiService _apiService;
+        private readonly int _userId;
         private string _photoPath;
 
-        // Конструктор с параметром userId
         public ProfileSetupWindow(int userId)
         {
             InitializeComponent();
             _userId = userId;
+            _apiService = new ApiService();
 
-            // Добавляем обработчик изменения текста
-            NicknameTextBox.TextChanged += NicknameTextBox_TextChanged;
+            Loaded += async (s, e) => await LoadExistingProfile();
         }
 
-        // Конструктор без параметров для дизайнера
-        public ProfileSetupWindow()
+        private async Task LoadExistingProfile()
         {
-            InitializeComponent();
-            NicknameTextBox.TextChanged += NicknameTextBox_TextChanged;
-        }
-
-        private void NicknameTextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            ValidateInputs();
-        }
-
-        private void ValidateInputs()
-        {
-            bool isValid = true;
-
-            string nickname = NicknameTextBox.Text;
-            if (string.IsNullOrEmpty(nickname) || nickname.Length < 3)
+            try
             {
-                NicknameError.Text = "Никнейм должен быть не менее 3 символов";
-                NicknameError.Visibility = Visibility.Visible;
-                isValid = false;
-            }
-            else if (!Regex.IsMatch(nickname, @"^[a-zA-Z0-9]+$"))
-            {
-                NicknameError.Text = "Только латинские буквы и цифры";
-                NicknameError.Visibility = Visibility.Visible;
-                isValid = false;
-            }
-            else if (IsNicknameExists(nickname))
-            {
-                NicknameError.Text = "Никнейм уже занят";
-                NicknameError.Visibility = Visibility.Visible;
-                isValid = false;
-            }
-            else
-            {
-                NicknameError.Visibility = Visibility.Collapsed;
-            }
+                var profile = await _apiService.GetProfileAsync(_userId);
+                if (profile != null && !string.IsNullOrEmpty(profile.Nickname))
+                {
+                    NicknameTextBox.Text = profile.Nickname;
 
-            SaveButton.IsEnabled = isValid;
+                    if (!string.IsNullOrEmpty(profile.PhotoPath))
+                    {
+                        _photoPath = profile.PhotoPath;
+                        AvatarImage.Source = new BitmapImage(new Uri(_photoPath));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки профиля: {ex.Message}");
+            }
         }
 
         private void SelectImageButton_Click(object sender, RoutedEventArgs e)
@@ -79,14 +57,24 @@ namespace shahmati.Views
             }
         }
 
-        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
+            string nickname = NicknameTextBox.Text.Trim();
+
+            if (string.IsNullOrEmpty(nickname) || nickname.Length < 3)
+            {
+                MessageBox.Show("Никнейм должен быть не менее 3 символов", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            SaveButton.IsEnabled = false;
+            SaveButton.Content = "Сохранение...";
+
             try
             {
-                string nickname = NicknameTextBox.Text;
+                string finalPhotoPath = null;
 
                 // Если фото выбрано, копируем его в папку приложения
-                string finalPhotoPath = null;
                 if (!string.IsNullOrEmpty(_photoPath))
                 {
                     string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -97,55 +85,45 @@ namespace shahmati.Views
                     File.Copy(_photoPath, finalPhotoPath, true);
                 }
 
-                using (var conn = new NpgsqlConnection(connectionString))
+                var updateRequest = new UpdateProfileRequest
                 {
-                    conn.Open();
+                    Nickname = nickname,
+                    PhotoPath = finalPhotoPath
+                };
 
-                    using (var cmd = new NpgsqlCommand(
-                        "INSERT INTO profiles (user_id, nickname, photo_path) VALUES (@user_id, @nickname, @photo_path)",
-                        conn))
-                    {
-                        cmd.Parameters.AddWithValue("user_id", _userId);
-                        cmd.Parameters.AddWithValue("nickname", nickname);
-                        cmd.Parameters.AddWithValue("photo_path", finalPhotoPath ?? (object)DBNull.Value);
+                bool success = await _apiService.UpdateProfileAsync(_userId, updateRequest);
 
-                        cmd.ExecuteNonQuery();
+                if (success)
+                {
+                    MessageBox.Show("Профиль успешно сохранен!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
 
-                        MessageBox.Show("Профиль успешно создан!");
-
-                        // Переходим к ГЛАВНОМУ ЭКРАНУ (Dashboard)
-                        DashboardWindow dashboardWindow = new DashboardWindow(_userId);
-                        dashboardWindow.Show();
-                        this.Close();
-                    }
+                    // Переходим к главному экрану
+                    DashboardWindow dashboardWindow = new DashboardWindow(_userId);
+                    dashboardWindow.Show();
+                    this.Close();
+                }
+                else
+                {
+                    MessageBox.Show("Не удалось сохранить профиль", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
-            catch (Exception ex)
+            finally
             {
-                MessageBox.Show($"Ошибка при сохранении профиля: {ex.Message}");
+                SaveButton.IsEnabled = true;
+                SaveButton.Content = "Сохранить профиль";
             }
         }
 
-        private bool IsNicknameExists(string nickname)
+        private void NicknameTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            try
-            {
-                using (var conn = new NpgsqlConnection(connectionString))
-                {
-                    conn.Open();
-                    using (var cmd = new NpgsqlCommand(
-                        "SELECT COUNT(*) FROM profiles WHERE nickname = @nickname", conn))
-                    {
-                        cmd.Parameters.AddWithValue("nickname", nickname);
-                        var result = cmd.ExecuteScalar();
-                        return Convert.ToInt64(result) > 0;
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                return false;
-            }
+            ValidateInputs();
+        }
+
+        private void ValidateInputs()
+        {
+            string nickname = NicknameTextBox.Text.Trim();
+            bool isValid = !string.IsNullOrEmpty(nickname) && nickname.Length >= 3;
+            SaveButton.IsEnabled = isValid;
         }
     }
 }

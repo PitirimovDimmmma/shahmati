@@ -1,75 +1,63 @@
 ﻿using System;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Media.Imaging;
-using Npgsql;
+using shahmati.Services;
+using shahmati.Models;
 
 namespace shahmati.Views
 {
     public partial class DashboardWindow : Window
     {
-        private string connectionString = "Host=localhost;Port=5436;Database=kursovoi;Username=postgres;Password=2005";
-        private int _userId;
+        private readonly ApiService _apiService;
+        private readonly int _userId;
 
-        // Конструктор с параметром userId
         public DashboardWindow(int userId)
         {
             InitializeComponent();
             _userId = userId;
-            LoadUserData();
+            _apiService = new ApiService();
+
+            Loaded += async (s, e) => await LoadUserData();
         }
 
-        // Конструктор без параметров для дизайнера
-        public DashboardWindow()
-        {
-            InitializeComponent();
-            // Для дизайнера используем тестовые данные
-            UserNameText.Text = "Тестовый пользователь";
-            UserRatingText.Text = "Рейтинг: 1200";
-        }
-
-        private void LoadUserData()
+        private async Task LoadUserData()
         {
             try
             {
-                using (var conn = new NpgsqlConnection(connectionString))
+                // Загружаем данные пользователя
+                var user = await _apiService.GetUserAsync(_userId);
+                if (user != null)
                 {
-                    conn.Open();
-                    using (var cmd = new NpgsqlCommand(
-                        @"SELECT u.username, p.nickname, p.photo_path 
-                          FROM users u 
-                          LEFT JOIN profiles p ON u.id = p.user_id 
-                          WHERE u.id = @user_id", conn))
-                    {
-                        cmd.Parameters.AddWithValue("user_id", _userId);
-                        using (var reader = cmd.ExecuteReader())
-                        {
-                            if (reader.Read())
-                            {
-                                string nickname = reader.IsDBNull(1) ? reader.GetString(0) : reader.GetString(1);
-                                UserNameText.Text = nickname;
+                    UserNameText.Text = user.Profile?.Nickname ?? user.Username;
 
-                                if (!reader.IsDBNull(2))
-                                {
-                                    string photoPath = reader.GetString(2);
-                                    if (System.IO.File.Exists(photoPath))
-                                    {
-                                        UserAvatarImage.Source = new BitmapImage(new Uri(photoPath));
-                                    }
-                                }
-                                else
-                                {
-                                    // Установка дефолтного аватара
-                                    SetDefaultAvatar();
-                                }
-                            }
+                    // Загружаем статистику
+                    var stats = await _apiService.GetUserStatsAsync(_userId);
+                    if (stats != null)
+                    {
+                        UserRatingText.Text = $"Рейтинг: {stats.CurrentRating}";
+                    }
+
+                    // Загружаем аватар если есть
+                    if (!string.IsNullOrEmpty(user.Profile?.PhotoPath))
+                    {
+                        try
+                        {
+                            UserAvatarImage.Source = new BitmapImage(new Uri(user.Profile.PhotoPath));
                         }
+                        catch
+                        {
+                            SetDefaultAvatar();
+                        }
+                    }
+                    else
+                    {
+                        SetDefaultAvatar();
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка загрузки данных пользователя: {ex.Message}");
+                MessageBox.Show($"Ошибка загрузки данных: {ex.Message}");
                 SetDefaultAvatar();
             }
         }
@@ -78,33 +66,60 @@ namespace shahmati.Views
         {
             try
             {
-                // Пытаемся загрузить дефолтный аватар
-                UserAvatarImage.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/default_avatar.png"));
+                UserAvatarImage.Source = new BitmapImage(
+                    new Uri("pack://application:,,,/Resources/default_avatar.png"));
             }
             catch
             {
-                // Если ресурс не найден, просто оставляем пустым
+                // Если ресурс не найден
             }
         }
 
-        private void GameCard_MouseDown(object sender, MouseButtonEventArgs e)
+        private void GameCard_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            // Открываем главное окно с шахматами
+            // Открываем главное окно с игрой
             MainWindow gameWindow = new MainWindow(_userId);
             gameWindow.Show();
             this.Close();
         }
 
-        private void RulesCard_MouseDown(object sender, MouseButtonEventArgs e)
+        private void OnlineGamesCard_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            // Открываем окно с правилами
+            // Открываем окно онлайн игр
+            OnlineGamesWindow onlineGamesWindow = new OnlineGamesWindow(_userId);
+            onlineGamesWindow.Show();
+            this.Close();
+        }
+
+        private void RulesCard_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
             RulesWindow rulesWindow = new RulesWindow(_userId);
             rulesWindow.Show();
             this.Close();
         }
 
+        private void ProfileCard_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            // Открываем окно профиля
+            ProfileSetupWindow profileWindow = new ProfileSetupWindow(_userId);
+            profileWindow.Show();
+            this.Close();
+        }
+
+        private void HistoryCard_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            // Показываем сообщение о том, что функция в разработке
+            MessageBox.Show("История игр будет доступна в следующем обновлении",
+                "В разработке",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+
         private void LogoutButton_Click(object sender, RoutedEventArgs e)
         {
+            // Очищаем данные пользователя
+            Application.Current.Properties.Clear();
+
             // Возвращаемся к окну входа
             LoginWindow loginWindow = new LoginWindow();
             loginWindow.Show();

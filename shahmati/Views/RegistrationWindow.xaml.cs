@@ -1,155 +1,105 @@
 ﻿using System;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
-using Npgsql;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.RegularExpressions;
+using shahmati.Services;
+using shahmati.Models;
 
 namespace shahmati.Views
 {
     public partial class RegistrationWindow : Window
     {
-        private string connectionString = "Host=localhost;Port=5436;Database=kursovoi;Username=postgres;Password=2005";
+        private readonly ApiService _apiService;
 
         public RegistrationWindow()
         {
             InitializeComponent();
-        }
-
-        private void UsernameTextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            ValidateInputs();
-        }
-
-        private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
-        {
-            ValidateInputs();
-        }
-
-        private void ConfirmPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
-        {
-            ValidateInputs();
-        }
-
-        private void EmailTextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            ValidateInputs();
-        }
-
-        private void ValidateInputs()
-        {
-            bool isValid = true;
-
-            // Проверка логина
-            string username = UsernameTextBox.Text;
-            if (string.IsNullOrEmpty(username) || username.Length < 3)
-            {
-                UsernameError.Text = "Логин должен быть не менее 3 символов";
-                UsernameError.Visibility = Visibility.Visible;
-                isValid = false;
-            }
-            else if (!Regex.IsMatch(username, @"^[a-zA-Z0-9]+$"))
-            {
-                UsernameError.Text = "Только латинские буквы и цифры";
-                UsernameError.Visibility = Visibility.Visible;
-                isValid = false;
-            }
-            else if (IsUsernameExists(username))
-            {
-                UsernameError.Text = "Логин уже занят";
-                UsernameError.Visibility = Visibility.Visible;
-                isValid = false;
-            }
-            else
-            {
-                UsernameError.Visibility = Visibility.Collapsed;
-            }
-
-            // Проверка пароля
-            string password = PasswordBox.Password;
-            if (string.IsNullOrEmpty(password) || password.Length < 6)
-            {
-                PasswordError.Text = "Пароль должен быть не менее 6 символов";
-                PasswordError.Visibility = Visibility.Visible;
-                isValid = false;
-            }
-            else
-            {
-                PasswordError.Visibility = Visibility.Collapsed;
-            }
-
-            // Проверка подтверждения пароля
-            string confirmPassword = ConfirmPasswordBox.Password;
-            if (password != confirmPassword)
-            {
-                ConfirmPasswordError.Text = "Пароли не совпадают";
-                ConfirmPasswordError.Visibility = Visibility.Visible;
-                isValid = false;
-            }
-            else
-            {
-                ConfirmPasswordError.Visibility = Visibility.Collapsed;
-            }
-
-            // Проверка email
-            string email = EmailTextBox.Text;
-            if (string.IsNullOrEmpty(email) || !IsValidEmail(email))
-            {
-                EmailError.Text = "Введите корректный email";
-                EmailError.Visibility = Visibility.Visible;
-                isValid = false;
-            }
-            else if (IsEmailExists(email))
-            {
-                EmailError.Text = "Email уже используется";
-                EmailError.Visibility = Visibility.Visible;
-                isValid = false;
-            }
-            else
-            {
-                EmailError.Visibility = Visibility.Collapsed;
-            }
-
-            RegisterButton.IsEnabled = isValid;
+            _apiService = new ApiService();
         }
 
         private async void RegisterButton_Click(object sender, RoutedEventArgs e)
         {
+            string username = UsernameTextBox.Text.Trim();
+            string email = EmailTextBox.Text.Trim();
+            string password = PasswordBox.Password;
+            string confirmPassword = ConfirmPasswordBox.Password;
+
+            // Валидация
+            if (!ValidateInputs(username, email, password, confirmPassword))
+            {
+                return;
+            }
+
+            RegisterButton.IsEnabled = false;
+            RegisterButton.Content = "Регистрация...";
+
             try
             {
-                string username = UsernameTextBox.Text;
-                string password = PasswordBox.Password;
-                string email = EmailTextBox.Text;
+                bool success = await _apiService.RegisterAsync(username, email, password);
 
-                using (var conn = new NpgsqlConnection(connectionString))
+                if (success)
                 {
-                    await conn.OpenAsync();
+                    MessageBox.Show("Аккаунт успешно создан! Теперь войдите в систему.",
+                        "Успех",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
 
-                    // Вставляем пользователя
-                    using (var cmd = new NpgsqlCommand(
-                        "INSERT INTO users (username, email, password_hash) VALUES (@username, @email, @password_hash) RETURNING id",
-                        conn))
-                    {
-                        cmd.Parameters.AddWithValue("username", username);
-                        cmd.Parameters.AddWithValue("email", email);
-                        cmd.Parameters.AddWithValue("password_hash", HashPassword(password));
-
-                        int userId = (int)await cmd.ExecuteScalarAsync();
-
-                        MessageBox.Show("Аккаунт успешно создан!");
-
-                        // Переходим к созданию профиля
-                        ProfileSetupWindow profileWindow = new ProfileSetupWindow(userId);
-                        profileWindow.Show();
-                        this.Close();
-                    }
+                    // Возвращаемся к окну входа
+                    LoginWindow loginWindow = new LoginWindow();
+                    loginWindow.Show();
+                    this.Close();
                 }
             }
-            catch (Exception ex)
+            finally
             {
-                MessageBox.Show($"Ошибка при регистрации: {ex.Message}");
+                RegisterButton.IsEnabled = true;
+                RegisterButton.Content = "Создать аккаунт";
             }
+        }
+
+        private bool ValidateInputs(string username, string email, string password, string confirmPassword)
+        {
+            // Проверка логина
+            if (string.IsNullOrEmpty(username) || username.Length < 3)
+            {
+                MessageBox.Show("Логин должен быть не менее 3 символов", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            if (!Regex.IsMatch(username, @"^[a-zA-Z0-9_]+$"))
+            {
+                MessageBox.Show("Логин может содержать только латинские буквы, цифры и подчеркивание",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            // Проверка email
+            if (string.IsNullOrEmpty(email) || !IsValidEmail(email))
+            {
+                MessageBox.Show("Введите корректный email адрес", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            // Проверка пароля
+            if (string.IsNullOrEmpty(password) || password.Length < 6)
+            {
+                MessageBox.Show("Пароль должен быть не менее 6 символов", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            // Проверка подтверждения пароля
+            if (password != confirmPassword)
+            {
+                MessageBox.Show("Пароли не совпадают", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool IsValidEmail(string email)
+        {
+            return Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
@@ -159,63 +109,39 @@ namespace shahmati.Views
             this.Close();
         }
 
-        private bool IsUsernameExists(string username)
+        private void ValidateInputsInRealTime()
         {
-            try
-            {
-                using (var conn = new NpgsqlConnection(connectionString))
-                {
-                    conn.Open();
-                    using (var cmd = new NpgsqlCommand(
-                        "SELECT COUNT(*) FROM users WHERE username = @username", conn))
-                    {
-                        cmd.Parameters.AddWithValue("username", username);
-                        var result = cmd.ExecuteScalar();
-                        return Convert.ToInt64(result) > 0;
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                return false;
-            }
+            string username = UsernameTextBox.Text.Trim();
+            string email = EmailTextBox.Text.Trim();
+            string password = PasswordBox.Password;
+            string confirmPassword = ConfirmPasswordBox.Password;
+
+            bool isValid = !string.IsNullOrEmpty(username) && username.Length >= 3 &&
+                          !string.IsNullOrEmpty(email) && IsValidEmail(email) &&
+                          !string.IsNullOrEmpty(password) && password.Length >= 6 &&
+                          password == confirmPassword;
+
+            RegisterButton.IsEnabled = isValid;
         }
 
-        private bool IsEmailExists(string email)
+        private void UsernameTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            try
-            {
-                using (var conn = new NpgsqlConnection(connectionString))
-                {
-                    conn.Open();
-                    using (var cmd = new NpgsqlCommand(
-                        "SELECT COUNT(*) FROM users WHERE email = @email", conn))
-                    {
-                        cmd.Parameters.AddWithValue("email", email);
-                        var result = cmd.ExecuteScalar();
-                        return Convert.ToInt64(result) > 0;
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                return false;
-            }
+            ValidateInputsInRealTime();
         }
 
-        private bool IsValidEmail(string email)
+        private void EmailTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            return Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+            ValidateInputsInRealTime();
         }
 
-        private string HashPassword(string password)
+        private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
         {
-            using (var sha256 = SHA256.Create())
-            {
-                var bytes = Encoding.UTF8.GetBytes(password);
-                var hash = sha256.ComputeHash(bytes);
-                return Convert.ToBase64String(hash);
-            }
+            ValidateInputsInRealTime();
+        }
+
+        private void ConfirmPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+        {
+            ValidateInputsInRealTime();
         }
     }
 }

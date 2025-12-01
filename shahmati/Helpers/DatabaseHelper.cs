@@ -1,8 +1,22 @@
-﻿using Npgsql;
-using System.Windows;
+﻿using shahmati.Services;
+using System.Threading.Tasks;
 
 namespace shahmati.Helpers
 {
+    public static class DatabaseHelper
+    {
+        private static ApiService _apiService = new ApiService();
+
+        public static async Task<bool> TestApiConnection()
+        {
+            return await _apiService.TestConnectionAsync();
+        }
+
+        // Удалите все методы работы с базой данных напрямую
+        // Теперь всё работает через API
+    }
+}
+/*{
     public static class DatabaseHelper
     {
         private static string connectionString = "Host=localhost;Port=5436;Database=kursovoi;Username=postgres;Password=2005";
@@ -74,4 +88,4 @@ namespace shahmati.Helpers
 
         public static string ConnectionString => connectionString;
     }
-}
+}*/

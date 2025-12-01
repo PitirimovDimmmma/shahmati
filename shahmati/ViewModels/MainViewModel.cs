@@ -1,14 +1,27 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows.Input;
 using System.Windows.Threading;
+using System.Threading.Tasks;
 using shahmati.Helpers;
 using shahmati.models;
 using shahmati.Services;
-using System.Threading.Tasks;
+using shahmati.Models;
 
 namespace shahmati.ViewModels
 {
+    // Определяем алиасы для разрешения конфликтов
+    using ApiUserWithProfileDto = Models.UserWithProfileDto;
+    using ApiCreateGameDto = Models.CreateGameDto;
+    using ApiGameDto = Models.GameDto;
+    using ApiMoveDto = Models.MoveDto;
+    using ApiSavedGameDto = Models.SavedGameDto;
+    using ApiUserDto = Models.UserDto;
+    using ApiUserProfileDto = Models.UserProfileDto;
+    using ApiGameStatsDto = Models.GameStatsDto;
+    using ApiPlayerStatsDto = Models.PlayerStatsDto;
+
     public class MainViewModel : INotifyPropertyChanged
     {
         private Board _board;
@@ -22,19 +35,31 @@ namespace shahmati.ViewModels
         private string _gameMode = "Человек vs Человек";
         private string _difficulty = "Средний";
         private bool _isAITurn;
+        private readonly ApiService _apiService;
+        private int _currentUserId;
+        private List<ApiGameDto> _activeGames;
 
+        // Конструктор БЕЗ параметров (для игры)
         public MainViewModel()
         {
             _gameManager = new GameManager();
             _board = _gameManager.Board;
             _selectedPosition = Position.Invalid;
+            _apiService = new ApiService();
 
             InitializeAnimationTimer();
             StartNewGameCommand = new RelayCommand(StartNewGame);
             CellClickCommand = new RelayCommand<Position>(HandleCellClick);
 
-            // Подписываемся на события GameManager
             _gameManager.PropertyChanged += GameManager_PropertyChanged;
+        }
+
+        // Конструктор С параметром userId (для OnlineGamesWindow)
+        public MainViewModel(int userId)
+        {
+            _currentUserId = userId;
+            _apiService = new ApiService();
+            _activeGames = new List<ApiGameDto>();
         }
 
         public Board Board
@@ -47,7 +72,17 @@ namespace shahmati.ViewModels
             }
         }
 
-        public string CurrentPlayerText => _gameManager.CurrentPlayer == PieceColor.White ? "⚪ БЕЛЫЕ" : "⚫ ЧЁРНЫЕ";
+        public List<ApiGameDto> ActiveGames
+        {
+            get => _activeGames;
+            set
+            {
+                _activeGames = value;
+                OnPropertyChanged(nameof(ActiveGames));
+            }
+        }
+
+        public string CurrentPlayerText => _gameManager?.CurrentPlayer == PieceColor.White ? "⚪ БЕЛЫЕ" : "⚫ ЧЁРНЫЕ";
 
         public bool IsAITurn
         {
@@ -95,6 +130,46 @@ namespace shahmati.ViewModels
         public double AnimationProgress => _animationProgress;
         public bool IsAnimating => _animationTimer?.IsEnabled ?? false;
 
+        // API методы
+        public async Task<bool> CheckApiConnection()
+        {
+            return await _apiService.TestConnectionAsync();
+        }
+
+        public async Task<bool> LoginAsync(string username, string password)
+        {
+            var user = await _apiService.LoginAsync(username, password);
+            if (user != null)
+            {
+                _currentUserId = user.Id;
+                return true;
+            }
+            return false;
+        }
+
+        public async Task LoadActiveGamesAsync()
+        {
+            var games = await _apiService.GetActiveGamesAsync();
+            ActiveGames = games ?? new List<ApiGameDto>();
+        }
+
+        public async Task<ApiGameDto> CreateNewGame(string gameMode, string difficulty)
+        {
+            var createDto = new ApiCreateGameDto
+            {
+                WhitePlayerId = _currentUserId,
+                GameMode = gameMode,
+                Difficulty = difficulty
+            };
+            return await _apiService.CreateGameAsync(createDto);
+        }
+
+        public void SelectGame(int gameId)
+        {
+            // Логика выбора игры
+            Console.WriteLine($"Выбрана игра: {gameId}");
+        }
+
         private void InitializeAnimationTimer()
         {
             _animationTimer = new DispatcherTimer();
@@ -104,6 +179,8 @@ namespace shahmati.ViewModels
 
         private void GameManager_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
+            if (_gameManager == null) return;
+
             if (e.PropertyName == nameof(GameManager.CurrentPlayer))
             {
                 OnPropertyChanged(nameof(CurrentPlayerText));
@@ -117,22 +194,21 @@ namespace shahmati.ViewModels
 
         private void CheckAITurn()
         {
+            if (_gameManager == null) return;
+
             IsAITurn = (_gameMode == "Человек vs Компьютер" && _gameManager.CurrentPlayer == PieceColor.Black) ||
                        (_gameMode == "Компьютер vs Компьютер");
 
             if (IsAITurn && _gameManager.IsGameInProgress)
             {
-                // Запускаем ход ИИ
                 _ = MakeAIMoveAsync();
             }
         }
 
         private async Task MakeAIMoveAsync()
         {
-            await Task.Delay(500); // Задержка для реалистичности
-
-            // Используем GameManager для хода ИИ
-            await _gameManager.MakeAIMoveAsync();
+            await Task.Delay(500);
+            await _gameManager?.MakeAIMoveAsync();
         }
 
         private void AnimationTimer_Tick(object sender, EventArgs e)
@@ -149,16 +225,16 @@ namespace shahmati.ViewModels
 
         private void StartNewGame()
         {
-            _gameManager.StartNewGame(GameMode, Difficulty);
-            Board = _gameManager.Board;
+            _gameManager?.StartNewGame(GameMode, Difficulty);
+            Board = _gameManager?.Board;
             SelectedPosition = Position.Invalid;
             OnPropertyChanged(nameof(CurrentPlayerText));
-            CheckAITurn(); // Проверяем, должен ли ИИ ходить первым
+            CheckAITurn();
         }
 
         public async void HandleCellClick(Position position)
         {
-            if (IsAnimating || !position.IsValid() || IsAITurn) return;
+            if (IsAnimating || !position.IsValid() || IsAITurn || _gameManager == null) return;
 
             var clickedPiece = Board.GetPieceAt(position);
 
@@ -238,7 +314,6 @@ namespace shahmati.ViewModels
 
         private void CompleteAnimation()
         {
-            // Обновляем UI после анимации
             OnPropertyChanged(nameof(Board));
             OnPropertyChanged(nameof(CurrentPlayerText));
             ResetSelection();

@@ -6,12 +6,24 @@ namespace shahmati
 {
     public partial class App : Application
     {
-        protected override void OnStartup(StartupEventArgs e)
+        protected override async void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
 
-            // Проверяем подключение к базе данных и создаем таблицы, если нужно
-            DatabaseHelper.InitializeDatabase();
+            // Тестируем подключение к API
+            bool isConnected = await DatabaseHelper.TestApiConnection();
+
+            if (!isConnected)
+            {
+                MessageBox.Show("⚠️ Не удалось подключиться к API серверу\n\n" +
+                               "Убедитесь, что:\n" +
+                               "• API проект запущен\n" +
+                               "• Адрес: http://localhost:7001\n" +
+                               "• Сервер доступен",
+                               "Ошибка подключения",
+                               MessageBoxButton.OK,
+                               MessageBoxImage.Warning);
+            }
 
             // Показываем окно входа
             LoginWindow loginWindow = new LoginWindow();
