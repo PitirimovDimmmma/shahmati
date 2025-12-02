@@ -15,6 +15,9 @@ namespace shahmati.Views
         {
             InitializeComponent();
             _apiService = new ApiService();
+
+            // Инициализируем кнопку
+            RegisterButton.IsEnabled = false;
         }
 
         private async void RegisterButton_Click(object sender, RoutedEventArgs e)
@@ -25,13 +28,14 @@ namespace shahmati.Views
             string confirmPassword = ConfirmPasswordBox.Password;
 
             // Валидация
-            if (!ValidateInputs(username, email, password, confirmPassword))
+            if (!ValidateInputs(username, email, password, confirmPassword, showMessage: true))
             {
                 return;
             }
 
             RegisterButton.IsEnabled = false;
             RegisterButton.Content = "Регистрация...";
+            RegisterButton.Cursor = System.Windows.Input.Cursors.Wait;
 
             try
             {
@@ -39,7 +43,7 @@ namespace shahmati.Views
 
                 if (success)
                 {
-                    MessageBox.Show("Аккаунт успешно создан! Теперь войдите в систему.",
+                    MessageBox.Show("✅ Аккаунт успешно создан!\nТеперь войдите в систему.",
                         "Успех",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
@@ -50,56 +54,115 @@ namespace shahmati.Views
                     this.Close();
                 }
             }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"❌ Ошибка при регистрации: {ex.Message}",
+                    "Ошибка",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
             finally
             {
-                RegisterButton.IsEnabled = true;
+                RegisterButton.IsEnabled = ValidateInputs(
+                    UsernameTextBox.Text.Trim(),
+                    EmailTextBox.Text.Trim(),
+                    PasswordBox.Password,
+                    ConfirmPasswordBox.Password,
+                    showMessage: false);
+
                 RegisterButton.Content = "Создать аккаунт";
+                RegisterButton.Cursor = System.Windows.Input.Cursors.Hand;
             }
         }
 
-        private bool ValidateInputs(string username, string email, string password, string confirmPassword)
+        private bool ValidateInputs(string username, string email, string password,
+                                   string confirmPassword, bool showMessage = false)
         {
-            // Проверка логина
-            if (string.IsNullOrEmpty(username) || username.Length < 3)
-            {
-                MessageBox.Show("Логин должен быть не менее 3 символов", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return false;
-            }
+            bool isValid = true;
 
-            if (!Regex.IsMatch(username, @"^[a-zA-Z0-9_]+$"))
+            // Сбрасываем ошибки
+            ClearErrors();
+
+            // Проверка логина
+            if (string.IsNullOrEmpty(username))
             {
-                MessageBox.Show("Логин может содержать только латинские буквы, цифры и подчеркивание",
-                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return false;
+                if (showMessage) ShowError(UsernameError, "Введите логин");
+                isValid = false;
+            }
+            else if (username.Length < 3)
+            {
+                if (showMessage) ShowError(UsernameError, "Логин должен быть не менее 3 символов");
+                isValid = false;
+            }
+            else if (!Regex.IsMatch(username, @"^[a-zA-Z0-9_]+$"))
+            {
+                if (showMessage) ShowError(UsernameError, "Только латинские буквы, цифры и подчеркивание");
+                isValid = false;
             }
 
             // Проверка email
-            if (string.IsNullOrEmpty(email) || !IsValidEmail(email))
+            if (string.IsNullOrEmpty(email))
             {
-                MessageBox.Show("Введите корректный email адрес", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return false;
+                if (showMessage) ShowError(EmailError, "Введите email");
+                isValid = false;
+            }
+            else if (!IsValidEmail(email))
+            {
+                if (showMessage) ShowError(EmailError, "Некорректный email адрес");
+                isValid = false;
             }
 
             // Проверка пароля
-            if (string.IsNullOrEmpty(password) || password.Length < 6)
+            if (string.IsNullOrEmpty(password))
             {
-                MessageBox.Show("Пароль должен быть не менее 6 символов", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return false;
+                if (showMessage) ShowError(PasswordError, "Введите пароль");
+                isValid = false;
+            }
+            else if (password.Length < 6)
+            {
+                if (showMessage) ShowError(PasswordError, "Пароль должен быть не менее 6 символов");
+                isValid = false;
             }
 
             // Проверка подтверждения пароля
-            if (password != confirmPassword)
+            if (string.IsNullOrEmpty(confirmPassword))
             {
-                MessageBox.Show("Пароли не совпадают", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return false;
+                if (showMessage) ShowError(ConfirmPasswordError, "Подтвердите пароль");
+                isValid = false;
+            }
+            else if (password != confirmPassword)
+            {
+                if (showMessage) ShowError(ConfirmPasswordError, "Пароли не совпадают");
+                isValid = false;
             }
 
-            return true;
+            return isValid;
         }
 
         private bool IsValidEmail(string email)
         {
-            return Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+            try
+            {
+                return Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void ClearErrors()
+        {
+            UsernameError.Visibility = Visibility.Collapsed;
+            EmailError.Visibility = Visibility.Collapsed;
+            PasswordError.Visibility = Visibility.Collapsed;
+            ConfirmPasswordError.Visibility = Visibility.Collapsed;
+        }
+
+        private void ShowError(TextBlock errorControl, string message)
+        {
+            errorControl.Text = message;
+            errorControl.Visibility = Visibility.Visible;
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
@@ -116,12 +179,31 @@ namespace shahmati.Views
             string password = PasswordBox.Password;
             string confirmPassword = ConfirmPasswordBox.Password;
 
-            bool isValid = !string.IsNullOrEmpty(username) && username.Length >= 3 &&
-                          !string.IsNullOrEmpty(email) && IsValidEmail(email) &&
-                          !string.IsNullOrEmpty(password) && password.Length >= 6 &&
-                          password == confirmPassword;
+            // Проверяем каждое поле отдельно с отображением ошибок
+            bool usernameValid = !string.IsNullOrEmpty(username) && username.Length >= 3
+                && Regex.IsMatch(username, @"^[a-zA-Z0-9_]+$");
 
-            RegisterButton.IsEnabled = isValid;
+            bool emailValid = !string.IsNullOrEmpty(email) && IsValidEmail(email);
+
+            bool passwordValid = !string.IsNullOrEmpty(password) && password.Length >= 6;
+
+            bool confirmValid = !string.IsNullOrEmpty(confirmPassword) && password == confirmPassword;
+
+            // Показываем/скрываем ошибки
+            UsernameError.Visibility = !usernameValid && !string.IsNullOrEmpty(username) ?
+                Visibility.Visible : Visibility.Collapsed;
+
+            EmailError.Visibility = !emailValid && !string.IsNullOrEmpty(email) ?
+                Visibility.Visible : Visibility.Collapsed;
+
+            PasswordError.Visibility = !passwordValid && !string.IsNullOrEmpty(password) ?
+                Visibility.Visible : Visibility.Collapsed;
+
+            ConfirmPasswordError.Visibility = !confirmValid && !string.IsNullOrEmpty(confirmPassword) ?
+                Visibility.Visible : Visibility.Collapsed;
+
+            // Включаем кнопку только если все поля валидны
+            RegisterButton.IsEnabled = usernameValid && emailValid && passwordValid && confirmValid;
         }
 
         private void UsernameTextBox_TextChanged(object sender, TextChangedEventArgs e)

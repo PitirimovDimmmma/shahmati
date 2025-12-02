@@ -103,6 +103,8 @@
                            KeyDown="UsernameTextBox_KeyDown"/>
                     <!-- Добавлено KeyDown -->
 
+                    
+                    
                     <TextBlock Text="Пароль" FontWeight="SemiBold" Margin="0,15,0,5" Foreground="#333"/>
                     <PasswordBox x:Name="PasswordBox" 
                                Style="{StaticResource PasswordFieldStyle}"

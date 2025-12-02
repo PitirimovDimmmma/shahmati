@@ -1,8 +1,9 @@
-﻿using System;
+﻿using shahmati.Models;
+using shahmati.Services;
+using System;
 using System.Windows;
 using System.Windows.Input;
-using shahmati.Services;
-using shahmati.Models;
+using System.Windows.Media;
 
 namespace shahmati.Views
 {
@@ -19,17 +20,24 @@ namespace shahmati.Views
             Loaded += async (s, e) => await TestApiConnection();
         }
 
-        private async Task TestApiConnection()  // Измените на async Task вместо void
+        private async Task TestApiConnection()
         {
             bool isConnected = await _apiService.TestConnectionAsync();
             if (!isConnected)
             {
-                MessageBox.Show("⚠️ Не удалось подключиться к серверу\n\nУбедитесь, что API запущен на localhost:7001",
-                    "Ошибка подключения",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                // ИЗМЕНИ ЭТО СООБЩЕНИЕ!
+                MessageBox.Show("⚠️ Не удалось подключиться к серверу\n\n" +
+                               "Убедитесь, что:\n" +
+                               "1. API проект запущен\n" +
+                               "2. Адрес: https://localhost:7259\n" +
+                               "3. В браузере работает: https://localhost:7259/swagger",
+                               "Ошибка подключения",
+                               MessageBoxButton.OK,
+                               MessageBoxImage.Warning);
             }
         }
+
+        
 
         private async void LoginButton_Click(object sender, RoutedEventArgs e)
         {
