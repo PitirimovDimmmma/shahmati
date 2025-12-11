@@ -70,33 +70,61 @@
                 <Border Background="#FFFFFF" CornerRadius="10" Padding="25">
                     <StackPanel>
                         <TextBlock Text="Логин" FontWeight="SemiBold" Margin="0,0,0,5" Foreground="#333"/>
-                        <TextBox x:Name="UsernameTextBox" Style="{StaticResource InputFieldStyle}"
-                                TextChanged="UsernameTextBox_TextChanged"/>
-                        <TextBlock x:Name="UsernameError" Foreground="Red" FontSize="11" Visibility="Collapsed"/>
+                        <TextBox x:Name="UsernameTextBox" 
+                                 Style="{StaticResource InputFieldStyle}"
+                                 TextChanged="UsernameTextBox_TextChanged"
+                                 KeyDown="UsernameTextBox_KeyDown"/>
+                        <TextBlock x:Name="UsernameError" 
+                                   Foreground="Red" 
+                                   FontSize="11" 
+                                   Margin="0,2,0,0"
+                                   Visibility="Collapsed"/>
 
                         <TextBlock Text="Пароль" FontWeight="SemiBold" Margin="0,15,0,5" Foreground="#333"/>
-                        <PasswordBox x:Name="PasswordBox" Style="{StaticResource PasswordFieldStyle}"
-                                    PasswordChanged="PasswordBox_PasswordChanged"/>
-                        <TextBlock x:Name="PasswordError" Foreground="Red" FontSize="11" Visibility="Collapsed"/>
+                        <PasswordBox x:Name="PasswordBox" 
+                                     Style="{StaticResource PasswordFieldStyle}"
+                                     PasswordChanged="PasswordBox_PasswordChanged"
+                                     KeyDown="PasswordBox_KeyDown"/>
+                        <TextBlock x:Name="PasswordError" 
+                                   Foreground="Red" 
+                                   FontSize="11" 
+                                   Margin="0,2,0,0"
+                                   Visibility="Collapsed"/>
 
                         <TextBlock Text="Повторите пароль" FontWeight="SemiBold" Margin="0,15,0,5" Foreground="#333"/>
-                        <PasswordBox x:Name="ConfirmPasswordBox" Style="{StaticResource PasswordFieldStyle}"
-                                    PasswordChanged="ConfirmPasswordBox_PasswordChanged"/>
-                        <TextBlock x:Name="ConfirmPasswordError" Foreground="Red" FontSize="11" Visibility="Collapsed"/>
+                        <PasswordBox x:Name="ConfirmPasswordBox" 
+                                     Style="{StaticResource PasswordFieldStyle}"
+                                     PasswordChanged="ConfirmPasswordBox_PasswordChanged"
+                                     KeyDown="ConfirmPasswordBox_KeyDown"/>
+                        <TextBlock x:Name="ConfirmPasswordError" 
+                                   Foreground="Red" 
+                                   FontSize="11" 
+                                   Margin="0,2,0,0"
+                                   Visibility="Collapsed"/>
 
                         <TextBlock Text="Email" FontWeight="SemiBold" Margin="0,15,0,5" Foreground="#333"/>
-                        <TextBox x:Name="EmailTextBox" Style="{StaticResource InputFieldStyle}"
-                                TextChanged="EmailTextBox_TextChanged"/>
-                        <TextBlock x:Name="EmailError" Foreground="Red" FontSize="11" Visibility="Collapsed"/>
+                        <TextBox x:Name="EmailTextBox" 
+                                 Style="{StaticResource InputFieldStyle}"
+                                 TextChanged="EmailTextBox_TextChanged"
+                                 KeyDown="EmailTextBox_KeyDown"/>
+                        <TextBlock x:Name="EmailError" 
+                                   Foreground="Red" 
+                                   FontSize="11" 
+                                   Margin="0,2,0,0"
+                                   Visibility="Collapsed"/>
 
-                        <Button x:Name="RegisterButton" Content="Создать аккаунт" 
-                               Style="{StaticResource RegisterButtonStyle}"
-                               Margin="0,25,0,10" IsEnabled="False"
-                               Click="RegisterButton_Click"/>
+                        <Button x:Name="RegisterButton" 
+                                Content="Создать аккаунт" 
+                                Style="{StaticResource RegisterButtonStyle}"
+                                Margin="0,25,0,10" 
+                                IsEnabled="False"
+                                 Click="RegisterButton_Click"/>
 
                         <Button Content="Назад к входу" 
-                               Height="35" Background="Transparent" 
-                               Foreground="#666" FontSize="12" 
+                               Height="35" 
+                               Background="Transparent" 
+                               Foreground="#666" 
+                               FontSize="12" 
                                BorderThickness="0"
                                Cursor="Hand"
                                Click="BackButton_Click"/>

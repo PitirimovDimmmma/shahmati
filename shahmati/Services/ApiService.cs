@@ -1,17 +1,22 @@
-﻿using System;
+﻿using shahmati.Models;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
-using shahmati.Models;
 
 namespace shahmati.Services
 {
     public class ApiService
     {
         private readonly HttpClient _httpClient;
-        private const string BaseUrl = "https://localhost:7259/api";
+        // ИСПРАВЬТЕ: добавьте api/
+        private const string BaseUrl = "https://localhost:7259/";
 
         public ApiService()
         {
@@ -24,6 +29,11 @@ namespace shahmati.Services
             _httpClient.BaseAddress = new Uri(BaseUrl);
             _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
+
+            // Добавьте логирование URL
+            Console.WriteLine($"=== API SERVICE INIT ===");
+            Console.WriteLine($"Base URL: {BaseUrl}");
+            Console.WriteLine($"Full Auth URL: {new Uri(_httpClient.BaseAddress, "auth/register")}");
         }
 
         // ========== ТЕСТИРОВАНИЕ ПОДКЛЮЧЕНИЯ ==========
@@ -31,111 +41,177 @@ namespace shahmati.Services
         {
             try
             {
-                // Используем самый простой endpoint
+                // Тестируем через weatherforecast
                 var response = await _httpClient.GetAsync("weatherforecast");
+
+                Console.WriteLine($"=== CONNECTION TEST ===");
+                Console.WriteLine($"Status: {response.StatusCode}");
+                Console.WriteLine($"URL: weatherforecast");
 
                 if (response.IsSuccessStatusCode)
                 {
+                    Console.WriteLine($"✅ API доступен");
                     return true;
                 }
                 else
                 {
-                    MessageBox.Show($"API ответил с ошибкой: {response.StatusCode}\n" +
-                                   $"URL: {BaseUrl}/weatherforecast",
-                                   "Ошибка подключения",
-                                   MessageBoxButton.OK,
-                                   MessageBoxImage.Warning);
+                    var content = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"❌ API ошибка: {content}");
                     return false;
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Не удалось подключиться к API\n\n" +
-                               $"URL: {BaseUrl}\n" +
-                               $"Ошибка: {ex.Message}\n\n" +
-                               "Убедитесь, что:\n" +
-                               "1. API проект запущен\n" +
-                               "2. Адрес: https://localhost:7259\n" +
-                               "3. В браузере открывается: https://localhost:7259/swagger",
-                               "Ошибка подключения",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Error);
+                Console.WriteLine($"❌ Ошибка подключения: {ex.Message}");
                 return false;
             }
         }
 
-        // ========== АУТЕНТИФИКАЦИЯ ==========
+        // ========== РЕГИСТРАЦИЯ - ИСПРАВЛЕННАЯ ВЕРСИЯ ==========
+        public async Task<UserWithProfileDto> RegisterAsync(string username, string email, string password)
+        {
+            try
+            {
+                Console.WriteLine($"=== REGISTRATION START ===");
+                Console.WriteLine($"Username: {username}");
+                Console.WriteLine($"Email: {email}");
+                Console.WriteLine($"Password length: {password?.Length}");
+
+                // Создаем объект точно такой же как в curl
+                var registerData = new
+                {
+                    username = username,  // ВНИМАНИЕ: строчные буквы как в curl!
+                    email = email,
+                    password = password
+                };
+
+                var json = JsonSerializer.Serialize(registerData);
+                Console.WriteLine($"JSON: {json}");
+
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                // Отправляем запрос
+                var response = await _httpClient.PostAsync("auth/register", content);
+
+                var responseText = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Response Status: {response.StatusCode}");
+                Console.WriteLine($"Response Body: {responseText}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    // Парсим ответ
+                    var user = JsonSerializer.Deserialize<UserWithProfileDto>(responseText);
+                    Console.WriteLine($"✅ Регистрация успешна! UserId: {user?.Id}");
+
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        MessageBox.Show($"✅ Регистрация успешна!\nID пользователя: {user?.Id}",
+                            "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+                    });
+
+                    return user;
+                }
+                else
+                {
+                    Console.WriteLine($"❌ Ошибка сервера: {response.StatusCode}");
+
+                    // Пытаемся распарсить ошибку
+                    try
+                    {
+                        var errorDoc = JsonDocument.Parse(responseText);
+                        if (errorDoc.RootElement.TryGetProperty("message", out var message))
+                        {
+                            var errorMessage = message.GetString();
+
+                            Application.Current.Dispatcher.Invoke(() =>
+                            {
+                                MessageBox.Show($"❌ Ошибка регистрации: {errorMessage}",
+                                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                            });
+                        }
+                    }
+                    catch
+                    {
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            MessageBox.Show($"❌ Ошибка регистрации: {responseText}",
+                                "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                        });
+                    }
+                    return null;
+                }
+            }
+            catch (HttpRequestException httpEx)
+            {
+                Console.WriteLine($"❌ HTTP Request Error: {httpEx.Message}");
+
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show($"❌ Ошибка подключения к серверу:\n{httpEx.Message}\n\n" +
+                                   $"Убедитесь, что API запущен по адресу: {BaseUrl}",
+                        "Ошибка сети", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Unexpected Error: {ex.Message}");
+                Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show($"❌ Неожиданная ошибка:\n{ex.Message}",
+                        "Критическая ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+                return null;
+            }
+        }
+
+        // ========== ЛОГИН ==========
         public async Task<UserWithProfileDto> LoginAsync(string username, string password)
         {
             try
             {
+                Console.WriteLine($"=== LOGIN ATTEMPT ===");
+                Console.WriteLine($"Username: {username}");
+
+                // Также используем строчные буквы
                 var loginData = new
                 {
-                    Username = username,
-                    Password = password
+                    username = username,
+                    password = password
                 };
 
-                var response = await _httpClient.PostAsJsonAsync("auth/login", loginData);
+                var json = JsonSerializer.Serialize(loginData);
+                Console.WriteLine($"Login JSON: {json}");
+
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync("auth/login", content);
+
+                var responseText = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Login Response Status: {response.StatusCode}");
+                Console.WriteLine($"Login Response Body: {responseText}");
 
                 if (response.IsSuccessStatusCode)
                 {
-                    return await response.Content.ReadFromJsonAsync<UserWithProfileDto>();
+                    var user = JsonSerializer.Deserialize<UserWithProfileDto>(responseText);
+                    Console.WriteLine($"✅ Логин успешен! UserId: {user?.Id}");
+                    return user;
                 }
                 else
                 {
-                    var error = await response.Content.ReadAsStringAsync();
-                    MessageBox.Show($"Ошибка авторизации: {error}",
-                                   "Ошибка",
-                                   MessageBoxButton.OK,
-                                   MessageBoxImage.Error);
+                    Console.WriteLine($"❌ Ошибка логина: {response.StatusCode}");
+                    return null;
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при авторизации: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Error);
+                Console.WriteLine($"❌ Login error: {ex.Message}");
+                return null;
             }
-            return null;
         }
 
-        public async Task<bool> RegisterAsync(string username, string email, string password)
-        {
-            try
-            {
-                var registerData = new
-                {
-                    Username = username,
-                    Email = email,
-                    Password = password
-                };
-
-                var response = await _httpClient.PostAsJsonAsync("auth/register", registerData);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    return true;
-                }
-                else
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    MessageBox.Show($"Ошибка регистрации: {error}",
-                                   "Ошибка",
-                                   MessageBoxButton.OK,
-                                   MessageBoxImage.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка при регистрации: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Error);
-            }
-            return false;
-        }
-
+        // ========== ПРОФИЛЬ ==========
         public async Task<UserProfileDto> GetProfileAsync(int userId)
         {
             try
