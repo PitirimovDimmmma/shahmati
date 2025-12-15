@@ -43,7 +43,7 @@ namespace shahmati.Views
 
                 if (success)
                 {
-                    MessageBox.Show($"✅ Молодец зарегистрировались!\nЛогин: {username}\nМожешь теперь войти!",
+                    MessageBox.Show($"Молодец зарегистрировались!\nЛогин: {username}\nМожешь теперь войти!",
                         "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
 
                     // Переходим на логин

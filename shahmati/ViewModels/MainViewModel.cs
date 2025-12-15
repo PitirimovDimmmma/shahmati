@@ -39,9 +39,10 @@ namespace shahmati.ViewModels
         private int _currentUserId;
         private List<ApiGameDto> _activeGames;
 
-        // Конструктор БЕЗ параметров (для игры)
-        public MainViewModel()
+        // Основной конструктор (для игры с доской)
+        public MainViewModel(int? userId = null)
         {
+            // Инициализируем игровые компоненты ВСЕГДА
             _gameManager = new GameManager();
             _board = _gameManager.Board;
             _selectedPosition = Position.Invalid;
@@ -52,14 +53,21 @@ namespace shahmati.ViewModels
             CellClickCommand = new RelayCommand<Position>(HandleCellClick);
 
             _gameManager.PropertyChanged += GameManager_PropertyChanged;
+
+            // Если передан userId - сохраняем его
+            if (userId.HasValue)
+            {
+                _currentUserId = userId.Value;
+            }
+            else
+            {
+                _currentUserId = 0; // Гость
+            }
         }
 
-        // Конструктор С параметром userId (для OnlineGamesWindow)
-        public MainViewModel(int userId)
+        // Упрощенный конструктор (старый) - оставляем для совместимости
+        public MainViewModel() : this(null)
         {
-            _currentUserId = userId;
-            _apiService = new ApiService();
-            _activeGames = new List<ApiGameDto>();
         }
 
         public Board Board
@@ -130,7 +138,17 @@ namespace shahmati.ViewModels
         public double AnimationProgress => _animationProgress;
         public bool IsAnimating => _animationTimer?.IsEnabled ?? false;
 
-        // API методы
+        // Метод для запуска новой игры
+        public void StartNewGame()
+        {
+            _gameManager?.StartNewGame(GameMode, Difficulty);
+            Board = _gameManager?.Board;
+            SelectedPosition = Position.Invalid;
+            OnPropertyChanged(nameof(CurrentPlayerText));
+            CheckAITurn();
+        }
+
+        // API методы (оставляем для онлайн-функций)
         public async Task<bool> CheckApiConnection()
         {
             return await _apiService.TestConnectionAsync();
@@ -221,15 +239,6 @@ namespace shahmati.ViewModels
                 CompleteAnimation();
             }
             OnPropertyChanged(nameof(AnimationProgress));
-        }
-
-        private void StartNewGame()
-        {
-            _gameManager?.StartNewGame(GameMode, Difficulty);
-            Board = _gameManager?.Board;
-            SelectedPosition = Position.Invalid;
-            OnPropertyChanged(nameof(CurrentPlayerText));
-            CheckAITurn();
         }
 
         public async void HandleCellClick(Position position)

@@ -15,17 +15,21 @@ namespace shahmati
         private readonly int _userId;
         private int _currentGameId;
 
+        // Конструктор для онлайн-режима (с userId)
         public MainWindow(int userId)
         {
             InitializeComponent();
             _userId = userId;
             _apiService = new ApiService();
+
+            // ИСПРАВЛЕНИЕ: передаем userId, но создаем полноценную ViewModel
             _viewModel = new MainViewModel(userId);
             DataContext = _viewModel;
 
             Loaded += async (s, e) => await InitializeGame();
         }
 
+        // Конструктор для локальной игры (без входа)
         public MainWindow()
         {
             InitializeComponent();
@@ -50,6 +54,9 @@ namespace shahmati
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
                 }
+
+                // ЗАПУСКАЕМ НОВУЮ ИГРУ
+                _viewModel.StartNewGame();
             }
             catch (Exception ex)
             {
@@ -179,8 +186,8 @@ namespace shahmati
 
             if (result == MessageBoxResult.Yes)
             {
-                // Сбрасываем ViewModel
-                DataContext = new MainViewModel(_userId);
+                // Запускаем новую игру
+                _viewModel.StartNewGame();
                 _currentGameId = 0;
                 MessageBox.Show("Новая игра начата!");
             }
