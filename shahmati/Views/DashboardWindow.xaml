@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Шахматный тренажёр - Главная" 
-        Height="700" Width="900"
+        Height="804" Width="900"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
         Background="#2C3E50">
@@ -113,7 +113,8 @@
                     </Border>
 
                     <!-- Тренировка -->
-                    <Border Style="{StaticResource MenuCardStyle}">
+                    <Border Style="{StaticResource MenuCardStyle}" 
+                           MouseDown="TrainingCard_MouseDown">
                         <StackPanel>
                             <TextBlock Text="🏋️" Style="{StaticResource IconStyle}"/>
                             <TextBlock Text="Тренировка" Style="{StaticResource CardTitleStyle}"/>
@@ -137,7 +138,8 @@
                 <!-- Вторая строка меню -->
                 <UniformGrid Columns="3">
                     <!-- История игр -->
-                    <Border Style="{StaticResource MenuCardStyle}">
+                    <Border Style="{StaticResource MenuCardStyle}" 
+                           MouseDown="HistoryCard_MouseDown">
                         <StackPanel>
                             <TextBlock Text="📊" Style="{StaticResource IconStyle}"/>
                             <TextBlock Text="История" Style="{StaticResource CardTitleStyle}"/>
@@ -146,26 +148,43 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Рейтинг -->
-                    <Border Style="{StaticResource MenuCardStyle}">
+                    <!-- Статистика -->
+                    <Border Style="{StaticResource MenuCardStyle}" 
+                           MouseDown="StatisticsCard_MouseDown">
                         <StackPanel>
-                            <TextBlock Text="🏆" Style="{StaticResource IconStyle}"/>
-                            <TextBlock Text="Рейтинг" Style="{StaticResource CardTitleStyle}"/>
-                            <TextBlock Text="Таблица лидеров и статистика" 
+                            <TextBlock Text="📈" Style="{StaticResource IconStyle}"/>
+                            <TextBlock Text="Статистика" Style="{StaticResource CardTitleStyle}"/>
+                            <TextBlock Text="Детальная статистика игрока" 
                                       Style="{StaticResource CardDescriptionStyle}"/>
                         </StackPanel>
                     </Border>
 
-                    <!-- Настройки -->
-                    <Border Style="{StaticResource MenuCardStyle}">
+                    <!-- Таблица лидеров -->
+                    <Border Style="{StaticResource MenuCardStyle}" 
+                           MouseDown="LeaderboardCard_MouseDown">
                         <StackPanel>
-                            <TextBlock Text="⚙️" Style="{StaticResource IconStyle}"/>
-                            <TextBlock Text="Настройки" Style="{StaticResource CardTitleStyle}"/>
-                            <TextBlock Text="Настройки приложения и профиля" 
+                            <TextBlock Text="🏆" Style="{StaticResource IconStyle}"/>
+                            <TextBlock Text="Таблица лидеров" Style="{StaticResource CardTitleStyle}"/>
+                            <TextBlock Text="Рейтинг лучших игроков" 
                                       Style="{StaticResource CardDescriptionStyle}"/>
                         </StackPanel>
                     </Border>
                 </UniformGrid>
+
+                <!-- Третья строка меню (админ-панель) -->
+                <StackPanel Margin="0,30,0,0" HorizontalAlignment="Center">
+                    <Border Style="{StaticResource MenuCardStyle}" 
+                           MouseDown="AdminPanel_MouseDown"
+                           Width="238"
+                           Background="#2E2E2E">
+                        <StackPanel>
+                            <TextBlock Text="⚙️" Style="{StaticResource IconStyle}" Foreground="White"/>
+                            <TextBlock Text="Админ-панель" Style="{StaticResource CardTitleStyle}" Foreground="White"/>
+                            <TextBlock Text="Управление системой (только для админов)" 
+                                      Style="{StaticResource CardDescriptionStyle}" Foreground="#BDC3C7"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
             </StackPanel>
         </ScrollViewer>
 

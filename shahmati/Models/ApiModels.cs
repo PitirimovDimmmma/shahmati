@@ -36,9 +36,16 @@ namespace shahmati.Models
     public class UserWithProfileDto
     {
         public int Id { get; set; }
-        public string Username { get; set; }
-        public string Email { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
+
+        // ДОБАВЬТЕ ЭТИ СВОЙСТВА:
+        public string Role { get; set; } = "Client";
+        public bool IsBlocked { get; set; }
+        public bool IsActive { get; set; }
+        public DateTime? LastLogin { get; set; }
+
         public UserProfileDto Profile { get; set; }
     }
 

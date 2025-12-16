@@ -2,11 +2,13 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using shahmati.Models;
 
 namespace shahmati.Views
 {
@@ -25,30 +27,30 @@ namespace shahmati.Views
             string password = PasswordBox.Password;
             string confirmPassword = ConfirmPasswordBox.Password;
 
-            // Валидация
             if (!ValidateInputs(username, email, password, confirmPassword, showMessage: true))
             {
                 return;
             }
 
-            // Блокируем интерфейс
             RegisterButton.IsEnabled = false;
             RegisterButton.Content = "Регистрирую...";
             Mouse.OverrideCursor = Cursors.Wait;
 
             try
             {
-                // Запускаем curl в фоне
-                bool success = await ExecuteCurlInBackgroundAsync(username, email, password);
+                // ЗАПУСКАЕМ CURL ДЛЯ РЕГИСТРАЦИИ
+                var user = await RegisterWithCurlAsync(username, email, password);
 
-                if (success)
+                if (user != null && user.Id > 0)
                 {
-                    MessageBox.Show($"Молодец зарегистрировались!\nЛогин: {username}\nМожешь теперь войти!",
+                    Console.WriteLine($"✅ Регистрация успешна! ID пользователя: {user.Id}");
+
+                    MessageBox.Show($"✅ Регистрация успешна!\nЛогин: {user.Username}\nID: {user.Id}",
                         "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
 
-                    // Переходим на логин
-                    LoginWindow loginWindow = new LoginWindow();
-                    loginWindow.Show();
+                    // ВАЖНО: передаём РЕАЛЬНЫЙ ID пользователя!
+                    DashboardWindow dashboardWindow = new DashboardWindow(user.Id); // user.Id = 18
+                    dashboardWindow.Show();
                     this.Close();
                 }
                 else
@@ -64,201 +66,138 @@ namespace shahmati.Views
             }
             finally
             {
-                // Восстанавливаем интерфейс
                 RegisterButton.IsEnabled = true;
                 RegisterButton.Content = "Создать аккаунт";
                 Mouse.OverrideCursor = null;
             }
         }
 
-        private async Task<bool> ExecuteCurlInBackgroundAsync(string username, string email, string password)
+        private async Task<UserWithProfileDto> RegisterWithCurlAsync(string username, string email, string password)
         {
             try
             {
-                // Создаем временный файл с JSON данными
-                string jsonData = $"{{\"username\":\"{username}\",\"email\":\"{email}\",\"password\":\"{password}\"}}";
-                string tempJsonFile = Path.GetTempFileName() + ".json";
-                File.WriteAllText(tempJsonFile, jsonData, Encoding.UTF8);
+                // Создаем JSON для регистрации
+                string jsonData = JsonSerializer.Serialize(new
+                {
+                    username = username,
+                    email = email,
+                    password = password
+                });
 
-                // Формируем команду curl
+                string tempJsonFile = Path.GetTempFileName() + ".json";
+                await File.WriteAllTextAsync(tempJsonFile, jsonData, Encoding.UTF8);
+
+                // Команда curl для регистрации
                 string curlCommand = $"curl -X POST \"https://localhost:7259/api/auth/register\" " +
                                     $"-H \"Content-Type: application/json\" " +
                                     $"--data-binary \"@{tempJsonFile}\" " +
-                                    $"--insecure";
+                                    $"--insecure --silent";
 
-                // Создаем процесс который СКРЫТ от пользователя
                 ProcessStartInfo psi = new ProcessStartInfo
                 {
                     FileName = "cmd.exe",
                     Arguments = $"/c {curlCommand}",
-                    UseShellExecute = false,          // НЕ показывать окно
-                    CreateNoWindow = true,            // Скрыть окно
-                    WindowStyle = ProcessWindowStyle.Hidden,
-                    RedirectStandardOutput = true,    // Перенаправляем вывод
-                    RedirectStandardError = true,     // Перенаправляем ошибки
-                };
-
-                Process process = new Process { StartInfo = psi };
-                process.Start();
-
-                // Ждем завершения и читаем результат
-                string output = await process.StandardOutput.ReadToEndAsync();
-                string error = await process.StandardError.ReadToEndAsync();
-                await process.WaitForExitAsync();
-
-                // Удаляем временный файл
-                File.Delete(tempJsonFile);
-
-                // Показываем результат в MessageBox
-                if (process.ExitCode == 0 && output.Contains("\"id\":"))
-                {
-                    return true; // Успех!
-                }
-                else
-                {
-                    // Формируем сообщение об ошибке
-                    string errorMessage = "Ошибка регистрации";
-
-                    if (!string.IsNullOrEmpty(error))
-                        errorMessage += $": {error}";
-                    else if (!string.IsNullOrEmpty(output))
-                        errorMessage += $": {output}";
-
-                    MessageBox.Show(errorMessage, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка при выполнении curl: {ex.Message}",
-                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                return false;
-            }
-        }
-
-        // Альтернатива: через PowerShell в фоне
-        private async Task<bool> ExecutePowerShellInBackgroundAsync(string username, string email, string password)
-        {
-            try
-            {
-                string json = $@"{{""username"":""{username}"",""email"":""{email}"",""password"":""{password}""}}";
-
-                string psCommand = $@"
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$uri = 'https://localhost:7259/api/auth/register'
-$body = '{json}'
-$headers = @{{'Content-Type' = 'application/json'}}
-
-try {{
-    $response = Invoke-RestMethod -Uri $uri -Method Post -Body $body -Headers $headers -SkipCertificateCheck
-    Write-Output 'SUCCESS'
-    Write-Output ($response | ConvertTo-Json)
-    exit 0
-}} catch {{
-    Write-Error $_.Exception.Message
-    exit 1
-}}";
-
-                ProcessStartInfo psi = new ProcessStartInfo
-                {
-                    FileName = "powershell.exe",
-                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{psCommand}\"",
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     WindowStyle = ProcessWindowStyle.Hidden,
                     RedirectStandardOutput = true,
-                    RedirectStandardError = true
+                    RedirectStandardError = true,
+                    StandardOutputEncoding = Encoding.UTF8
                 };
 
-                Process process = new Process { StartInfo = psi };
-                process.Start();
-
-                string output = await process.StandardOutput.ReadToEndAsync();
-                string error = await process.StandardError.ReadToEndAsync();
-                await process.WaitForExitAsync();
-
-                if (process.ExitCode == 0 && output.Contains("SUCCESS"))
+                using (Process process = new Process { StartInfo = psi })
                 {
-                    return true;
-                }
-                else
-                {
-                    MessageBox.Show($"PowerShell error: {output}\n{error}",
-                        "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return false;
+                    process.Start();
+                    string output = await process.StandardOutput.ReadToEndAsync();
+                    string error = await process.StandardError.ReadToEndAsync();
+                    await process.WaitForExitAsync();
+                    File.Delete(tempJsonFile);
+
+                    Console.WriteLine($"CURL Response: {output}");
+
+                    if (process.ExitCode == 0 && !string.IsNullOrEmpty(output))
+                    {
+                        // Парсим ответ API
+                        var options = new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        };
+
+                        var user = JsonSerializer.Deserialize<UserWithProfileDto>(output, options);
+
+                        if (user != null && user.Id > 0)
+                        {
+                            Console.WriteLine($"✅ Успешно получен пользователь ID={user.Id}");
+                            return user;
+                        }
+                        else
+                        {
+                            Console.WriteLine($"❌ Не удалось получить ID пользователя из ответа");
+                            return null;
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"❌ Ошибка curl: {error}");
+                        return null;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"PowerShell error: {ex.Message}",
-                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                return false;
+                Console.WriteLine($"❌ Ошибка RegisterWithCurlAsync: {ex.Message}");
+                return null;
             }
         }
 
-        // Самый простой вариант - напрямую запускаем curl.exe
-        private async Task<bool> ExecuteCurlDirectAsync(string username, string email, string password)
+        // Альтернатива - через HttpClient напрямую
+        private async Task<UserWithProfileDto> RegisterWithHttpClientAsync(string username, string email, string password)
         {
             try
             {
-                string json = $"{{\"username\":\"{username}\",\"email\":\"{email}\",\"password\":\"{password}\"}}";
+                using var client = new System.Net.Http.HttpClient();
+                client.Timeout = TimeSpan.FromSeconds(30);
 
-                // Прямой вызов curl.exe
-                ProcessStartInfo psi = new ProcessStartInfo
+                // Отключаем проверку SSL для разработки
+                var handler = new System.Net.Http.HttpClientHandler();
+                handler.ServerCertificateCustomValidationCallback =
+                    (sender, cert, chain, sslPolicyErrors) => true;
+
+                using var httpClient = new System.Net.Http.HttpClient(handler);
+
+                var requestData = new { username, email, password };
+                var json = JsonSerializer.Serialize(requestData);
+                var content = new System.Net.Http.StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await httpClient.PostAsync("https://localhost:7259/api/auth/register", content);
+                var responseText = await response.Content.ReadAsStringAsync();
+
+                Console.WriteLine($"HTTP Response: {responseText}");
+
+                if (response.IsSuccessStatusCode)
                 {
-                    FileName = "curl.exe",
-                    Arguments = $"-X POST \"https://localhost:7259/api/auth/register\" " +
-                               $"-H \"Content-Type: application/json\" " +
-                               $"-d \"{json.Replace("\"", "\\\"")}\" " +
-                               $"--insecure --silent",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    WindowStyle = ProcessWindowStyle.Hidden,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true
-                };
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var user = JsonSerializer.Deserialize<UserWithProfileDto>(responseText, options);
 
-                Process process = new Process { StartInfo = psi };
-                process.Start();
-
-                string output = await process.StandardOutput.ReadToEndAsync();
-                string error = await process.StandardError.ReadToEndAsync();
-                await process.WaitForExitAsync();
-
-                if (process.ExitCode == 0 && output.Contains("\"id\":"))
-                {
-                    return true;
+                    if (user != null && user.Id > 0)
+                    {
+                        Console.WriteLine($"✅ HTTP: Получен пользователь ID={user.Id}");
+                        return user;
+                    }
                 }
-                else
-                {
-                    string errorMsg = !string.IsNullOrEmpty(error) ? error : output;
-                    MessageBox.Show($"CURL error: {errorMsg}",
-                        "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return false;
-                }
-            }
-            catch (System.ComponentModel.Win32Exception)
-            {
-                // curl не найден
-                MessageBox.Show("curl не найден в системе!\n\n" +
-                               "Установите curl одним из способов:\n" +
-                               "1. Скачайте с https://curl.se/windows/\n" +
-                               "2. Через Chocolatey: choco install curl\n" +
-                               "3. Через Winget: winget install curl.curl",
-                               "CURL not found", MessageBoxButton.OK, MessageBoxImage.Error);
-                return false;
+
+                return null;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                return false;
+                Console.WriteLine($"❌ HTTP ошибка: {ex.Message}");
+                return null;
             }
         }
 
         private bool ValidateInputs(string username, string email, string password,
                                    string confirmPassword, bool showMessage = false)
         {
-            // Простая валидация
             if (string.IsNullOrEmpty(username) || username.Length < 3)
             {
                 if (showMessage) MessageBox.Show("Логин должен быть не менее 3 символов", "Ошибка");

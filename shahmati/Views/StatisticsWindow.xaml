@@ -1,0 +1,479 @@
+﻿<Window x:Class="shahmati.Views.StatisticsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:shahmati.Views"
+        xmlns:converters="clr-namespace:shahmati.Converters"
+        mc:Ignorable="d"
+        Title="Шахматная статистика" 
+        Height="850" Width="1100"
+        WindowStartupLocation="CenterScreen"
+        Background="#f5f5f5"
+        FontFamily="Segoe UI">
+
+    <Window.Resources>
+        <!-- Стили для карточек -->
+        <Style x:Key="StatCard" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="10"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="15" Opacity="0.1" ShadowDepth="2"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="StatTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#2c3e50"/>
+            <Setter Property="Margin" Value="0,0,0,15"/>
+        </Style>
+
+        <Style x:Key="StatValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="28"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#3498db"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="StatLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="#7f8c8d"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Стиль для кнопок -->
+        <Style x:Key="FilterButton" TargetType="RadioButton">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#e0e0e0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="5,2"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Background" Value="#3498db"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="BorderBrush" Value="#2980b9"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#f8f9fa"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Конвертер для цвета изменения рейтинга -->
+
+    </Window.Resources>
+
+    <Grid>
+        <!-- Шапка -->
+        <Border Background="#2c3e50" Height="70" VerticalAlignment="Top">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Кнопка назад -->
+                <Button Grid.Column="0" Content="← Назад" 
+                       Click="BackButton_Click"
+                       Style="{StaticResource ModernButton}"
+                       Margin="20,0"
+                       VerticalAlignment="Center"/>
+
+                <!-- Заголовок -->
+                <TextBlock Grid.Column="1" Text="📊 Детальная статистика игрока" 
+                          Foreground="White" FontSize="20" FontWeight="Bold"
+                          VerticalAlignment="Center" HorizontalAlignment="Center"/>
+
+                <!-- Информация пользователя -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="20,0">
+                    <Border Width="40" Height="40" CornerRadius="20" Background="#3498db">
+                        <TextBlock Text="👤" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="UserNameText" Text="Игрок" 
+                                  Foreground="White" FontSize="14" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="UserRatingText" Text="Рейтинг: 1200" 
+                                  Foreground="#bdc3c7" FontSize="11"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Основной контент -->
+        <ScrollViewer Margin="0,70,0,0" VerticalScrollBarVisibility="Auto">
+            <Grid Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Панель фильтров -->
+                <Border Grid.Row="0" Style="{StaticResource StatCard}" Margin="0,0,0,20">
+                    <StackPanel>
+                        <TextBlock Text="🔍 Фильтры статистики" Style="{StaticResource StatTitle}"/>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Тип игры -->
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Тип игры:" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton x:Name="AllGamesRadio" Content="Все" Style="{StaticResource FilterButton}"
+                                               GroupName="GameMode" IsChecked="True"/>
+                                    <RadioButton x:Name="VsAIRadio" Content="Против ИИ" Style="{StaticResource FilterButton}"
+                                               GroupName="GameMode"/>
+                                    <RadioButton x:Name="VsHumanRadio" Content="Против людей" Style="{StaticResource FilterButton}"
+                                               GroupName="GameMode"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Сложность -->
+                            <StackPanel Grid.Column="1" Margin="15,0,0,0">
+                                <TextBlock Text="Сложность:" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton x:Name="AllDifficultyRadio" Content="Все" Style="{StaticResource FilterButton}"
+                                               GroupName="Difficulty" IsChecked="True"/>
+                                    <RadioButton x:Name="EasyRadio" Content="Легко" Style="{StaticResource FilterButton}"
+                                               GroupName="Difficulty"/>
+                                    <RadioButton x:Name="MediumRadio" Content="Средне" Style="{StaticResource FilterButton}"
+                                               GroupName="Difficulty"/>
+                                    <RadioButton x:Name="HardRadio" Content="Сложно" Style="{StaticResource FilterButton}"
+                                               GroupName="Difficulty"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Кнопка обновления -->
+                            <Button Grid.Column="3" Content="Применить фильтры" 
+                                   Click="ApplyFiltersButton_Click"
+                                   Style="{StaticResource ModernButton}"
+                                   VerticalAlignment="Bottom"
+                                   Height="35" Width="150"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Основная статистика -->
+                <Grid Grid.Row="1" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Общая статистика -->
+                    <Border Grid.Column="0" Style="{StaticResource StatCard}">
+                        <StackPanel>
+                            <TextBlock Text="📈 Общая статистика" Style="{StaticResource StatTitle}"/>
+
+                            <Grid Margin="0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Всего игр -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock x:Name="TotalGamesText" Text="0" Style="{StaticResource StatValue}"/>
+                                    <TextBlock Text="Всего игр" Style="{StaticResource StatLabel}"/>
+                                </StackPanel>
+
+                                <!-- Побед -->
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock x:Name="WinsText" Text="0" Style="{StaticResource StatValue}"/>
+                                    <TextBlock Text="Побед" Style="{StaticResource StatLabel}"/>
+                                </StackPanel>
+
+                                <!-- Процент побед -->
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock x:Name="WinRateText" Text="0%" Style="{StaticResource StatValue}"/>
+                                    <TextBlock Text="Процент побед" Style="{StaticResource StatLabel}"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Поражения и ничьи -->
+                            <Grid Margin="0,20,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock x:Name="LossesText" Text="0" FontSize="18" FontWeight="Bold"
+                                              Foreground="#e74c3c" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Поражений" Style="{StaticResource StatLabel}"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock x:Name="DrawsText" Text="0" FontSize="18" FontWeight="Bold"
+                                              Foreground="#f39c12" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Ничьих" Style="{StaticResource StatLabel}"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Против ИИ -->
+                    <Border Grid.Column="1" Style="{StaticResource StatCard}" Margin="10,0">
+                        <StackPanel>
+                            <TextBlock Text="🤖 Против ИИ" Style="{StaticResource StatTitle}"/>
+
+                            <Grid Margin="0,10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Всего игр против ИИ -->
+                                <StackPanel Grid.Row="0" Margin="0,0,0,15">
+                                    <TextBlock x:Name="VsAIGamesText" Text="0" Style="{StaticResource StatValue}"/>
+                                    <TextBlock Text="Всего игр" Style="{StaticResource StatLabel}"/>
+                                </StackPanel>
+
+                                <!-- Побед против ИИ -->
+                                <StackPanel Grid.Row="1" Margin="0,0,0,15">
+                                    <TextBlock x:Name="VsAIWinsText" Text="0" FontSize="22" FontWeight="Bold"
+                                              Foreground="#2ecc71" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Побед" Style="{StaticResource StatLabel}"/>
+                                </StackPanel>
+
+                                <!-- Процент побед против ИИ -->
+                                <StackPanel Grid.Row="2">
+                                    <TextBlock x:Name="VsAIWinRateText" Text="0%" FontSize="22" FontWeight="Bold"
+                                              Foreground="#9b59b6" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Процент побед" Style="{StaticResource StatLabel}"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Против людей -->
+                    <Border Grid.Column="2" Style="{StaticResource StatCard}">
+                        <StackPanel>
+                            <TextBlock Text="👥 Против людей" Style="{StaticResource StatTitle}"/>
+
+                            <Grid Margin="0,10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Всего игр против людей -->
+                                <StackPanel Grid.Row="0" Margin="0,0,0,15">
+                                    <TextBlock x:Name="VsHumanGamesText" Text="0" Style="{StaticResource StatValue}"/>
+                                    <TextBlock Text="Всего игр" Style="{StaticResource StatLabel}"/>
+                                </StackPanel>
+
+                                <!-- Побед против людей -->
+                                <StackPanel Grid.Row="1" Margin="0,0,0,15">
+                                    <TextBlock x:Name="VsHumanWinsText" Text="0" FontSize="22" FontWeight="Bold"
+                                              Foreground="#2ecc71" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Побед" Style="{StaticResource StatLabel}"/>
+                                </StackPanel>
+
+                                <!-- Процент побед против людей -->
+                                <StackPanel Grid.Row="2">
+                                    <TextBlock x:Name="VsHumanWinRateText" Text="0%" FontSize="22" FontWeight="Bold"
+                                              Foreground="#9b59b6" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Процент побед" Style="{StaticResource StatLabel}"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Рейтинг и достижения -->
+                <Grid Grid.Row="2" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Рейтинговая информация -->
+                    <Border Grid.Column="0" Style="{StaticResource StatCard}" Margin="0,0,10,0">
+                        <StackPanel>
+                            <TextBlock Text="🏆 Рейтинг и достижения" Style="{StaticResource StatTitle}"/>
+
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Текущий рейтинг -->
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
+                                    <TextBlock Text="Текущий рейтинг:" FontWeight="SemiBold" Width="150"/>
+                                    <TextBlock x:Name="CurrentRatingText" Text="1200" FontSize="18" FontWeight="Bold"
+                                              Foreground="#3498db"/>
+                                </StackPanel>
+
+                                <!-- Лучший рейтинг -->
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,15">
+                                    <TextBlock Text="Лучший рейтинг:" FontWeight="SemiBold" Width="150"/>
+                                    <TextBlock x:Name="BestRatingText" Text="1200" FontSize="18" FontWeight="Bold"
+                                              Foreground="#2ecc71"/>
+                                </StackPanel>
+
+                                <!-- Серии -->
+                                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,15">
+                                    <TextBlock Text="Текущая серия побед:" FontWeight="SemiBold" Width="150"/>
+                                    <TextBlock x:Name="CurrentStreakText" Text="0" FontSize="18" FontWeight="Bold"
+                                              Foreground="#e74c3c"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="3" Orientation="Horizontal">
+                                    <TextBlock Text="Лучшая серия побед:" FontWeight="SemiBold" Width="150"/>
+                                    <TextBlock x:Name="BestStreakText" Text="0" FontSize="18" FontWeight="Bold"
+                                              Foreground="#e74c3c"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Статистика по сложности -->
+                    <Border Grid.Column="1" Style="{StaticResource StatCard}">
+                        <StackPanel>
+                            <TextBlock Text="📊 Распределение по сложности" Style="{StaticResource StatTitle}"/>
+
+                            <ItemsControl x:Name="DifficultyStatsList" Margin="0,10">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,5" Padding="10" Background="#f8f9fa" CornerRadius="8">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="80"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="60"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0" Text="{Binding Key}" 
+                                                          FontWeight="SemiBold" VerticalAlignment="Center"/>
+
+                                                <ProgressBar Grid.Column="1" Value="{Binding Value}" Maximum="100" 
+                                                            Height="12" Margin="10,0" VerticalAlignment="Center"
+                                                            Background="#ecf0f1">
+                                                    <ProgressBar.Foreground>
+                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                            <GradientStop Color="#3498db" Offset="0"/>
+                                                            <GradientStop Color="#2980b9" Offset="1"/>
+                                                        </LinearGradientBrush>
+                                                    </ProgressBar.Foreground>
+                                                </ProgressBar>
+
+                                                <TextBlock Grid.Column="2" Text="{Binding Value, StringFormat='{}{0} игр'}" 
+                                                          HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                          Foreground="#7f8c8d"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- История рейтинга -->
+                <Border Grid.Row="3" Style="{StaticResource StatCard}">
+                    <StackPanel>
+                        <TextBlock Text="📈 История рейтинга (последние 20 игр)" Style="{StaticResource StatTitle}"/>
+
+                        <DataGrid x:Name="RatingHistoryGrid" 
+                                 AutoGenerateColumns="False"
+                                 IsReadOnly="True"
+                                 HeadersVisibility="Column"
+                                 Margin="0,10"
+                                 MaxHeight="250"
+                                 BorderThickness="0"
+                                 Background="Transparent">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Дата" Width="120"
+                                                   Binding="{Binding CreatedAt, StringFormat='{}{0:dd.MM.yy HH:mm}'}"/>
+                                <DataGridTextColumn Header="Игра №" Width="70" Binding="{Binding GameId}"/>
+                                <DataGridTextColumn Header="Оппонент" Width="120" Binding="{Binding OpponentName}"/>
+                                <DataGridTextColumn Header="Результат" Width="80" Binding="{Binding Result}">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Style.Triggers>
+                                                <Trigger Property="Text" Value="Win">
+                                                    <Setter Property="Foreground" Value="#2ecc71"/>
+                                                </Trigger>
+                                                <Trigger Property="Text" Value="Loss">
+                                                    <Setter Property="Foreground" Value="#e74c3c"/>
+                                                </Trigger>
+                                                <Trigger Property="Text" Value="Draw">
+                                                    <Setter Property="Foreground" Value="#f39c12"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Старый" Width="70" Binding="{Binding OldRating}"/>
+                                <DataGridTextColumn Header="Новый" Width="70" Binding="{Binding NewRating}"/>
+                                <DataGridTextColumn Header="Изменение" Width="80" 
+                                                   Binding="{Binding RatingChange, StringFormat='{}{0:+0;-0;0}'}">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                            <Setter Property="FontWeight" Value="Bold"/>
+                                            <Setter Property="Foreground">
+                                                <Setter.Value>
+                                                    <Binding Path="RatingChange">
+                                                      
+                                                    </Binding>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Индикатор загрузки -->
+        <Border x:Name="LoadingOverlay" Background="#80000000" Visibility="Collapsed">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <ProgressBar IsIndeterminate="True" Width="200" Height="10" Margin="0,0,0,20"/>
+                <TextBlock Text="Загрузка статистики..." Foreground="White" FontSize="16"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

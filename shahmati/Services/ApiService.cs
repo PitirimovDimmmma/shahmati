@@ -15,7 +15,6 @@ namespace shahmati.Services
     public class ApiService
     {
         private readonly HttpClient _httpClient;
-        // ИСПРАВЬТЕ: добавьте api/
         private const string BaseUrl = "https://localhost:7259/";
 
         public ApiService()
@@ -30,10 +29,8 @@ namespace shahmati.Services
             _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
 
-            // Добавьте логирование URL
             Console.WriteLine($"=== API SERVICE INIT ===");
             Console.WriteLine($"Base URL: {BaseUrl}");
-            Console.WriteLine($"Full Auth URL: {new Uri(_httpClient.BaseAddress, "auth/register")}");
         }
 
         // ========== ТЕСТИРОВАНИЕ ПОДКЛЮЧЕНИЯ ==========
@@ -41,12 +38,9 @@ namespace shahmati.Services
         {
             try
             {
-                // Тестируем через weatherforecast
                 var response = await _httpClient.GetAsync("weatherforecast");
-
                 Console.WriteLine($"=== CONNECTION TEST ===");
                 Console.WriteLine($"Status: {response.StatusCode}");
-                Console.WriteLine($"URL: weatherforecast");
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -67,7 +61,73 @@ namespace shahmati.Services
             }
         }
 
-        // ========== РЕГИСТРАЦИЯ - ИСПРАВЛЕННАЯ ВЕРСИЯ ==========
+        // ========== ПОЛЬЗОВАТЕЛИ ==========
+        public async Task<List<UserWithProfileDto>> GetUsersAsync()
+        {
+            try
+            {
+                Console.WriteLine($"=== GET ALL USERS ===");
+                return await _httpClient.GetFromJsonAsync<List<UserWithProfileDto>>("api/users");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка получения пользователей: {ex.Message}");
+                MessageBox.Show($"Ошибка при получении пользователей: {ex.Message}",
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return new List<UserWithProfileDto>();
+            }
+        }
+
+        public async Task<UserWithProfileDto> GetUserAsync(int id)
+        {
+            try
+            {
+                Console.WriteLine($"=== GET USER ID={id} ===");
+                return await _httpClient.GetFromJsonAsync<UserWithProfileDto>($"api/users/{id}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка получения пользователя: {ex.Message}");
+                MessageBox.Show($"Ошибка получения пользователя: {ex.Message}",
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return null;
+            }
+        }
+
+        public async Task<List<UserDto>> SearchUsersAsync(string username)
+        {
+            try
+            {
+                Console.WriteLine($"=== SEARCH USERS: {username} ===");
+                return await _httpClient.GetFromJsonAsync<List<UserDto>>($"api/users/search?username={username}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка поиска пользователей: {ex.Message}");
+                MessageBox.Show($"Ошибка поиска пользователей: {ex.Message}",
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return new List<UserDto>();
+            }
+        }
+
+        public async Task<bool> UpdateUserAsync(int id, UpdateUserRequest request)
+        {
+            try
+            {
+                Console.WriteLine($"=== UPDATE USER ID={id} ===");
+                var response = await _httpClient.PutAsJsonAsync($"api/users/{id}", request);
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка обновления пользователя: {ex.Message}");
+                MessageBox.Show($"Ошибка обновления пользователя: {ex.Message}",
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+        }
+
+        // ========== РЕГИСТРАЦИЯ ==========
         public async Task<UserWithProfileDto> RegisterAsync(string username, string email, string password)
         {
             try
@@ -77,10 +137,9 @@ namespace shahmati.Services
                 Console.WriteLine($"Email: {email}");
                 Console.WriteLine($"Password length: {password?.Length}");
 
-                // Создаем объект точно такой же как в curl
                 var registerData = new
                 {
-                    username = username,  // ВНИМАНИЕ: строчные буквы как в curl!
+                    username = username,
                     email = email,
                     password = password
                 };
@@ -89,9 +148,7 @@ namespace shahmati.Services
                 Console.WriteLine($"JSON: {json}");
 
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                // Отправляем запрос
-                var response = await _httpClient.PostAsync("auth/register", content);
+                var response = await _httpClient.PostAsync("api/auth/register", content);
 
                 var responseText = await response.Content.ReadAsStringAsync();
                 Console.WriteLine($"Response Status: {response.StatusCode}");
@@ -99,7 +156,6 @@ namespace shahmati.Services
 
                 if (response.IsSuccessStatusCode)
                 {
-                    // Парсим ответ
                     var user = JsonSerializer.Deserialize<UserWithProfileDto>(responseText);
                     Console.WriteLine($"✅ Регистрация успешна! UserId: {user?.Id}");
 
@@ -115,14 +171,12 @@ namespace shahmati.Services
                 {
                     Console.WriteLine($"❌ Ошибка сервера: {response.StatusCode}");
 
-                    // Пытаемся распарсить ошибку
                     try
                     {
                         var errorDoc = JsonDocument.Parse(responseText);
                         if (errorDoc.RootElement.TryGetProperty("message", out var message))
                         {
                             var errorMessage = message.GetString();
-
                             Application.Current.Dispatcher.Invoke(() =>
                             {
                                 MessageBox.Show($"❌ Ошибка регистрации: {errorMessage}",
@@ -144,7 +198,6 @@ namespace shahmati.Services
             catch (HttpRequestException httpEx)
             {
                 Console.WriteLine($"❌ HTTP Request Error: {httpEx.Message}");
-
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     MessageBox.Show($"❌ Ошибка подключения к серверу:\n{httpEx.Message}\n\n" +
@@ -157,7 +210,6 @@ namespace shahmati.Services
             {
                 Console.WriteLine($"❌ Unexpected Error: {ex.Message}");
                 Console.WriteLine($"Stack Trace: {ex.StackTrace}");
-
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     MessageBox.Show($"❌ Неожиданная ошибка:\n{ex.Message}",
@@ -175,7 +227,6 @@ namespace shahmati.Services
                 Console.WriteLine($"=== LOGIN ATTEMPT ===");
                 Console.WriteLine($"Username: {username}");
 
-                // Также используем строчные буквы
                 var loginData = new
                 {
                     username = username,
@@ -186,7 +237,7 @@ namespace shahmati.Services
                 Console.WriteLine($"Login JSON: {json}");
 
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
-                var response = await _httpClient.PostAsync("auth/login", content);
+                var response = await _httpClient.PostAsync("api/auth/login", content);
 
                 var responseText = await response.Content.ReadAsStringAsync();
                 Console.WriteLine($"Login Response Status: {response.StatusCode}");
@@ -211,19 +262,104 @@ namespace shahmati.Services
             }
         }
 
+        // ===== НОВЫЕ МЕТОДЫ ДЛЯ СТАТИСТИКИ =====
+
+        public async Task<ExtendedGameStatsDto> GetDetailedUserStatsAsync(int userId)
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync($"api/extended-stats/user/{userId}/detailed");
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    return JsonSerializer.Deserialize<ExtendedGameStatsDto>(json,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка получения детальной статистики: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<GameStatsDto> GetFilteredUserStatsAsync(int userId, FilterStatsRequest filter)
+        {
+            try
+            {
+                var jsonFilter = JsonSerializer.Serialize(filter);
+                var content = new StringContent(jsonFilter, Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.PostAsync($"api/extended-stats/user/{userId}/filtered", content);
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    return JsonSerializer.Deserialize<GameStatsDto>(json,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка получения фильтрованной статистики: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<List<PlayerRatingDto>> GetLeaderboardAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync($"api/extended-stats/leaderboard");
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    return JsonSerializer.Deserialize<List<PlayerRatingDto>>(json,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
+                return new List<PlayerRatingDto>();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка получения таблицы лидеров: {ex.Message}");
+                return new List<PlayerRatingDto>();
+            }
+        }
+
+        public async Task<List<RatingHistoryDto>> GetUserRatingHistoryAsync(int userId, int limit = 20)
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync($"api/extended-stats/user/{userId}/rating-history?limit={limit}");
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    return JsonSerializer.Deserialize<List<RatingHistoryDto>>(json,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
+                return new List<RatingHistoryDto>();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка получения истории рейтинга: {ex.Message}");
+                return new List<RatingHistoryDto>();
+            }
+        }
+
         // ========== ПРОФИЛЬ ==========
         public async Task<UserProfileDto> GetProfileAsync(int userId)
         {
             try
             {
-                return await _httpClient.GetFromJsonAsync<UserProfileDto>($"auth/profile/{userId}");
+                Console.WriteLine($"=== GET PROFILE ID={userId} ===");
+                return await _httpClient.GetFromJsonAsync<UserProfileDto>($"api/auth/profile/{userId}");
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка получения профиля: {ex.Message}");
                 MessageBox.Show($"Ошибка получения профиля: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Warning);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return null;
             }
         }
@@ -232,15 +368,15 @@ namespace shahmati.Services
         {
             try
             {
-                var response = await _httpClient.PutAsJsonAsync($"auth/profile/{userId}", request);
+                Console.WriteLine($"=== UPDATE PROFILE ID={userId} ===");
+                var response = await _httpClient.PutAsJsonAsync($"api/auth/profile/{userId}", request);
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка обновления профиля: {ex.Message}");
                 MessageBox.Show($"Ошибка обновления профиля: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Error);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
         }
@@ -250,14 +386,14 @@ namespace shahmati.Services
         {
             try
             {
-                return await _httpClient.GetFromJsonAsync<List<GameDto>>("games");
+                Console.WriteLine($"=== GET ACTIVE GAMES ===");
+                return await _httpClient.GetFromJsonAsync<List<GameDto>>("api/games");
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка получения активных игр: {ex.Message}");
                 MessageBox.Show($"Ошибка при получении активных игр: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Warning);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return new List<GameDto>();
             }
         }
@@ -266,14 +402,14 @@ namespace shahmati.Services
         {
             try
             {
-                return await _httpClient.GetFromJsonAsync<List<GameDto>>($"games/user/{userId}");
+                Console.WriteLine($"=== GET USER GAMES ID={userId} ===");
+                return await _httpClient.GetFromJsonAsync<List<GameDto>>($"api/games/user/{userId}");
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка получения игр пользователя: {ex.Message}");
                 MessageBox.Show($"Ошибка при получении игр пользователя: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Warning);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return new List<GameDto>();
             }
         }
@@ -282,14 +418,14 @@ namespace shahmati.Services
         {
             try
             {
-                return await _httpClient.GetFromJsonAsync<GameDto>($"games/{id}");
+                Console.WriteLine($"=== GET GAME ID={id} ===");
+                return await _httpClient.GetFromJsonAsync<GameDto>($"api/games/{id}");
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка получения игры: {ex.Message}");
                 MessageBox.Show($"Ошибка при получении игры: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Warning);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return null;
             }
         }
@@ -298,7 +434,8 @@ namespace shahmati.Services
         {
             try
             {
-                var response = await _httpClient.PostAsJsonAsync("games", createDto);
+                Console.WriteLine($"=== CREATE GAME ===");
+                var response = await _httpClient.PostAsJsonAsync("api/games", createDto);
                 if (response.IsSuccessStatusCode)
                 {
                     return await response.Content.ReadFromJsonAsync<GameDto>();
@@ -306,18 +443,16 @@ namespace shahmati.Services
                 else
                 {
                     var error = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"❌ Ошибка создания игры: {error}");
                     MessageBox.Show($"Ошибка создания игры: {error}",
-                                   "Ошибка",
-                                   MessageBoxButton.OK,
-                                   MessageBoxImage.Error);
+                                   "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка при создании игры: {ex.Message}");
                 MessageBox.Show($"Ошибка при создании игры: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Error);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             return null;
         }
@@ -326,7 +461,8 @@ namespace shahmati.Services
         {
             try
             {
-                var response = await _httpClient.PostAsJsonAsync($"games/{gameId}/moves", moveRequest);
+                Console.WriteLine($"=== MAKE MOVE GAME ID={gameId} ===");
+                var response = await _httpClient.PostAsJsonAsync($"api/games/{gameId}/moves", moveRequest);
                 if (response.IsSuccessStatusCode)
                 {
                     return await response.Content.ReadFromJsonAsync<GameDto>();
@@ -334,18 +470,16 @@ namespace shahmati.Services
                 else
                 {
                     var error = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"❌ Ошибка хода: {error}");
                     MessageBox.Show($"Ошибка хода: {error}",
-                                   "Ошибка",
-                                   MessageBoxButton.OK,
-                                   MessageBoxImage.Error);
+                                   "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка при выполнении хода: {ex.Message}");
                 MessageBox.Show($"Ошибка при выполнении хода: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Error);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             return null;
         }
@@ -354,16 +488,16 @@ namespace shahmati.Services
         {
             try
             {
+                Console.WriteLine($"=== FINISH GAME ID={gameId} ===");
                 var finishData = new { Result = result };
-                var response = await _httpClient.PutAsJsonAsync($"games/{gameId}/finish", finishData);
+                var response = await _httpClient.PutAsJsonAsync($"api/games/{gameId}/finish", finishData);
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка при завершении игры: {ex.Message}");
                 MessageBox.Show($"Ошибка при завершении игры: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Error);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
         }
@@ -372,15 +506,15 @@ namespace shahmati.Services
         {
             try
             {
-                var response = await _httpClient.DeleteAsync($"games/{gameId}");
+                Console.WriteLine($"=== DELETE GAME ID={gameId} ===");
+                var response = await _httpClient.DeleteAsync($"api/games/{gameId}");
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка при удалении игры: {ex.Message}");
                 MessageBox.Show($"Ошибка при удалении игры: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Error);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
         }
@@ -390,14 +524,14 @@ namespace shahmati.Services
         {
             try
             {
-                return await _httpClient.GetFromJsonAsync<List<SavedGameDto>>($"savedgames/user/{userId}");
+                Console.WriteLine($"=== GET SAVED GAMES USER ID={userId} ===");
+                return await _httpClient.GetFromJsonAsync<List<SavedGameDto>>($"api/savedgames/user/{userId}");
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка при получении сохраненных игр: {ex.Message}");
                 MessageBox.Show($"Ошибка при получении сохраненных игр: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Warning);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return new List<SavedGameDto>();
             }
         }
@@ -406,15 +540,15 @@ namespace shahmati.Services
         {
             try
             {
-                var response = await _httpClient.PostAsJsonAsync("savedgames/save", saveRequest);
+                Console.WriteLine($"=== SAVE GAME ===");
+                var response = await _httpClient.PostAsJsonAsync("api/savedgames/save", saveRequest);
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка сохранения игры: {ex.Message}");
                 MessageBox.Show($"Ошибка сохранения игры: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Error);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
         }
@@ -423,14 +557,14 @@ namespace shahmati.Services
         {
             try
             {
-                return await _httpClient.GetFromJsonAsync<SavedGameDetailDto>($"savedgames/{id}");
+                Console.WriteLine($"=== GET SAVED GAME ID={id} ===");
+                return await _httpClient.GetFromJsonAsync<SavedGameDetailDto>($"api/savedgames/{id}");
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка загрузки игры: {ex.Message}");
                 MessageBox.Show($"Ошибка загрузки игры: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Warning);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return null;
             }
         }
@@ -439,15 +573,15 @@ namespace shahmati.Services
         {
             try
             {
-                var response = await _httpClient.PutAsJsonAsync($"savedgames/{id}", request);
+                Console.WriteLine($"=== UPDATE SAVED GAME ID={id} ===");
+                var response = await _httpClient.PutAsJsonAsync($"api/savedgames/{id}", request);
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка обновления сохраненной игры: {ex.Message}");
                 MessageBox.Show($"Ошибка обновления сохраненной игры: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Error);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
         }
@@ -456,82 +590,131 @@ namespace shahmati.Services
         {
             try
             {
-                var response = await _httpClient.DeleteAsync($"savedgames/{id}");
+                Console.WriteLine($"=== DELETE SAVED GAME ID={id} ===");
+                var response = await _httpClient.DeleteAsync($"api/savedgames/{id}");
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка удаления сохраненной игры: {ex.Message}");
                 MessageBox.Show($"Ошибка удаления сохраненной игры: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Error);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
         }
 
-        // ========== ПОЛЬЗОВАТЕЛИ ==========
-        public async Task<List<UserWithProfileDto>> GetUsersAsync()
+        // ========== ТРЕНИРОВКИ ==========
+        public async Task<List<TrainingTypeDto>> GetTrainingTypesAsync()
         {
             try
             {
-                return await _httpClient.GetFromJsonAsync<List<UserWithProfileDto>>("users");
+                Console.WriteLine($"=== GET TRAINING TYPES ===");
+                return await _httpClient.GetFromJsonAsync<List<TrainingTypeDto>>("api/training/types");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при получении пользователей: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Warning);
-                return new List<UserWithProfileDto>();
+                Console.WriteLine($"❌ Ошибка при получении тренировок: {ex.Message}");
+                MessageBox.Show($"Ошибка при получении тренировок: {ex.Message}",
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return new List<TrainingTypeDto>();
             }
         }
 
-        public async Task<UserWithProfileDto> GetUserAsync(int id)
+        public async Task<List<TrainingPositionDto>> GetTrainingPositionsAsync(int trainingTypeId)
         {
             try
             {
-                return await _httpClient.GetFromJsonAsync<UserWithProfileDto>($"users/{id}");
+                Console.WriteLine($"=== GET TRAINING POSITIONS TYPE ID={trainingTypeId} ===");
+                return await _httpClient.GetFromJsonAsync<List<TrainingPositionDto>>($"api/training/{trainingTypeId}/positions");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при получении пользователя: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Warning);
-                return null;
+                Console.WriteLine($"❌ Ошибка при получении позиций: {ex.Message}");
+                MessageBox.Show($"Ошибка при получении позиций: {ex.Message}",
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return new List<TrainingPositionDto>();
             }
         }
 
-        public async Task<List<UserDto>> SearchUsersAsync(string username)
+        public async Task<List<TrainingProgressDto>> GetUserTrainingProgressAsync(int userId)
         {
             try
             {
-                return await _httpClient.GetFromJsonAsync<List<UserDto>>($"users/search?username={username}");
+                Console.WriteLine($"=== GET TRAINING PROGRESS USER ID={userId} ===");
+                return await _httpClient.GetFromJsonAsync<List<TrainingProgressDto>>($"api/training/progress/{userId}");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка поиска пользователей: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Warning);
-                return new List<UserDto>();
+                Console.WriteLine($"❌ Ошибка при получении прогресса: {ex.Message}");
+                MessageBox.Show($"Ошибка при получении прогресса: {ex.Message}",
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return new List<TrainingProgressDto>();
             }
         }
 
-        public async Task<bool> UpdateUserAsync(int id, UpdateUserRequest request)
+        public async Task<bool> StartTrainingAsync(StartTrainingRequest request)
         {
             try
             {
-                var response = await _httpClient.PutAsJsonAsync($"users/{id}", request);
+                Console.WriteLine($"=== START TRAINING USER ID={request.UserId} TYPE ID={request.TrainingTypeId} ===");
+                var response = await _httpClient.PostAsJsonAsync("api/training/start", request);
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка обновления пользователя: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Error);
+                Console.WriteLine($"❌ Ошибка начала тренировки: {ex.Message}");
+                MessageBox.Show($"Ошибка начала тренировки: {ex.Message}",
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
+            }
+        }
+
+        public async Task<bool> CompleteTrainingAsync(CompleteTrainingRequest request)
+        {
+            try
+            {
+                Console.WriteLine($"=== COMPLETE TRAINING USER ID={request.UserId} TYPE ID={request.TrainingTypeId} ===");
+                var response = await _httpClient.PostAsJsonAsync("api/training/complete", request);
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка завершения тренировки: {ex.Message}");
+                MessageBox.Show($"Ошибка завершения тренировки: {ex.Message}",
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+        }
+
+        public async Task<TrainingStatsDto> GetTrainingStatsAsync(int userId)
+        {
+            try
+            {
+                Console.WriteLine($"=== GET TRAINING STATS USER ID={userId} ===");
+                return await _httpClient.GetFromJsonAsync<TrainingStatsDto>($"api/training/stats/{userId}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка получения статистики: {ex.Message}");
+                MessageBox.Show($"Ошибка получения статистики: {ex.Message}",
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return new TrainingStatsDto();
+            }
+        }
+
+        public async Task<List<TrainingTypeDto>> SearchTrainingsAsync(string query)
+        {
+            try
+            {
+                Console.WriteLine($"=== SEARCH TRAININGS: {query} ===");
+                return await _httpClient.GetFromJsonAsync<List<TrainingTypeDto>>($"api/training/search?query={query}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка поиска тренировок: {ex.Message}");
+                MessageBox.Show($"Ошибка поиска тренировок: {ex.Message}",
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return new List<TrainingTypeDto>();
             }
         }
 
@@ -540,30 +723,30 @@ namespace shahmati.Services
         {
             try
             {
-                return await _httpClient.GetFromJsonAsync<GameStatsDto>($"stats/user/{userId}");
+                Console.WriteLine($"=== GET USER STATS ID={userId} ===");
+                return await _httpClient.GetFromJsonAsync<GameStatsDto>($"api/stats/user/{userId}");
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка получения статистики: {ex.Message}");
                 MessageBox.Show($"Ошибка получения статистики: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Warning);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return null;
             }
         }
 
-        public async Task<List<PlayerStatsDto>> GetLeaderboardAsync()
+        public async Task<List<PlayerStatsDto>> GetLeaderboardOldAsync()
         {
             try
             {
-                return await _httpClient.GetFromJsonAsync<List<PlayerStatsDto>>("stats/leaderboard");
+                Console.WriteLine($"=== GET LEADERBOARD ===");
+                return await _httpClient.GetFromJsonAsync<List<PlayerStatsDto>>("api/stats/leaderboard");
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка получения таблицы лидеров: {ex.Message}");
                 MessageBox.Show($"Ошибка получения таблицы лидеров: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Warning);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return new List<PlayerStatsDto>();
             }
         }
@@ -573,7 +756,8 @@ namespace shahmati.Services
         {
             try
             {
-                // Получаем все игры пользователя
+                Console.WriteLine($"=== CALCULATE USER STATS ID={userId} ===");
+
                 var games = await GetUserGamesAsync(userId);
                 if (games == null || games.Count == 0)
                 {
@@ -589,10 +773,7 @@ namespace shahmati.Services
                     };
                 }
 
-                // Фильтруем завершенные игры
                 var finishedGames = games.Where(g => g.IsFinished).ToList();
-
-                // Подсчитываем статистику
                 int wins = 0, losses = 0, draws = 0;
 
                 foreach (var game in finishedGames)
@@ -612,7 +793,6 @@ namespace shahmati.Services
                     }
                 }
 
-                // Получаем текущий рейтинг
                 var profile = await GetProfileAsync(userId);
                 int currentRating = profile?.Rating ?? 1200;
 
@@ -627,16 +807,15 @@ namespace shahmati.Services
                     Losses = losses,
                     Draws = draws,
                     CurrentRating = currentRating,
-                    HighestRating = currentRating, // упрощенно
+                    HighestRating = currentRating,
                     WinPercentage = winPercentage
                 };
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка расчета статистики: {ex.Message}");
                 MessageBox.Show($"Ошибка расчета статистики: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Warning);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return new GameStatsDto
                 {
                     TotalGames = 0,
@@ -654,14 +833,14 @@ namespace shahmati.Services
         {
             try
             {
-                // Получаем всех пользователей
+                Console.WriteLine($"=== CALCULATE LEADERBOARD ===");
+
                 var users = await GetUsersAsync();
                 if (users == null || users.Count == 0)
                     return new List<PlayerStatsDto>();
 
                 var leaderboard = new List<PlayerStatsDto>();
 
-                // Для каждого пользователя рассчитываем статистику
                 foreach (var user in users)
                 {
                     if (user.Profile == null) continue;
@@ -679,7 +858,6 @@ namespace shahmati.Services
                     });
                 }
 
-                // Сортируем по рейтингу
                 return leaderboard
                     .OrderByDescending(p => p.Rating)
                     .ThenByDescending(p => p.WinRate)
@@ -688,10 +866,9 @@ namespace shahmati.Services
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка расчета лидерборда: {ex.Message}");
                 MessageBox.Show($"Ошибка расчета лидерборда: {ex.Message}",
-                               "Ошибка",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Warning);
+                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return new List<PlayerStatsDto>();
             }
         }

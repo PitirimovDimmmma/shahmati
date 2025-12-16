@@ -1,0 +1,213 @@
+﻿<Window x:Class="shahmati.Views.TrainingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Шахматная тренировка" 
+        Height="700" Width="900"
+        WindowStartupLocation="CenterScreen"
+        Background="#2C3E50">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Шапка тренировки -->
+        <Border Grid.Row="0" Background="#34495E" Padding="15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Название тренировки -->
+                <StackPanel Grid.Column="0">
+                    <TextBlock x:Name="TrainingNameText" 
+                              Text="Тренировка" 
+                              Foreground="White" 
+                              FontSize="16" 
+                              FontWeight="Bold"/>
+                    <TextBlock x:Name="TrainingDescriptionText" 
+                              Text="Описание" 
+                              Foreground="#BDC3C7" 
+                              FontSize="11"/>
+                </StackPanel>
+
+                <!-- Таймер и счет -->
+                <StackPanel Grid.Column="1" 
+                           HorizontalAlignment="Center" 
+                           Orientation="Horizontal">
+                    <Border Background="#2C3E50" 
+                           Padding="10,5" 
+                           CornerRadius="5" 
+                           Margin="0,0,10,0">
+                        <TextBlock x:Name="TimerText" 
+                                  Text="00:00" 
+                                  Foreground="White" 
+                                  FontSize="20" 
+                                  FontWeight="Bold"/>
+                    </Border>
+
+                    <Border Background="#27AE60" 
+                           Padding="10,5" 
+                           CornerRadius="5" 
+                           Margin="0,0,10,0">
+                        <TextBlock x:Name="ScoreText" 
+                                  Text="0 очков" 
+                                  Foreground="White" 
+                                  FontSize="16" 
+                                  FontWeight="Bold"/>
+                    </Border>
+
+                    <Border Background="#E74C3C" 
+                           Padding="10,5" 
+                           CornerRadius="5">
+                        <TextBlock x:Name="MistakesText" 
+                                  Text="0 ошибок" 
+                                  Foreground="White" 
+                                  FontSize="16" 
+                                  FontWeight="Bold"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Управление -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button x:Name="HintButton" 
+                           Content="💡 Подсказка" 
+                           Background="#F39C12"
+                           Foreground="White"
+                           BorderThickness="0"
+                           Padding="10,5"
+                           Margin="0,0,10,0"
+                           Click="HintButton_Click"/>
+
+                    <Button x:Name="CompleteButton" 
+                           Content="✓ Завершить" 
+                           Background="#E74C3C"
+                           Foreground="White"
+                           BorderThickness="0"
+                           Padding="10,5"
+                           Click="CompleteButton_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Основная область -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="300"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Шахматная доска -->
+            <Border Grid.Column="0" 
+                   Margin="20" 
+                   Background="#2C2C2C" 
+                   CornerRadius="5">
+                <!-- Здесь будет встроена шахматная доска из MainWindow -->
+                <ContentControl x:Name="ChessBoardContent"/>
+            </Border>
+
+            <!-- Панель тренировки -->
+            <Border Grid.Column="1" 
+                   Background="#F5F5DC" 
+                   Margin="0,20,20,20" 
+                   CornerRadius="10">
+                <StackPanel Margin="15">
+                    <TextBlock x:Name="PositionTitleText" 
+                              Text="Позиция #1" 
+                              FontSize="16" 
+                              FontWeight="Bold"
+                              Foreground="#2C3E50"
+                              Margin="0,0,0,10"/>
+
+                    <TextBlock x:Name="PositionTaskText" 
+                              Text="Найдите лучший ход..." 
+                              FontSize="12"
+                              Foreground="#7F8C8D"
+                              TextWrapping="Wrap"
+                              Margin="0,0,0,20"/>
+
+                    <!-- Прогресс -->
+                    <Border Background="#ECF0F1" 
+                           Padding="10" 
+                           CornerRadius="5"
+                           Margin="0,0,0,20">
+                        <StackPanel>
+                            <TextBlock Text="Прогресс тренировки" 
+                                      FontSize="12" 
+                                      FontWeight="Bold"
+                                      Foreground="#7F8C8D"
+                                      Margin="0,0,0,5"/>
+
+                            <ProgressBar x:Name="TrainingProgressBar" 
+                                        Height="10" 
+                                        Maximum="100" 
+                                        Value="0"/>
+
+                            <TextBlock x:Name="ProgressText" 
+                                      Text="0/10" 
+                                      FontSize="10"
+                                      Foreground="#7F8C8D"
+                                      HorizontalAlignment="Center"
+                                      Margin="0,5,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- История ходов -->
+                    <TextBlock Text="Решение:" 
+                              FontSize="12" 
+                              FontWeight="Bold"
+                              Foreground="#2C3E50"
+                              Margin="0,0,0,5"/>
+
+                    <ListBox x:Name="SolutionMovesList" 
+                            Height="150" 
+                            Background="White"
+                            BorderThickness="1"
+                            BorderBrush="#BDC3C7"
+                            ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" 
+                                          FontSize="12"
+                                          Margin="5,2"/>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Кнопки управления -->
+                    <StackPanel Margin="0,20,0,0">
+                        <Button x:Name="NextButton" 
+                               Content="Следующая позиция →" 
+                               Height="35"
+                               Background="#27AE60"
+                               Foreground="White"
+                               FontWeight="Bold"
+                               Click="NextButton_Click"/>
+
+                        <Button x:Name="ShowSolutionButton" 
+                               Content="Показать решение" 
+                               Height="35"
+                               Background="#3498DB"
+                               Foreground="White"
+                               FontWeight="Bold"
+                               Margin="0,10,0,0"
+                               Click="ShowSolutionButton_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Футер -->
+        <Border Grid.Row="2" Background="#34495E" Padding="10">
+            <TextBlock x:Name="StatusText" 
+                      Text="Тренировка начата. Делайте ходы на доске." 
+                      Foreground="#BDC3C7" 
+                      HorizontalAlignment="Center" 
+                      FontSize="11"/>
+        </Border>
+    </Grid>
+</Window>

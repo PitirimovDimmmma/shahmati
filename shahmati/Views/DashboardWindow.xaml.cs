@@ -1,8 +1,9 @@
-﻿using System;
-using System.Windows;
-using System.Windows.Media.Imaging;
+﻿using shahmati.Models;
 using shahmati.Services;
-using shahmati.Models;
+using System;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media.Imaging;
 
 namespace shahmati.Views
 {
@@ -75,7 +76,7 @@ namespace shahmati.Views
             }
         }
 
-        private void GameCard_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private void GameCard_MouseDown(object sender, MouseButtonEventArgs e)
         {
             // Открываем главное окно с игрой
             MainWindow gameWindow = new MainWindow(_userId);
@@ -83,36 +84,70 @@ namespace shahmati.Views
             this.Close();
         }
 
-        private void OnlineGamesCard_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private void TrainingCard_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Открываем окно онлайн игр
-            OnlineGamesWindow onlineGamesWindow = new OnlineGamesWindow(_userId);
-            onlineGamesWindow.Show();
+            // Открываем окно выбора тренировок
+            TrainingSelectionWindow trainingWindow = new TrainingSelectionWindow(_userId);
+            trainingWindow.Show();
             this.Close();
         }
 
-        private void RulesCard_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private void RulesCard_MouseDown(object sender, MouseButtonEventArgs e)
         {
             RulesWindow rulesWindow = new RulesWindow(_userId);
             rulesWindow.Show();
             this.Close();
         }
 
-        private void ProfileCard_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private void HistoryCard_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Открываем окно профиля
-            ProfileSetupWindow profileWindow = new ProfileSetupWindow(_userId);
-            profileWindow.Show();
+            // Открываем окно истории игр
+            HistoryWindow historyWindow = new HistoryWindow(_userId);
+            historyWindow.Show();
             this.Close();
         }
 
-        private void HistoryCard_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private void StatisticsCard_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Показываем сообщение о том, что функция в разработке
-            MessageBox.Show("История игр будет доступна в следующем обновлении",
-                "В разработке",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            // Открываем окно статистики
+            StatisticsWindow statisticsWindow = new StatisticsWindow(_userId);
+            statisticsWindow.Show();
+            this.Close();
+        }
+
+        private void LeaderboardCard_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            // Открываем окно таблицы лидеров
+            LeaderboardWindow leaderboardWindow = new LeaderboardWindow(_userId);
+            leaderboardWindow.Show();
+            this.Close();
+        }
+
+        private async void AdminPanel_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            try
+            {
+                // Проверяем роль пользователя
+                var user = await _apiService.GetUserAsync(_userId);
+
+                if (user?.Role == "Admin")
+                {
+                    AdminWindow adminWindow = new AdminWindow(_userId);
+                    adminWindow.Show();
+                    this.Close();
+                }
+                else
+                {
+                    MessageBox.Show("У вас нет прав администратора",
+                        "Доступ запрещен",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка: {ex.Message}");
+            }
         }
 
         private void LogoutButton_Click(object sender, RoutedEventArgs e)
