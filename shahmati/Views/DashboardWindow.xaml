@@ -63,21 +63,26 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Аватар и информация -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <Border Width="60" Height="60" Background="#ECF0F1" CornerRadius="30">
-                        <Border.Clip>
-                            <EllipseGeometry RadiusX="30" RadiusY="30" Center="30,30"/>
-                        </Border.Clip>
-                        <Image x:Name="UserAvatarImage" Stretch="UniformToFill"/>
-                    </Border>
-                    <StackPanel Margin="15,0,0,0" VerticalAlignment="Center">
-                        <TextBlock x:Name="UserNameText" Text="Гость" 
-                                  Foreground="White" FontSize="16" FontWeight="Bold"/>
-                        <TextBlock x:Name="UserRatingText" Text="Рейтинг: 1200" 
-                                  Foreground="#BDC3C7" FontSize="12"/>
+                <!-- Аватар и информация (кликабельные) -->
+                <Border Grid.Column="0" 
+                       Background="Transparent" 
+                       Cursor="Hand"
+                       MouseDown="UserProfileArea_MouseDown">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="60" Height="60" Background="#ECF0F1" CornerRadius="30">
+                            <Border.Clip>
+                                <EllipseGeometry RadiusX="30" RadiusY="30" Center="30,30"/>
+                            </Border.Clip>
+                            <Image x:Name="UserAvatarImage" Stretch="UniformToFill"/>
+                        </Border>
+                        <StackPanel Margin="15,0,0,0" VerticalAlignment="Center">
+                            <TextBlock x:Name="UserNameText" Text="Гость" 
+                                      Foreground="White" FontSize="16" FontWeight="Bold"/>
+                            <TextBlock x:Name="UserRatingText" Text="Рейтинг: 0" 
+                                      Foreground="#BDC3C7" FontSize="12"/>
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
+                </Border>
 
                 <!-- Кнопка выхода -->
                 <Button Grid.Column="2" Content="Выйти" 

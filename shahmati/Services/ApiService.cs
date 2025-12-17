@@ -76,6 +76,7 @@ namespace shahmati.Services
                                "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return new List<UserWithProfileDto>();
             }
+            
         }
 
         public async Task<UserWithProfileDto> GetUserAsync(int id)
@@ -767,8 +768,8 @@ namespace shahmati.Services
                         Wins = 0,
                         Losses = 0,
                         Draws = 0,
-                        CurrentRating = 1200,
-                        HighestRating = 1200,
+                        CurrentRating = 0,
+                        HighestRating = 0,
                         WinPercentage = 0
                     };
                 }
@@ -794,7 +795,7 @@ namespace shahmati.Services
                 }
 
                 var profile = await GetProfileAsync(userId);
-                int currentRating = profile?.Rating ?? 1200;
+                int currentRating = profile?.Rating ?? 0;
 
                 int totalGames = finishedGames.Count;
                 double winPercentage = totalGames > 0 ?
@@ -822,8 +823,8 @@ namespace shahmati.Services
                     Wins = 0,
                     Losses = 0,
                     Draws = 0,
-                    CurrentRating = 1200,
-                    HighestRating = 1200,
+                    CurrentRating = 0,
+                    HighestRating = 0,
                     WinPercentage = 0
                 };
             }

@@ -31,7 +31,7 @@ namespace shahmati.Views
             }
 
             LoginButton.IsEnabled = false;
-            LoginButton.Content = "Вход через curl...";
+            LoginButton.Content = "Вход";
             Mouse.OverrideCursor = Cursors.Wait;
 
             try

@@ -1,26 +1,26 @@
-﻿using System;
+﻿using shahmati.Helpers;
+using shahmati.models;
+using shahmati.Models;
+using shahmati.Services;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Threading;
-using System.Threading.Tasks;
-using shahmati.Helpers;
-using shahmati.models;
-using shahmati.Services;
-using shahmati.Models;
 
 namespace shahmati.ViewModels
 {
+    using ApiCreateGameDto = shahmati.Models.CreateGameDto;
+    using ApiGameDto = shahmati.Models.GameDto;
+    using ApiGameStatsDto = shahmati.Models.GameStatsDto;
+    using ApiMoveDto = shahmati.Models.MoveDto;
+    using ApiPlayerStatsDto = shahmati.Models.PlayerStatsDto;
+    using ApiSavedGameDto = shahmati.Models.SavedGameDto;
+    using ApiUserDto = shahmati.Models.UserDto;
+    using ApiUserProfileDto = shahmati.Models.UserProfileDto;
     // Определяем алиасы для разрешения конфликтов
-    using ApiUserWithProfileDto = Models.UserWithProfileDto;
-    using ApiCreateGameDto = Models.CreateGameDto;
-    using ApiGameDto = Models.GameDto;
-    using ApiMoveDto = Models.MoveDto;
-    using ApiSavedGameDto = Models.SavedGameDto;
-    using ApiUserDto = Models.UserDto;
-    using ApiUserProfileDto = Models.UserProfileDto;
-    using ApiGameStatsDto = Models.GameStatsDto;
-    using ApiPlayerStatsDto = Models.PlayerStatsDto;
+    using ApiUserWithProfileDto = shahmati.Models.UserWithProfileDto;
 
     public class MainViewModel : INotifyPropertyChanged
     {
@@ -38,6 +38,9 @@ namespace shahmati.ViewModels
         private readonly ApiService _apiService;
         private int _currentUserId;
         private List<ApiGameDto> _activeGames;
+
+        // ДОБАВИЛ ЭТО СВОЙСТВО
+        private bool _enableMoveHighlighting = true;
 
         // Основной конструктор (для игры с доской)
         public MainViewModel(int? userId = null)
@@ -132,6 +135,26 @@ namespace shahmati.ViewModels
             }
         }
 
+        // ДОБАВИЛ ЭТО СВОЙСТВО ДЛЯ ПОДСВЕТКИ ХОДОВ
+        public bool EnableMoveHighlighting
+        {
+            get => _enableMoveHighlighting;
+            set
+            {
+                if (_enableMoveHighlighting != value)
+                {
+                    _enableMoveHighlighting = value;
+                    OnPropertyChanged(nameof(EnableMoveHighlighting));
+
+                    // Обновляем подсветку на доске
+                    if (_board != null && _selectedPosition.IsValid())
+                    {
+                        UpdateMoveHighlighting();
+                    }
+                }
+            }
+        }
+
         public ICommand StartNewGameCommand { get; }
         public ICommand CellClickCommand { get; }
 
@@ -146,6 +169,37 @@ namespace shahmati.ViewModels
             SelectedPosition = Position.Invalid;
             OnPropertyChanged(nameof(CurrentPlayerText));
             CheckAITurn();
+        }
+
+        // Метод для обновления подсветки ходов
+        private void UpdateMoveHighlighting()
+        {
+            if (!_enableMoveHighlighting)
+            {
+                // Очищаем все подсвеченные ходы
+                foreach (var cell in Board.CellsFlat)
+                {
+                    cell.IsPossibleMove = false;
+                }
+            }
+            else if (_selectedPosition.IsValid())
+            {
+                // Подсвечиваем возможные ходы для выбранной фигуры
+                var piece = Board.GetPieceAt(_selectedPosition);
+                if (piece != null && piece.Color == _gameManager?.CurrentPlayer)
+                {
+                    var possibleMoves = piece.GetPossibleMoves(_selectedPosition, Board);
+                    foreach (var move in possibleMoves)
+                    {
+                        var cell = GetCellAt(move);
+                        if (cell != null)
+                        {
+                            cell.IsPossibleMove = true;
+                        }
+                    }
+                }
+            }
+            OnPropertyChanged(nameof(Board));
         }
 
         // API методы (оставляем для онлайн-функций)
@@ -268,13 +322,17 @@ namespace shahmati.ViewModels
 
             if (piece != null)
             {
-                var possibleMoves = piece.GetPossibleMoves(position, Board);
-                foreach (var move in possibleMoves)
+                // Проверяем включена ли подсветка
+                if (EnableMoveHighlighting)
                 {
-                    var cell = GetCellAt(move);
-                    if (cell != null)
+                    var possibleMoves = piece.GetPossibleMoves(position, Board);
+                    foreach (var move in possibleMoves)
                     {
-                        cell.IsPossibleMove = true;
+                        var cell = GetCellAt(move);
+                        if (cell != null)
+                        {
+                            cell.IsPossibleMove = true;
+                        }
                     }
                 }
 

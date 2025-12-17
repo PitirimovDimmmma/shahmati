@@ -1,5 +1,7 @@
-﻿using shahmati.ViewModels;
+﻿using shahmati.Models;
+using shahmati.ViewModels;
 using System;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -53,16 +55,21 @@ namespace shahmati.Views
         {
             if (string.IsNullOrWhiteSpace(SearchTextBox.Text) || SearchTextBox.Text == "Поиск тренировок...")
             {
-                _viewModel.FilteredTrainings = _viewModel.AllTrainings;
+                // Создаем новую ObservableCollection из AllTrainings
+                _viewModel.FilteredTrainings = new ObservableCollection<TrainingTypeDto>(_viewModel.AllTrainings);
             }
             else
             {
                 var query = SearchTextBox.Text.ToLower();
-                _viewModel.FilteredTrainings = _viewModel.AllTrainings
+                var filtered = _viewModel.AllTrainings
                     .Where(t => t.Name.ToLower().Contains(query) ||
                                t.Description.ToLower().Contains(query))
                     .ToList();
+
+                _viewModel.FilteredTrainings = new ObservableCollection<TrainingTypeDto>(filtered);
             }
+
+            // Обновляем ItemsSource
             TrainingsList.ItemsSource = _viewModel.FilteredTrainings;
         }
 
@@ -82,13 +89,15 @@ namespace shahmati.Views
 
                 if (category == null)
                 {
-                    _viewModel.FilteredTrainings = _viewModel.AllTrainings;
+                    _viewModel.FilteredTrainings = new ObservableCollection<TrainingTypeDto>(_viewModel.AllTrainings);
                 }
                 else
                 {
-                    _viewModel.FilteredTrainings = _viewModel.AllTrainings
+                    var filtered = _viewModel.AllTrainings
                         .Where(t => t.Category == category)
                         .ToList();
+
+                    _viewModel.FilteredTrainings = new ObservableCollection<TrainingTypeDto>(filtered);
                 }
 
                 TrainingsList.ItemsSource = _viewModel.FilteredTrainings;
@@ -103,11 +112,10 @@ namespace shahmati.Views
             MediumCheckBox.IsChecked = true;
             HardCheckBox.IsChecked = true;
 
-            _viewModel.FilteredTrainings = _viewModel.AllTrainings;
+            _viewModel.FilteredTrainings = new ObservableCollection<TrainingTypeDto>(_viewModel.AllTrainings);
             TrainingsList.ItemsSource = _viewModel.FilteredTrainings;
         }
 
-        // Дополнительно: обработка фокуса для плейсхолдера
         private void SearchTextBox_GotFocus(object sender, RoutedEventArgs e)
         {
             if (SearchTextBox.Text == "Поиск тренировок...")

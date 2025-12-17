@@ -48,7 +48,7 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
     <Resource Include="ChessPieces\default_avatar.png">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
     <Resource Include="ChessPieces\wb.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

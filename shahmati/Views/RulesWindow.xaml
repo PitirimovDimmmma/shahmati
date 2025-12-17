@@ -87,9 +87,9 @@
                 </StackPanel>
 
                 <!-- Кнопка возврата -->
-                <Button Grid.Column="2" Content="← Назад" 
+                <Button Grid.Column="1" Content="← Назад" 
                        Style="{StaticResource BackButtonStyle}"
-                       Click="BackButton_Click"/>
+                       Click="BackButton_Click" Grid.ColumnSpan="2" Margin="397,0,0,0"/>
             </Grid>
         </Border>
 

@@ -34,7 +34,7 @@ namespace shahmati.Views
                 if (user != null)
                 {
                     UserNameText.Text = user.Profile?.Nickname ?? user.Username;
-                    UserRatingText.Text = $"Рейтинг: {user.Profile?.Rating ?? 1200}";
+                    UserRatingText.Text = $"Рейтинг: {user.Profile?.Rating ?? 0}";
                 }
 
                 // Загружаем детальную статистику

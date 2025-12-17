@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -38,31 +37,45 @@ namespace shahmati.Views
 
             try
             {
-                // ЗАПУСКАЕМ CURL ДЛЯ РЕГИСТРАЦИИ
+                // Пробуем оба метода регистрации
                 var user = await RegisterWithCurlAsync(username, email, password);
+
+                // Если curl не сработал, пробуем HttpClient
+                if (user == null || user.Id <= 0)
+                {
+                    Console.WriteLine("🔄 CURL не сработал, пробуем HttpClient...");
+                    user = await RegisterWithHttpClientAsync(username, email, password);
+                }
 
                 if (user != null && user.Id > 0)
                 {
                     Console.WriteLine($"✅ Регистрация успешна! ID пользователя: {user.Id}");
 
-                    MessageBox.Show($"✅ Регистрация успешна!\nЛогин: {user.Username}\nID: {user.Id}",
+                    MessageBox.Show($"✅ Регистрация успешна!\nЛогин: {user.Username}\nЗавершите настройку профиля",
                         "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
 
-                    // ВАЖНО: передаём РЕАЛЬНЫЙ ID пользователя!
-                    DashboardWindow dashboardWindow = new DashboardWindow(user.Id); // user.Id = 18
-                    dashboardWindow.Show();
+                    // ПЕРЕХОДИМ НА ОКНО НАСТРОЙКИ ПРОФИЛЯ
+                    ProfileSetupWindow profileSetupWindow = new ProfileSetupWindow(user.Id);
+                    profileSetupWindow.Show();
                     this.Close();
                 }
                 else
                 {
-                    MessageBox.Show("❌ Регистрация не удалась. Попробуйте другие данные.",
-                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    string errorMessage = "❌ Регистрация не удалась.\n\nВозможные причины:\n";
+                    errorMessage += "1. Логин или email уже используются\n";
+                    errorMessage += "2. Проблема с подключением к серверу\n";
+                    errorMessage += "3. Неверные данные\n\n";
+                    errorMessage += "Попробуйте другие данные или проверьте подключение.";
+
+                    MessageBox.Show(errorMessage,
+                        "Ошибка регистрации", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"❌ Ошибка: {ex.Message}",
+                MessageBox.Show($"❌ Ошибка при регистрации:\n{ex.Message}",
                     "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                Console.WriteLine($"❌ Exception details: {ex}");
             }
             finally
             {
@@ -84,6 +97,8 @@ namespace shahmati.Views
                     password = password
                 });
 
+                Console.WriteLine($"📤 Отправляемые данные: {jsonData}");
+
                 string tempJsonFile = Path.GetTempFileName() + ".json";
                 await File.WriteAllTextAsync(tempJsonFile, jsonData, Encoding.UTF8);
 
@@ -91,7 +106,7 @@ namespace shahmati.Views
                 string curlCommand = $"curl -X POST \"https://localhost:7259/api/auth/register\" " +
                                     $"-H \"Content-Type: application/json\" " +
                                     $"--data-binary \"@{tempJsonFile}\" " +
-                                    $"--insecure --silent";
+                                    $"--insecure --silent --show-error";
 
                 ProcessStartInfo psi = new ProcessStartInfo
                 {
@@ -107,38 +122,56 @@ namespace shahmati.Views
 
                 using (Process process = new Process { StartInfo = psi })
                 {
+                    Console.WriteLine($"🚀 Запуск curl команды...");
                     process.Start();
+
                     string output = await process.StandardOutput.ReadToEndAsync();
                     string error = await process.StandardError.ReadToEndAsync();
                     await process.WaitForExitAsync();
                     File.Delete(tempJsonFile);
 
-                    Console.WriteLine($"CURL Response: {output}");
+                    Console.WriteLine($"=== CURL RESPONSE ===");
+                    Console.WriteLine($"Output: {output}");
+                    Console.WriteLine($"Error: {error}");
+                    Console.WriteLine($"Exit Code: {process.ExitCode}");
+                    Console.WriteLine($"=====================");
 
                     if (process.ExitCode == 0 && !string.IsNullOrEmpty(output))
                     {
-                        // Парсим ответ API
-                        var options = new JsonSerializerOptions
+                        try
                         {
-                            PropertyNameCaseInsensitive = true
-                        };
+                            var options = new JsonSerializerOptions
+                            {
+                                PropertyNameCaseInsensitive = true
+                            };
 
-                        var user = JsonSerializer.Deserialize<UserWithProfileDto>(output, options);
+                            var user = JsonSerializer.Deserialize<UserWithProfileDto>(output, options);
 
-                        if (user != null && user.Id > 0)
-                        {
-                            Console.WriteLine($"✅ Успешно получен пользователь ID={user.Id}");
-                            return user;
+                            if (user != null && user.Id > 0)
+                            {
+                                Console.WriteLine($"✅ Успешно получен пользователь ID={user.Id}");
+                                return user;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"❌ Не удалось десериализовать пользователя");
+                                return null;
+                            }
                         }
-                        else
+                        catch (JsonException jsonEx)
                         {
-                            Console.WriteLine($"❌ Не удалось получить ID пользователя из ответа");
+                            Console.WriteLine($"❌ Ошибка парсинга JSON: {jsonEx.Message}");
+                            Console.WriteLine($"Raw response: {output}");
                             return null;
                         }
                     }
                     else
                     {
-                        Console.WriteLine($"❌ Ошибка curl: {error}");
+                        Console.WriteLine($"❌ Ошибка curl. ExitCode={process.ExitCode}");
+                        if (!string.IsNullOrEmpty(error))
+                        {
+                            Console.WriteLine($"Curl error: {error}");
+                        }
                         return null;
                     }
                 }
@@ -146,33 +179,32 @@ namespace shahmati.Views
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Ошибка RegisterWithCurlAsync: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
                 return null;
             }
         }
 
-        // Альтернатива - через HttpClient напрямую
         private async Task<UserWithProfileDto> RegisterWithHttpClientAsync(string username, string email, string password)
         {
             try
             {
-                using var client = new System.Net.Http.HttpClient();
-                client.Timeout = TimeSpan.FromSeconds(30);
-
-                // Отключаем проверку SSL для разработки
-                var handler = new System.Net.Http.HttpClientHandler();
+                using var handler = new System.Net.Http.HttpClientHandler();
                 handler.ServerCertificateCustomValidationCallback =
                     (sender, cert, chain, sslPolicyErrors) => true;
 
                 using var httpClient = new System.Net.Http.HttpClient(handler);
+                httpClient.Timeout = TimeSpan.FromSeconds(30);
 
                 var requestData = new { username, email, password };
                 var json = JsonSerializer.Serialize(requestData);
                 var content = new System.Net.Http.StringContent(json, Encoding.UTF8, "application/json");
 
+                Console.WriteLine($"📤 HTTP отправка на https://localhost:7259/api/auth/register");
                 var response = await httpClient.PostAsync("https://localhost:7259/api/auth/register", content);
-                var responseText = await response.Content.ReadAsStringAsync();
 
-                Console.WriteLine($"HTTP Response: {responseText}");
+                Console.WriteLine($"📥 HTTP статус: {response.StatusCode}");
+                var responseText = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"📥 HTTP ответ: {responseText}");
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -185,12 +217,36 @@ namespace shahmati.Views
                         return user;
                     }
                 }
+                else
+                {
+                    Console.WriteLine($"❌ HTTP ошибка: {response.StatusCode}");
+                    Console.WriteLine($"Подробности: {responseText}");
+
+                    // Пытаемся получить более детальную информацию об ошибке
+                    try
+                    {
+                        var errorObj = JsonSerializer.Deserialize<JsonElement>(responseText);
+                        if (errorObj.TryGetProperty("errors", out var errors))
+                        {
+                            Console.WriteLine($"Ошибки валидации: {errors}");
+                        }
+                        if (errorObj.TryGetProperty("title", out var title))
+                        {
+                            Console.WriteLine($"Заголовок ошибки: {title}");
+                        }
+                    }
+                    catch
+                    {
+                        // Игнорируем ошибки парсинга
+                    }
+                }
 
                 return null;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ HTTP ошибка: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
                 return null;
             }
         }
@@ -200,25 +256,29 @@ namespace shahmati.Views
         {
             if (string.IsNullOrEmpty(username) || username.Length < 3)
             {
-                if (showMessage) MessageBox.Show("Логин должен быть не менее 3 символов", "Ошибка");
+                if (showMessage)
+                    MessageBox.Show("Логин должен быть не менее 3 символов", "Ошибка");
                 return false;
             }
 
             if (string.IsNullOrEmpty(email) || !email.Contains("@") || !email.Contains("."))
             {
-                if (showMessage) MessageBox.Show("Введите корректный email", "Ошибка");
+                if (showMessage)
+                    MessageBox.Show("Введите корректный email", "Ошибка");
                 return false;
             }
 
             if (string.IsNullOrEmpty(password) || password.Length < 6)
             {
-                if (showMessage) MessageBox.Show("Пароль должен быть не менее 6 символов", "Ошибка");
+                if (showMessage)
+                    MessageBox.Show("Пароль должен быть не менее 6 символов", "Ошибка");
                 return false;
             }
 
             if (password != confirmPassword)
             {
-                if (showMessage) MessageBox.Show("Пароли не совпадают", "Ошибка");
+                if (showMessage)
+                    MessageBox.Show("Пароли не совпадают", "Ошибка");
                 return false;
             }
 

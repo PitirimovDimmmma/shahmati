@@ -100,7 +100,7 @@
 
                             <!-- Плейсхолдер поверх TextBox -->
                             <TextBlock x:Name="SearchPlaceholder"
-                                      Text="Поиск тренировок..."
+
                                       Foreground="#95A5A6"
                                       FontSize="12"
                                       FontStyle="Italic"

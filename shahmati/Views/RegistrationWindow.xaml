@@ -1,7 +1,7 @@
 ﻿<Window x:Class="shahmati.Views.RegistrationWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Регистрация" Height="653" Width="450"
+        Title="Регистрация" Height="685" Width="450"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize">
 
@@ -67,13 +67,13 @@
                 </StackPanel>
 
                 <!-- Форма регистрации -->
-                <Border Background="#FFFFFF" CornerRadius="10" Padding="25">
+                <Border Background="#FFFFFF" CornerRadius="10" Padding="30">
                     <StackPanel>
                         <TextBlock Text="Логин" FontWeight="SemiBold" Margin="0,0,0,5" Foreground="#333"/>
                         <TextBox x:Name="UsernameTextBox" 
                                  Style="{StaticResource InputFieldStyle}"
                                  TextChanged="UsernameTextBox_TextChanged"
-                                 KeyDown="UsernameTextBox_KeyDown"/>
+                                 KeyDown="UsernameTextBox_KeyDown" Height="39"/>
                         <TextBlock x:Name="UsernameError" 
                                    Foreground="Red" 
                                    FontSize="11" 
@@ -84,7 +84,7 @@
                         <PasswordBox x:Name="PasswordBox" 
                                      Style="{StaticResource PasswordFieldStyle}"
                                      PasswordChanged="PasswordBox_PasswordChanged"
-                                     KeyDown="PasswordBox_KeyDown"/>
+                                     KeyDown="PasswordBox_KeyDown" Height="41"/>
                         <TextBlock x:Name="PasswordError" 
                                    Foreground="Red" 
                                    FontSize="11" 
@@ -95,7 +95,7 @@
                         <PasswordBox x:Name="ConfirmPasswordBox" 
                                      Style="{StaticResource PasswordFieldStyle}"
                                      PasswordChanged="ConfirmPasswordBox_PasswordChanged"
-                                     KeyDown="ConfirmPasswordBox_KeyDown"/>
+                                     KeyDown="ConfirmPasswordBox_KeyDown" Height="44"/>
                         <TextBlock x:Name="ConfirmPasswordError" 
                                    Foreground="Red" 
                                    FontSize="11" 
@@ -106,7 +106,7 @@
                         <TextBox x:Name="EmailTextBox" 
                                  Style="{StaticResource InputFieldStyle}"
                                  TextChanged="EmailTextBox_TextChanged"
-                                 KeyDown="EmailTextBox_KeyDown"/>
+                                 KeyDown="EmailTextBox_KeyDown" Height="42"/>
                         <TextBlock x:Name="EmailError" 
                                    Foreground="Red" 
                                    FontSize="11" 

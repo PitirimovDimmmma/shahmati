@@ -68,9 +68,9 @@
                                Background="#F0F0F0" 
                                BorderBrush="#CCCCCC" BorderThickness="2">
                             <Border.Clip>
-                                <EllipseGeometry RadiusX="50" RadiusY="50" Center="50,50"/>
+                                <EllipseGeometry RadiusX="45" RadiusY="45" Center="50,50"/>
                             </Border.Clip>
-                            <Image x:Name="AvatarImage" Stretch="UniformToFill"/>
+                            <Image x:Name="AvatarImage" Stretch="UniformToFill" Margin="-6,-1,-6,0" RenderTransformOrigin="0.496,0.503"/>
                         </Border>
                         <Button Content="Выбрать фото" 
                                Height="30" Background="Transparent" 

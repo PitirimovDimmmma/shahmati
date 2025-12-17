@@ -25,40 +25,95 @@ namespace shahmati.Views
         {
             try
             {
+                Console.WriteLine($"=== Загрузка данных пользователя ID={_userId} ===");
+
                 // Загружаем данные пользователя
                 var user = await _apiService.GetUserAsync(_userId);
                 if (user != null)
                 {
+                    Console.WriteLine($"Пользователь найден: {user.Username}");
+
+                    // Устанавливаем никнейм
                     UserNameText.Text = user.Profile?.Nickname ?? user.Username;
 
-                    // Загружаем статистику
-                    var stats = await _apiService.GetUserStatsAsync(_userId);
-                    if (stats != null)
-                    {
-                        UserRatingText.Text = $"Рейтинг: {stats.CurrentRating}";
-                    }
+                    // Загружаем аватар
+                    LoadUserAvatar(user.Profile?.PhotoPath);
 
-                    // Загружаем аватар если есть
-                    if (!string.IsNullOrEmpty(user.Profile?.PhotoPath))
-                    {
-                        try
-                        {
-                            UserAvatarImage.Source = new BitmapImage(new Uri(user.Profile.PhotoPath));
-                        }
-                        catch
-                        {
-                            SetDefaultAvatar();
-                        }
-                    }
-                    else
-                    {
-                        SetDefaultAvatar();
-                    }
+                    // Загружаем рейтинг
+                    await LoadUserRating();
+                }
+                else
+                {
+                    Console.WriteLine("❌ Пользователь не найден");
+                    SetDefaultData();
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка загрузки данных: {ex.Message}");
+                Console.WriteLine($"❌ Ошибка загрузки данных: {ex.Message}");
+                SetDefaultData();
+            }
+        }
+
+        private async Task LoadUserRating()
+        {
+            try
+            {
+                var stats = await _apiService.GetUserStatsAsync(_userId);
+                if (stats != null)
+                {
+                    Console.WriteLine($"Рейтинг из статистики: {stats.CurrentRating}");
+                    UserRatingText.Text = $"Рейтинг: {stats.CurrentRating}";
+                }
+                else
+                {
+                    // Если статистики нет, получаем рейтинг из профиля
+                    var user = await _apiService.GetUserAsync(_userId);
+                    int rating = user?.Profile?.Rating ?? 0;
+                    Console.WriteLine($"Рейтинг из профиля: {rating}");
+                    UserRatingText.Text = $"Рейтинг: {rating}";
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка загрузки рейтинга: {ex.Message}");
+                UserRatingText.Text = "Рейтинг: 0";
+            }
+        }
+
+        private void LoadUserAvatar(string photoPath)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(photoPath))
+                {
+                    Console.WriteLine($"Загрузка аватара: {photoPath}");
+
+                    if (System.IO.File.Exists(photoPath))
+                    {
+                        UserAvatarImage.Source = new BitmapImage(new Uri(photoPath));
+                        Console.WriteLine("✅ Аватар загружен с диска");
+                    }
+                    else if (photoPath.StartsWith("http"))
+                    {
+                        UserAvatarImage.Source = new BitmapImage(new Uri(photoPath));
+                        Console.WriteLine("✅ Аватар загружен по URL");
+                    }
+                    else
+                    {
+                        SetDefaultAvatar();
+                        Console.WriteLine("⚠️ Аватар не найден, используем стандартный");
+                    }
+                }
+                else
+                {
+                    SetDefaultAvatar();
+                    Console.WriteLine("⚠️ Путь к аватару не указан, используем стандартный");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка загрузки аватара: {ex.Message}");
                 SetDefaultAvatar();
             }
         }
@@ -73,12 +128,53 @@ namespace shahmati.Views
             catch
             {
                 // Если ресурс не найден
+                UserAvatarImage.Source = null;
+            }
+        }
+
+        private void SetDefaultData()
+        {
+            UserNameText.Text = "Гость";
+            UserRatingText.Text = "Рейтинг: 0";
+            SetDefaultAvatar();
+        }
+
+        // Обработчик клика на область профиля
+        private void UserProfileArea_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left && e.ClickCount == 1)
+            {
+                Console.WriteLine("=== Открытие профиля пользователя ===");
+                OpenUserProfile();
+            }
+        }
+
+        private void OpenUserProfile()
+        {
+            try
+            {
+                // Открываем окно профиля с возможностью редактирования
+                UserProfileWindow profileWindow = new UserProfileWindow(_userId);
+                profileWindow.ShowDialog();
+
+                // После закрытия окна профиля обновляем данные
+                if (profileWindow.DataUpdated)
+                {
+                    Console.WriteLine("✅ Данные профиля обновлены, перезагружаем");
+                    LoadUserData();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка открытия профиля: {ex.Message}",
+                    "Ошибка",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
 
         private void GameCard_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Открываем главное окно с игрой
             MainWindow gameWindow = new MainWindow(_userId);
             gameWindow.Show();
             this.Close();
@@ -86,7 +182,6 @@ namespace shahmati.Views
 
         private void TrainingCard_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Открываем окно выбора тренировок
             TrainingSelectionWindow trainingWindow = new TrainingSelectionWindow(_userId);
             trainingWindow.Show();
             this.Close();
@@ -101,7 +196,6 @@ namespace shahmati.Views
 
         private void HistoryCard_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Открываем окно истории игр
             HistoryWindow historyWindow = new HistoryWindow(_userId);
             historyWindow.Show();
             this.Close();
@@ -109,7 +203,6 @@ namespace shahmati.Views
 
         private void StatisticsCard_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Открываем окно статистики
             StatisticsWindow statisticsWindow = new StatisticsWindow(_userId);
             statisticsWindow.Show();
             this.Close();
@@ -117,7 +210,6 @@ namespace shahmati.Views
 
         private void LeaderboardCard_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Открываем окно таблицы лидеров
             LeaderboardWindow leaderboardWindow = new LeaderboardWindow(_userId);
             leaderboardWindow.Show();
             this.Close();
