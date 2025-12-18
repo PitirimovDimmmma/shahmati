@@ -7,7 +7,7 @@
         xmlns:converters="clr-namespace:shahmati.Converters"
         mc:Ignorable="d"
         Title="Шахматная статистика" 
-        Height="850" Width="1100"
+        Height="800" Width="1100"
         WindowStartupLocation="CenterScreen"
         Background="#f5f5f5"
         FontFamily="Segoe UI">
@@ -80,7 +80,38 @@
             </Setter>
         </Style>
 
-        <!-- Конвертер для цвета изменения рейтинга -->
+        <!-- Стиль для обычных кнопок -->
+        <Style x:Key="SimpleButton" TargetType="Button">
+            <Setter Property="Background" Value="#3498DB"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#2980B9"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#1C5A7D"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+
 
     </Window.Resources>
 
@@ -97,7 +128,7 @@
                 <!-- Кнопка назад -->
                 <Button Grid.Column="0" Content="← Назад" 
                        Click="BackButton_Click"
-                       Style="{StaticResource ModernButton}"
+                       Style="{StaticResource SimpleButton}"
                        Margin="20,0"
                        VerticalAlignment="Center"/>
 
@@ -175,7 +206,7 @@
                             <!-- Кнопка обновления -->
                             <Button Grid.Column="3" Content="Применить фильтры" 
                                    Click="ApplyFiltersButton_Click"
-                                   Style="{StaticResource ModernButton}"
+                                   Style="{StaticResource SimpleButton}"
                                    VerticalAlignment="Bottom"
                                    Height="35" Width="150"/>
                         </Grid>
@@ -383,7 +414,8 @@
                                                 <TextBlock Grid.Column="0" Text="{Binding Key}" 
                                                           FontWeight="SemiBold" VerticalAlignment="Center"/>
 
-                                                <ProgressBar Grid.Column="1" Value="{Binding Value}" Maximum="100" 
+                                                <!-- ИСПРАВЛЕНО: Добавлен Mode=OneWay -->
+                                                <ProgressBar Grid.Column="1" Value="{Binding Value, Mode=OneWay}" Maximum="100" 
                                                             Height="12" Margin="10,0" VerticalAlignment="Center"
                                                             Background="#ecf0f1">
                                                     <ProgressBar.Foreground>
@@ -451,13 +483,7 @@
                                         <Style TargetType="TextBlock">
                                             <Setter Property="HorizontalAlignment" Value="Center"/>
                                             <Setter Property="FontWeight" Value="Bold"/>
-                                            <Setter Property="Foreground">
-                                                <Setter.Value>
-                                                    <Binding Path="RatingChange">
-                                                      
-                                                    </Binding>
-                                                </Setter.Value>
-                                            </Setter>
+                                          
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>

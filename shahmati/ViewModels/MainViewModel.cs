@@ -8,6 +8,7 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Threading;
+using System.Windows;
 
 namespace shahmati.ViewModels
 {
@@ -19,7 +20,6 @@ namespace shahmati.ViewModels
     using ApiSavedGameDto = shahmati.Models.SavedGameDto;
     using ApiUserDto = shahmati.Models.UserDto;
     using ApiUserProfileDto = shahmati.Models.UserProfileDto;
-    // Определяем алиасы для разрешения конфликтов
     using ApiUserWithProfileDto = shahmati.Models.UserWithProfileDto;
 
     public class MainViewModel : INotifyPropertyChanged
@@ -38,14 +38,16 @@ namespace shahmati.ViewModels
         private readonly ApiService _apiService;
         private int _currentUserId;
         private List<ApiGameDto> _activeGames;
-
-        // ДОБАВИЛ ЭТО СВОЙСТВО
+        private string _currentPlayerColor = "Белые";
         private bool _enableMoveHighlighting = true;
+        private bool _isHumanVsHuman = true;
+        private bool _isGameActive = false;
 
-        // Основной конструктор (для игры с доской)
+        // Событие для уведомления MainWindow о смене хода
+        public event Action<string> PlayerTurnChanged;
+
         public MainViewModel(int? userId = null)
         {
-            // Инициализируем игровые компоненты ВСЕГДА
             _gameManager = new GameManager();
             _board = _gameManager.Board;
             _selectedPosition = Position.Invalid;
@@ -57,18 +59,19 @@ namespace shahmati.ViewModels
 
             _gameManager.PropertyChanged += GameManager_PropertyChanged;
 
-            // Если передан userId - сохраняем его
             if (userId.HasValue)
             {
                 _currentUserId = userId.Value;
             }
             else
             {
-                _currentUserId = 0; // Гость
+                _currentUserId = 0;
             }
+
+            // Инициализируем начальное состояние
+            _currentPlayerColor = "Белые";
         }
 
-        // Упрощенный конструктор (старый) - оставляем для совместимости
         public MainViewModel() : this(null)
         {
         }
@@ -93,7 +96,44 @@ namespace shahmati.ViewModels
             }
         }
 
-        public string CurrentPlayerText => _gameManager?.CurrentPlayer == PieceColor.White ? "⚪ БЕЛЫЕ" : "⚫ ЧЁРНЫЕ";
+        // ИСПРАВЛЕНО: Добавлено явное свойство для отслеживания текущего игрока
+        public string CurrentPlayerColor
+        {
+            get => _currentPlayerColor;
+            private set
+            {
+                if (_currentPlayerColor != value)
+                {
+                    _currentPlayerColor = value;
+                    OnPropertyChanged(nameof(CurrentPlayerColor));
+
+                    // Уведомляем MainWindow о смене хода
+                    PlayerTurnChanged?.Invoke(value);
+
+                    // Обновляем текст для отображения
+                    OnPropertyChanged(nameof(CurrentPlayerText));
+                }
+            }
+        }
+
+        public string CurrentPlayerText
+        {
+            get
+            {
+                if (_gameManager == null)
+                    return "⚪ БЕЛЫЕ";
+
+                // Определяем, чей сейчас ход по цвету фигур
+                if (_gameManager.CurrentPlayer == PieceColor.White)
+                {
+                    return "⚪ БЕЛЫЕ";
+                }
+                else
+                {
+                    return "⚫ ЧЁРНЫЕ";
+                }
+            }
+        }
 
         public bool IsAITurn
         {
@@ -102,6 +142,9 @@ namespace shahmati.ViewModels
             {
                 _isAITurn = value;
                 OnPropertyChanged(nameof(IsAITurn));
+
+                // Обновляем статус хода ИИ в MainWindow
+                UpdateAITurnInMainWindow(value);
             }
         }
 
@@ -110,8 +153,18 @@ namespace shahmati.ViewModels
             get => _gameMode;
             set
             {
-                _gameMode = value;
-                OnPropertyChanged(nameof(GameMode));
+                if (_gameMode != value)
+                {
+                    _gameMode = value;
+                    _isHumanVsHuman = (value == "Человек vs Человек");
+                    OnPropertyChanged(nameof(GameMode));
+
+                    // Если переключаемся в режим ИИ, проверяем чей сейчас ход
+                    if (!_isHumanVsHuman && _isGameActive)
+                    {
+                        CheckAITurn();
+                    }
+                }
             }
         }
 
@@ -135,7 +188,6 @@ namespace shahmati.ViewModels
             }
         }
 
-        // ДОБАВИЛ ЭТО СВОЙСТВО ДЛЯ ПОДСВЕТКИ ХОДОВ
         public bool EnableMoveHighlighting
         {
             get => _enableMoveHighlighting;
@@ -146,7 +198,6 @@ namespace shahmati.ViewModels
                     _enableMoveHighlighting = value;
                     OnPropertyChanged(nameof(EnableMoveHighlighting));
 
-                    // Обновляем подсветку на доске
                     if (_board != null && _selectedPosition.IsValid())
                     {
                         UpdateMoveHighlighting();
@@ -161,22 +212,73 @@ namespace shahmati.ViewModels
         public double AnimationProgress => _animationProgress;
         public bool IsAnimating => _animationTimer?.IsEnabled ?? false;
 
-        // Метод для запуска новой игры
+        // ДОБАВЛЕНО: Метод для обновления статуса ИИ в MainWindow
+        private void UpdateAITurnInMainWindow(bool isThinking)
+        {
+            if (Application.Current.Windows.OfType<MainWindow>().FirstOrDefault() is MainWindow window)
+            {
+                window.UpdateAIThinking(isThinking);
+            }
+        }
+
+        // ИСПРАВЛЕНО: Явно устанавливаем текущего игрока при старте новой игры
         public void StartNewGame()
         {
             _gameManager?.StartNewGame(GameMode, Difficulty);
             Board = _gameManager?.Board;
             SelectedPosition = Position.Invalid;
-            OnPropertyChanged(nameof(CurrentPlayerText));
+
+            // Сбрасываем состояние игры
+            _isGameActive = true;
+
+            // Явно устанавливаем первого игрока
+            if (_gameManager != null)
+            {
+                // Определяем первого игрока
+                if (_gameManager.CurrentPlayer == PieceColor.White)
+                {
+                    CurrentPlayerColor = "Белые";
+                }
+                else
+                {
+                    CurrentPlayerColor = "Черные";
+                }
+            }
+            else
+            {
+                CurrentPlayerColor = "Белые";
+            }
+
+            // Проверяем, нужно ли ИИ делать ход
             CheckAITurn();
+
+            // Уведомляем MainWindow о начале игры
+            NotifyMainWindowGameStarted();
         }
 
-        // Метод для обновления подсветки ходов
+        private void NotifyMainWindowGameStarted()
+        {
+            if (Application.Current.Windows.OfType<MainWindow>().FirstOrDefault() is MainWindow window)
+            {
+                // Устанавливаем текущего игрока в UI
+                window.UpdateCurrentPlayer(CurrentPlayerColor);
+
+                // Запускаем таймеры
+                if (CurrentPlayerColor == "Белые")
+                {
+                    window.SwitchTurn("Белые");
+                }
+                else
+                {
+                    window.SwitchTurn("Черные");
+                }
+            }
+        }
+
         private void UpdateMoveHighlighting()
         {
             if (!_enableMoveHighlighting)
             {
-                // Очищаем все подсвеченные ходы
                 foreach (var cell in Board.CellsFlat)
                 {
                     cell.IsPossibleMove = false;
@@ -184,7 +286,6 @@ namespace shahmati.ViewModels
             }
             else if (_selectedPosition.IsValid())
             {
-                // Подсвечиваем возможные ходы для выбранной фигуры
                 var piece = Board.GetPieceAt(_selectedPosition);
                 if (piece != null && piece.Color == _gameManager?.CurrentPlayer)
                 {
@@ -202,7 +303,6 @@ namespace shahmati.ViewModels
             OnPropertyChanged(nameof(Board));
         }
 
-        // API методы (оставляем для онлайн-функций)
         public async Task<bool> CheckApiConnection()
         {
             return await _apiService.TestConnectionAsync();
@@ -238,7 +338,6 @@ namespace shahmati.ViewModels
 
         public void SelectGame(int gameId)
         {
-            // Логика выбора игры
             Console.WriteLine($"Выбрана игра: {gameId}");
         }
 
@@ -249,12 +348,23 @@ namespace shahmati.ViewModels
             _animationTimer.Tick += AnimationTimer_Tick;
         }
 
+        // ИСПРАВЛЕНО: Явно обновляем текущего игрока при изменении в GameManager
         private void GameManager_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (_gameManager == null) return;
 
             if (e.PropertyName == nameof(GameManager.CurrentPlayer))
             {
+                // Обновляем CurrentPlayerColor на основе GameManager
+                if (_gameManager.CurrentPlayer == PieceColor.White)
+                {
+                    CurrentPlayerColor = "Белые";
+                }
+                else
+                {
+                    CurrentPlayerColor = "Черные";
+                }
+
                 OnPropertyChanged(nameof(CurrentPlayerText));
                 CheckAITurn();
             }
@@ -264,23 +374,65 @@ namespace shahmati.ViewModels
             }
         }
 
+        // ИСПРАВЛЕНО: Четкая логика определения хода ИИ
         private void CheckAITurn()
         {
-            if (_gameManager == null) return;
+            if (_gameManager == null || !_isGameActive) return;
 
-            IsAITurn = (_gameMode == "Человек vs Компьютер" && _gameManager.CurrentPlayer == PieceColor.Black) ||
-                       (_gameMode == "Компьютер vs Компьютер");
+            bool shouldBeAITurn = false;
 
-            if (IsAITurn && _gameManager.IsGameInProgress)
+            if (_gameMode == "Человек vs Компьютер")
             {
+                // В этом режиме ИИ играет за черных
+                shouldBeAITurn = (_gameManager.CurrentPlayer == PieceColor.Black);
+            }
+            else if (_gameMode == "Компьютер vs Компьютер")
+            {
+                // В этом режиме ИИ играет за обоих
+                shouldBeAITurn = true;
+            }
+
+            if (shouldBeAITurn && _gameManager.IsGameInProgress && !IsAITurn)
+            {
+                IsAITurn = true;
                 _ = MakeAIMoveAsync();
+            }
+            else if (!shouldBeAITurn)
+            {
+                IsAITurn = false;
             }
         }
 
         private async Task MakeAIMoveAsync()
         {
-            await Task.Delay(500);
-            await _gameManager?.MakeAIMoveAsync();
+            try
+            {
+                // Уведомляем UI, что ИИ думает
+                UpdateAITurnInMainWindow(true);
+
+                // Имитация размышлений ИИ
+                int delay = _difficulty switch
+                {
+                    "Новичок" => 1500,
+                    "Лёгкий" => 1000,
+                    "Средний" => 700,
+                    "Сложный" => 400,
+                    "Эксперт" => 200,
+                    _ => 500
+                };
+
+                await Task.Delay(delay);
+
+                // Делаем ход ИИ
+                await _gameManager?.MakeAIMoveAsync();
+
+                // После хода ИИ снова проверяем, чей ход
+                CheckAITurn();
+            }
+            finally
+            {
+                UpdateAITurnInMainWindow(false);
+            }
         }
 
         private void AnimationTimer_Tick(object sender, EventArgs e)
@@ -295,19 +447,27 @@ namespace shahmati.ViewModels
             OnPropertyChanged(nameof(AnimationProgress));
         }
 
+        // ИСПРАВЛЕНО: Проверка возможности хода и обновление статуса
         public async void HandleCellClick(Position position)
         {
-            if (IsAnimating || !position.IsValid() || IsAITurn || _gameManager == null) return;
+            if (IsAnimating || !position.IsValid() || !_isGameActive) return;
+
+            // Если сейчас ход ИИ - игнорируем клики
+            if (IsAITurn) return;
 
             var clickedPiece = Board.GetPieceAt(position);
 
-            if (clickedPiece != null && clickedPiece.Color == _gameManager.CurrentPlayer)
+            // Если кликаем на свою фигуру - выбираем ее
+            if (clickedPiece != null &&
+                clickedPiece.Color == _gameManager?.CurrentPlayer)
             {
                 SelectPiece(position);
                 return;
             }
 
-            if (SelectedPosition.IsValid() && clickedPiece?.Color != _gameManager.CurrentPlayer)
+            // Если фигура выбрана и кликаем на клетку для хода
+            if (SelectedPosition.IsValid() &&
+                clickedPiece?.Color != _gameManager?.CurrentPlayer)
             {
                 await TryMakeMove(SelectedPosition, position);
             }
@@ -322,7 +482,6 @@ namespace shahmati.ViewModels
 
             if (piece != null)
             {
-                // Проверяем включена ли подсветка
                 if (EnableMoveHighlighting)
                 {
                     var possibleMoves = piece.GetPossibleMoves(position, Board);
@@ -356,16 +515,28 @@ namespace shahmati.ViewModels
             SelectedPosition = Position.Invalid;
         }
 
-        private async Task TryMakeMove(Position from, Position to)
+        // ИСПРАВЛЕНО: После успешного хода обновляем UI в MainWindow
+        private async Task<bool> TryMakeMove(Position from, Position to)
         {
             bool moveMade = await _gameManager.MakeMove(from, to);
+
             if (moveMade)
             {
                 StartAnimation(from, to);
+
+                // Уведомляем MainWindow о смене хода
+                if (Application.Current.Windows.OfType<MainWindow>().FirstOrDefault() is MainWindow window)
+                {
+                    window.UpdateCurrentPlayer(CurrentPlayerColor);
+                    window.SwitchTurn(CurrentPlayerColor);
+                }
+
+                return true;
             }
             else
             {
                 ResetSelection();
+                return false;
             }
         }
 

@@ -48,6 +48,20 @@ namespace shahmati.Views
                 RatingText.Text = (_user.Profile?.Rating ?? 0).ToString();
                 RegistrationDateText.Text = _user.CreatedAt.ToString("dd.MM.yyyy");
 
+                // Отображаем роль пользователя
+                string roleText = GetRoleDisplayText(_user.Role);
+                RoleText.Text = roleText;
+
+                // Показываем/скрываем админ-секцию
+                if (_user.Role == "Admin")
+                {
+                    AdminSection.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    AdminSection.Visibility = Visibility.Collapsed;
+                }
+
                 // Загружаем аватар
                 LoadAvatar();
 
@@ -58,6 +72,16 @@ namespace shahmati.Views
                 MessageBox.Show($"Ошибка загрузки профиля: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 Console.WriteLine($"❌ Ошибка: {ex.Message}");
             }
+        }
+
+        private string GetRoleDisplayText(string role)
+        {
+            return role switch
+            {
+                "Admin" => "👑 Администратор",
+                "Moderator" => "🛡️ Модератор",
+                _ => "👤 Пользователь"
+            };
         }
 
         private void LoadAvatar()
@@ -206,6 +230,21 @@ namespace shahmati.Views
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
+        }
+
+        // ===== АДМИНИСТРАТИВНЫЕ ФУНКЦИИ =====
+
+        private void AdminPanelButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_user?.Role != "Admin")
+            {
+                MessageBox.Show("У вас нет прав администратора", "Доступ запрещен", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            AdminWindow adminWindow = new AdminWindow(_userId);
+            adminWindow.Show();
+            this.Close();
         }
     }
 }

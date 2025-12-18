@@ -28,30 +28,37 @@ namespace shahmati.Views
                 var leaderboard = await _apiService.GetLeaderboardAsync();
                 if (leaderboard != null && leaderboard.Count > 0)
                 {
+                    // Назначаем ранги
+                    for (int i = 0; i < leaderboard.Count; i++)
+                    {
+                        leaderboard[i].Rank = i + 1;
+                    }
+
                     LeaderboardGrid.ItemsSource = leaderboard;
 
                     // Находим позицию текущего пользователя
                     var userRank = leaderboard.FirstOrDefault(p => p.UserId == _userId);
                     if (userRank != null)
                     {
-                        UserRankText.Text = $"Ваш ранг: {userRank.Rank}";
+                        UserRankText.Text = $"🏆 Ваш ранг: {userRank.Rank}";
                     }
                     else
                     {
-                        UserRankText.Text = "Вы не в таблице лидеров";
+                        UserRankText.Text = "🤔 Вы не в таблице лидеров";
                     }
 
-                    LastUpdateText.Text = $"Обновлено: {DateTime.Now:HH:mm:ss}";
+                    LastUpdateText.Text = $"🕒 Обновлено: {DateTime.Now:HH:mm:ss}";
                 }
                 else
                 {
-                    UserRankText.Text = "Нет данных";
+                    UserRankText.Text = "📭 Нет данных";
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка загрузки таблицы лидеров: {ex.Message}",
                     "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                UserRankText.Text = "⚠️ Ошибка загрузки";
             }
         }
 

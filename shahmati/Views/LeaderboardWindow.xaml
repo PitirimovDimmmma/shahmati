@@ -12,6 +12,37 @@
             <Setter Property="Margin" Value="5"/>
             <Setter Property="Padding" Value="10"/>
         </Style>
+
+        <!-- Стиль для обычных кнопок -->
+        <Style x:Key="SimpleButton" TargetType="Button">
+            <Setter Property="Background" Value="#3498DB"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#2980B9"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#1C5A7D"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -30,22 +61,26 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
+                <!-- Кнопка назад -->
                 <Button Grid.Column="0" Content="← Назад" 
                        Click="BackButton_Click"
-                       Background="Transparent" 
-                       Foreground="White"
-                       BorderThickness="0"/>
+                       Style="{StaticResource SimpleButton}"/>
 
+                <!-- Заголовок -->
                 <TextBlock Grid.Column="1" Text="🏆 Таблица лидеров" 
                           Foreground="White" FontSize="24" FontWeight="Bold"
                           HorizontalAlignment="Center"/>
 
-                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                <!-- Правая часть -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock x:Name="UserRankText" Text="" 
                               Foreground="#BDC3C7" FontSize="14"
-                              Margin="0,0,10,0"/>
-                    <Button Content="Обновить" Click="RefreshButton_Click"
-                           Style="{StaticResource ModernButton}"/>
+                              Margin="0,0,10,0"
+                              VerticalAlignment="Center"/>
+                    <Button Content="🔄 Обновить" 
+                           Click="RefreshButton_Click"
+                           Style="{StaticResource SimpleButton}"
+                           Padding="15,8"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -57,33 +92,140 @@
                  HeadersVisibility="Column"
                  Margin="20"
                  Background="White"
-                 BorderThickness="0">
+                 BorderBrush="#BDC3C7"
+                 BorderThickness="1"
+                 RowBackground="#F8F9FA"
+                 AlternatingRowBackground="#ECF0F1"
+                 GridLinesVisibility="None"
+                 CanUserResizeRows="False"
+                 CanUserSortColumns="True"
+                 SelectionMode="Single">
+
+            <!-- Стиль для заголовков столбцов -->
+            <DataGrid.ColumnHeaderStyle>
+                <Style TargetType="DataGridColumnHeader">
+                    <Setter Property="Background" Value="#34495E"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="FontWeight" Value="Bold"/>
+                    <Setter Property="FontSize" Value="12"/>
+                    <Setter Property="Padding" Value="10,8"/>
+                    <Setter Property="BorderThickness" Value="0,0,0,2"/>
+                    <Setter Property="BorderBrush" Value="#2C3E50"/>
+                </Style>
+            </DataGrid.ColumnHeaderStyle>
+
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Ранг" Width="60" Binding="{Binding Rank}"/>
-                <DataGridTextColumn Header="Игрок" Width="150" Binding="{Binding Username}"/>
-                <DataGridTextColumn Header="Рейтинг" Width="80" Binding="{Binding Rating}">
+                <!-- Ранг -->
+                <DataGridTextColumn Header="Ранг" Width="60" Binding="{Binding Rank}">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="FontSize" Value="14"/>
+                            <Setter Property="Foreground" Value="#2C3E50"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- Игрок -->
+                <DataGridTextColumn Header="Игрок" Width="180" Binding="{Binding Username}">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                            <Setter Property="Padding" Value="5,0"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- Рейтинг -->
+                <DataGridTextColumn Header="Рейтинг" Width="90" Binding="{Binding Rating}">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="FontWeight" Value="Bold"/>
                             <Setter Property="Foreground" Value="#3498db"/>
                             <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="FontSize" Value="13"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
-                <DataGridTextColumn Header="Игр" Width="60" Binding="{Binding GamesPlayed}"/>
-                <DataGridTextColumn Header="Победы" Width="70" Binding="{Binding Wins}"/>
-                <DataGridTextColumn Header="Поражения" Width="80" Binding="{Binding Losses}"/>
-                <DataGridTextColumn Header="Ничьи" Width="60" Binding="{Binding Draws}"/>
+
+                <!-- Игр -->
+                <DataGridTextColumn Header="Игр" Width="60" Binding="{Binding GamesPlayed}">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="Foreground" Value="#7F8C8D"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- Победы -->
+                <DataGridTextColumn Header="Победы" Width="70" Binding="{Binding Wins}">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="Foreground" Value="#27AE60"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- Поражения -->
+                <DataGridTextColumn Header="Поражения" Width="80" Binding="{Binding Losses}">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="Foreground" Value="#E74C3C"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- Ничьи -->
+                <DataGridTextColumn Header="Ничьи" Width="60" Binding="{Binding Draws}">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="Foreground" Value="#F39C12"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- % побед -->
                 <DataGridTextColumn Header="% побед" Width="80" 
-                                   Binding="{Binding WinRate, StringFormat={}{0:F1}%}"/>
-                <DataGridTextColumn Header="Титул" Width="120" Binding="{Binding RankTitle}"/>
+                                   Binding="{Binding WinRate, StringFormat={}{0:F1}%}">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="Foreground" Value="#9B59B6"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- Титул -->
+                <DataGridTextColumn Header="Титул" Width="140" Binding="{Binding RankTitle}">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                            <Setter Property="Foreground">
+                                <Setter.Value>
+                                    <Binding Path="RankTitle">
+                                     
+                                    </Binding>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
             </DataGrid.Columns>
         </DataGrid>
 
         <!-- Футер -->
         <Border Grid.Row="2" Background="#34495E" Padding="10">
-            <TextBlock Text="Обновлено: " x:Name="LastUpdateText"
-                      Foreground="#BDC3C7" HorizontalAlignment="Center"/>
+            <TextBlock x:Name="LastUpdateText" Text="Обновлено: " 
+                      Foreground="#BDC3C7" 
+                      HorizontalAlignment="Center"/>
         </Border>
     </Grid>
 </Window>

@@ -37,6 +37,7 @@ namespace shahmati
             _apiService = new ApiService();
             _viewModel = new MainViewModel(userId);
             DataContext = _viewModel;
+            _viewModel.PlayerTurnChanged += OnPlayerTurnChanged;
 
             // Инициализируем таймеры
             InitializeChessTimers();
@@ -415,22 +416,63 @@ namespace shahmati
             UpdateTimerDisplays();
         }
 
+        private void OnPlayerTurnChanged(string playerColor)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                // Обновляем UI
+                UpdateCurrentPlayer(playerColor);
+                SwitchTurn(playerColor);
+            });
+        }
+
+
+        // Улучшите метод SwitchTurn:
         public void SwitchTurn(string newPlayer)
         {
-            if (newPlayer.Contains("Белые") || newPlayer.Contains("White"))
+            // Останавливаем все таймеры
+            _whiteTimer.Stop();
+            _blackTimer.Stop();
+
+            if (newPlayer.Contains("Белые") || newPlayer == "Белые")
             {
-                _blackTimer.Stop();
+                // Запускаем таймер белых
                 _whiteTimer.Start();
+
+                if (CurrentPlayerText != null)
+                {
+                    CurrentPlayerText.Text = "БЕЛЫЕ";
+                    CurrentPlayerText.Foreground = System.Windows.Media.Brushes.White;
+                }
             }
             else
             {
-                _whiteTimer.Stop();
+                // Запускаем таймер черных
                 _blackTimer.Start();
+
+                if (CurrentPlayerText != null)
+                {
+                    CurrentPlayerText.Text = "ЧЁРНЫЕ";
+                    CurrentPlayerText.Foreground = System.Windows.Media.Brushes.Black;
+                }
             }
 
-            UpdateCurrentPlayer(newPlayer);
-        }
+            // Обновляем статус
+            if (StatusText != null)
+            {
+                if (newPlayer.Contains("Белые"))
+                {
+                    StatusText.Text = "Ход белых фигур";
+                    StatusIcon.Text = "⚪";
+                }
+                else
+                {
+                    StatusText.Text = "Ход черных фигур";
+                    StatusIcon.Text = "⚫";
+                }
+            }
 
+        }
         private void GameOverByTimeout(string winner, string reason)
         {
             _gameTimer.Stop();

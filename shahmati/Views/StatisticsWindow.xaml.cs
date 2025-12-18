@@ -58,12 +58,29 @@ namespace shahmati.Views
         {
             try
             {
+                // Пробуем загрузить расширенную статистику
                 _currentStats = await _apiService.GetDetailedUserStatsAsync(_userId);
+
                 if (_currentStats == null)
                 {
-                    MessageBox.Show("Не удалось загрузить статистику", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
+                    // Если расширенной статистики нет, пробуем загрузить базовую
+                    var basicStats = await _apiService.GetUserStatsAsync(_userId);
+                    if (basicStats != null)
+                    {
+                        _currentStats = new ExtendedGameStatsDto
+                        {
+                            Overall = basicStats,
+                            VsAI = new GameStatsDto { TotalGames = 0, Wins = 0, Losses = 0, Draws = 0 },
+                            VsHuman = new GameStatsDto { TotalGames = 0, Wins = 0, Losses = 0, Draws = 0 },
+                            Performance = new PerformanceMetricsDto()
+                        };
+                    }
+                    else
+                    {
+                        MessageBox.Show("Не удалось загрузить статистику. Возможно, у вас еще нет сыгранных игр.",
+                            "Информация", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    }
                 }
 
                 // Общая статистика
@@ -103,7 +120,13 @@ namespace shahmati.Views
             WinsText.Text = stats.Wins.ToString();
             LossesText.Text = stats.Losses.ToString();
             DrawsText.Text = stats.Draws.ToString();
-            WinRateText.Text = $"{stats.WinPercentage:F1}%";
+
+            // Рассчитываем процент побед
+            double winPercentage = stats.TotalGames > 0
+                ? (stats.Wins * 100.0 / stats.TotalGames)
+                : 0;
+            WinRateText.Text = $"{winPercentage:F1}%";
+
             CurrentRatingText.Text = stats.CurrentRating.ToString();
             BestRatingText.Text = stats.HighestRating.ToString();
         }
@@ -112,18 +135,22 @@ namespace shahmati.Views
         {
             VsAIGamesText.Text = stats.TotalGames.ToString();
             VsAIWinsText.Text = stats.Wins.ToString();
-            VsAIWinRateText.Text = stats.TotalGames > 0
-                ? $"{stats.WinPercentage:F1}%"
-                : "0%";
+
+            double winPercentage = stats.TotalGames > 0
+                ? (stats.Wins * 100.0 / stats.TotalGames)
+                : 0;
+            VsAIWinRateText.Text = $"{winPercentage:F1}%";
         }
 
         private void UpdateVsHumanStats(GameStatsDto stats)
         {
             VsHumanGamesText.Text = stats.TotalGames.ToString();
             VsHumanWinsText.Text = stats.Wins.ToString();
-            VsHumanWinRateText.Text = stats.TotalGames > 0
-                ? $"{stats.WinPercentage:F1}%"
-                : "0%";
+
+            double winPercentage = stats.TotalGames > 0
+                ? (stats.Wins * 100.0 / stats.TotalGames)
+                : 0;
+            VsHumanWinRateText.Text = $"{winPercentage:F1}%";
         }
 
         private void UpdatePerformanceMetrics(PerformanceMetricsDto metrics)
@@ -132,7 +159,7 @@ namespace shahmati.Views
             BestStreakText.Text = metrics.BestStreak.ToString();
 
             // Игры по сложности
-            if (metrics.GamesByDifficulty != null)
+            if (metrics.GamesByDifficulty != null && metrics.GamesByDifficulty.Count > 0)
             {
                 var difficultyStats = new List<KeyValuePair<string, int>>();
                 foreach (var kvp in metrics.GamesByDifficulty)
@@ -140,6 +167,13 @@ namespace shahmati.Views
                     difficultyStats.Add(new KeyValuePair<string, int>(kvp.Key, kvp.Value));
                 }
                 DifficultyStatsList.ItemsSource = difficultyStats;
+            }
+            else
+            {
+                DifficultyStatsList.ItemsSource = new List<KeyValuePair<string, int>>
+                {
+                    new KeyValuePair<string, int>("Нет данных", 0)
+                };
             }
         }
 
@@ -186,7 +220,7 @@ namespace shahmati.Views
                 {
                     GameMode = GetSelectedGameMode(),
                     Difficulty = GetSelectedDifficulty(),
-                    Color = "All" // Можно добавить позже
+                    Color = "All"
                 };
 
                 var filteredStats = await _apiService.GetFilteredUserStatsAsync(_userId, filter);

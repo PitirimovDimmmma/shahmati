@@ -215,7 +215,7 @@ namespace shahmati.Views
             this.Close();
         }
 
-        private async void AdminPanel_MouseDown(object sender, MouseButtonEventArgs e)
+        /*private async void AdminPanel_MouseDown(object sender, MouseButtonEventArgs e)
         {
             try
             {
@@ -240,7 +240,7 @@ namespace shahmati.Views
             {
                 MessageBox.Show($"Ошибка: {ex.Message}");
             }
-        }
+        }*/
 
         private void LogoutButton_Click(object sender, RoutedEventArgs e)
         {
