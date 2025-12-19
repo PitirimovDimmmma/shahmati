@@ -63,14 +63,148 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Стиль для кнопок после игры -->
+        <Style x:Key="GameOverButtonStyle" TargetType="Button" BasedOn="{StaticResource ControlButtonStyle}">
+            <Setter Property="Background" Value="#8E44AD"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="15,10"/>
+            <Setter Property="Margin" Value="5"/>
+        </Style>
+
+        <!-- Стиль для ToggleButton -->
+        <Style x:Key="ToggleButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="#3498DB"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="5"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#2980B9"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#1C5A7D"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Background" Value="#27AE60"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
-    <Grid>
+    <Grid x:Name="MainGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
+            <!-- Дополнительная строка для кнопок после игры (появляется динамически) -->
+            <RowDefinition x:Name="GameResultRow" Height="Auto"/>
         </Grid.RowDefinitions>
+
+        <!-- Уведомление о начале игры -->
+        <Border x:Name="GameStartNotification" 
+                Background="#3498db"
+                CornerRadius="10"
+                Padding="20"
+                Width="400"
+                Height="220"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Visibility="Collapsed"
+                Opacity="0"
+                Panel.ZIndex="999">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="20" Opacity="0.3" ShadowDepth="3"/>
+            </Border.Effect>
+
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <!-- Иконка шахмат -->
+                <TextBlock Text="♔" 
+                           FontSize="48"
+                           Foreground="White"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,10"/>
+
+                <!-- Заголовок -->
+                <TextBlock Text="НАЧАЛО ПАРТИИ" 
+                           FontSize="22"
+                           FontWeight="Bold"
+                           Foreground="White"
+                           HorizontalAlignment="Center"/>
+
+                <!-- Информация о цветах -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10">
+                    <Border Background="White" CornerRadius="5" Padding="10,5" Margin="0,0,5,0">
+                        <TextBlock Text="Вы: БЕЛЫЕ" 
+                                   FontWeight="Bold"
+                                   Foreground="#2c3e50"/>
+                    </Border>
+                    <TextBlock Text="vs" 
+                               VerticalAlignment="Center"
+                               Margin="5,0"
+                               Foreground="White"
+                               FontWeight="Bold"/>
+                    <Border Background="#2c3e50" CornerRadius="5" Padding="10,5" Margin="5,0,0,0">
+                        <TextBlock x:Name="OpponentColorText" 
+                                   Text="ЧЕРНЫЕ"
+                                   FontWeight="Bold"
+                                   Foreground="White"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Информация о противнике -->
+                <TextBlock x:Name="GameInfoText"
+                           Text=""
+                           FontSize="14"
+                           Foreground="White"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           Margin="0,10,0,0"/>
+
+                <!-- Бонус рейтинга -->
+                <Border Background="#2ecc71" 
+                        CornerRadius="5" 
+                        Padding="10,5" 
+                        Margin="0,10,0,0">
+                    <TextBlock Text="+15 рейтинга за победу"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               HorizontalAlignment="Center"/>
+                </Border>
+
+                <!-- Кнопка закрыть -->
+                <Button Content="НАЧАТЬ ИГРУ"
+                        Background="White"
+                        Foreground="#3498db"
+                        FontWeight="Bold"
+                        Padding="15,8"
+                        Margin="0,15,0,0"
+                        Click="CloseNotification_Click"
+                        Cursor="Hand"
+                        BorderThickness="0"
+                        BorderBrush="#2980b9">
+                    <Button.Effect>
+                        <DropShadowEffect BlurRadius="5" Opacity="0.2" ShadowDepth="2"/>
+                    </Button.Effect>
+                </Button>
+            </StackPanel>
+        </Border>
 
         <!-- Шапка с информацией пользователя -->
         <Border Grid.Row="0" Background="#34495E" Padding="20">
@@ -159,33 +293,31 @@
                 </StackPanel>
 
                 <!-- Кнопки управления -->
-                <StackPanel Grid.Column="2" 
+                <StackPanel x:Name="ControlButtonsPanel" Grid.Column="2" 
                            Orientation="Horizontal" 
                            VerticalAlignment="Center">
 
                     <!-- Кнопка подсветки -->
                     <ToggleButton x:Name="HighlightMovesToggle"
                                  Content="🔦 Подсветка"
-                                 Background="#3498DB"
-                                 Foreground="White"
-                                 BorderThickness="0"
-                                 Padding="12,8"
-                                 Margin="0,0,10,0"
-                                 FontSize="12"
-                                 FontWeight="Bold"
+                                 Style="{StaticResource ToggleButtonStyle}"
                                  IsChecked="True"
                                  Checked="HighlightMovesToggle_Checked"
                                  Unchecked="HighlightMovesToggle_Unchecked"/>
 
+                    <!-- Кнопка сдачи -->
+                    <Button x:Name="ResignButton" 
+                           Content="🏳️ СДА́ТЬСЯ" 
+                           Style="{StaticResource ControlButtonStyle}"
+                           Background="#E67E22"
+                           Margin="10,0,10,0"
+                           Click="ResignButton_Click"/>
+
                     <!-- Кнопка завершения -->
                     <Button x:Name="FinishButton" 
                            Content="🏁 Завершить" 
+                           Style="{StaticResource ControlButtonStyle}"
                            Background="#E74C3C"
-                           Foreground="White"
-                           BorderThickness="0"
-                           Padding="12,8"
-                           FontSize="12"
-                           FontWeight="Bold"
                            Click="FinishButton_Click"/>
                 </StackPanel>
             </Grid>
@@ -502,6 +634,53 @@
                           Text="Игра начата. Делайте ходы на доске." 
                           Foreground="#BDC3C7" 
                           FontSize="12"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Панель после завершения игры (изначально скрыта) -->
+        <Border x:Name="GameOverPanel"
+               Grid.Row="3"
+               Background="#2C3E50"
+               Padding="20"
+               Visibility="Collapsed">
+            <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                <TextBlock x:Name="GameResultText"
+                          Text="ИГРА ОКОНЧЕНА"
+                          Foreground="White"
+                          FontSize="18"
+                          FontWeight="Bold"
+                          HorizontalAlignment="Center"
+                          Margin="0,0,0,15"/>
+
+                <TextBlock x:Name="GameResultDescription"
+                          Text=""
+                          Foreground="#BDC3C7"
+                          FontSize="14"
+                          HorizontalAlignment="Center"
+                          Margin="0,0,0,25"
+                          TextWrapping="Wrap"
+                          TextAlignment="Center"/>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Button x:Name="ViewStatsButton"
+                           Content="📊 Статистика"
+                           Style="{StaticResource GameOverButtonStyle}"
+                           Background="#27AE60"
+                           Click="ViewStatsButton_Click"/>
+
+                    <Button x:Name="ViewHistoryButton"
+                           Content="📖 История игр"
+                           Style="{StaticResource GameOverButtonStyle}"
+                           Background="#3498DB"
+                           Click="ViewHistoryButton_Click"
+                           Margin="10,0"/>
+
+                    <Button x:Name="NewGameAfterButton"
+                           Content="🔄 Новая игра"
+                           Style="{StaticResource GameOverButtonStyle}"
+                           Background="#E74C3C"
+                           Click="NewGameAfterButton_Click"/>
+                </StackPanel>
             </StackPanel>
         </Border>
     </Grid>

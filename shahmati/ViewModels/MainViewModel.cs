@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Threading;
 using System.Windows;
+using System.Linq;
 
 namespace shahmati.ViewModels
 {
@@ -38,10 +39,11 @@ namespace shahmati.ViewModels
         private readonly ApiService _apiService;
         private int _currentUserId;
         private List<ApiGameDto> _activeGames;
-        private string _currentPlayerColor = "Белые";
+        private string _currentPlayerDisplayColor = "Белые";
         private bool _enableMoveHighlighting = true;
         private bool _isHumanVsHuman = true;
         private bool _isGameActive = false;
+        private bool _userIsWhite = true;
 
         // Событие для уведомления MainWindow о смене хода
         public event Action<string> PlayerTurnChanged;
@@ -69,12 +71,15 @@ namespace shahmati.ViewModels
             }
 
             // Инициализируем начальное состояние
-            _currentPlayerColor = "Белые";
+            _currentPlayerDisplayColor = "Белые";
         }
 
         public MainViewModel() : this(null)
         {
         }
+
+        // ДОБАВЛЕНО: Публичное свойство для доступа к GameManager
+        public GameManager GameManager => _gameManager;
 
         public Board Board
         {
@@ -83,6 +88,36 @@ namespace shahmati.ViewModels
             {
                 _board = value;
                 OnPropertyChanged(nameof(Board));
+            }
+        }
+
+        public void SetUserIsWhite(bool isWhite)
+        {
+            _userIsWhite = isWhite;
+            OnPropertyChanged(nameof(CurrentPlayerDisplay));
+        }
+
+        // ИСПРАВЛЕНО: Переименовано для устранения конфликта имен
+        public string CurrentPlayerDisplay
+        {
+            get
+            {
+                if (GameManager?.CurrentPlayer == null)
+                    return "Белые";
+
+                // Пользователь всегда белые
+                if (_userIsWhite)
+                {
+                    return GameManager.CurrentPlayer == PieceColor.White
+                        ? "Ваш ход (Белые)"
+                        : "Противник (Черные)";
+                }
+                else
+                {
+                    return GameManager.CurrentPlayer == PieceColor.White
+                        ? "Противник (Белые)"
+                        : "Ваш ход (Черные)";
+                }
             }
         }
 
@@ -96,15 +131,15 @@ namespace shahmati.ViewModels
             }
         }
 
-        // ИСПРАВЛЕНО: Добавлено явное свойство для отслеживания текущего игрока
+        // ИСПРАВЛЕНО: Переименовано для устранения конфликта имен
         public string CurrentPlayerColor
         {
-            get => _currentPlayerColor;
+            get => _currentPlayerDisplayColor;
             private set
             {
-                if (_currentPlayerColor != value)
+                if (_currentPlayerDisplayColor != value)
                 {
-                    _currentPlayerColor = value;
+                    _currentPlayerDisplayColor = value;
                     OnPropertyChanged(nameof(CurrentPlayerColor));
 
                     // Уведомляем MainWindow о смене хода

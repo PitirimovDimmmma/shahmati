@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:shahmati.Views"
         xmlns:converters="clr-namespace:shahmati.Converters"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         mc:Ignorable="d"
         Title="Шахматная статистика" 
         Height="800" Width="1100"
@@ -13,7 +14,6 @@
         FontFamily="Segoe UI">
 
     <Window.Resources>
-        <!-- Стили для карточек -->
         <Style x:Key="StatCard" TargetType="Border">
             <Setter Property="Background" Value="White"/>
             <Setter Property="CornerRadius" Value="12"/>
@@ -110,9 +110,6 @@
                 </Setter.Value>
             </Setter>
         </Style>
-
-
-
     </Window.Resources>
 
     <Grid>
@@ -162,7 +159,8 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Панель фильтров -->
+                <!-- ЗАКОММЕНТИРОВАНО: Панель фильтров -->
+                <!--
                 <Border Grid.Row="0" Style="{StaticResource StatCard}" Margin="0,0,0,20">
                     <StackPanel>
                         <TextBlock Text="🔍 Фильтры статистики" Style="{StaticResource StatTitle}"/>
@@ -175,20 +173,18 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
-                            <!-- Тип игры -->
+                            <!- - Тип игры - ->
                             <StackPanel Grid.Column="0">
                                 <TextBlock Text="Тип игры:" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                 <StackPanel Orientation="Horizontal">
                                     <RadioButton x:Name="AllGamesRadio" Content="Все" Style="{StaticResource FilterButton}"
                                                GroupName="GameMode" IsChecked="True"/>
-                                    <RadioButton x:Name="VsAIRadio" Content="Против ИИ" Style="{StaticResource FilterButton}"
-                                               GroupName="GameMode"/>
                                     <RadioButton x:Name="VsHumanRadio" Content="Против людей" Style="{StaticResource FilterButton}"
                                                GroupName="GameMode"/>
                                 </StackPanel>
                             </StackPanel>
 
-                            <!-- Сложность -->
+                            <!- - Сложность - ->
                             <StackPanel Grid.Column="1" Margin="15,0,0,0">
                                 <TextBlock Text="Сложность:" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                 <StackPanel Orientation="Horizontal">
@@ -203,7 +199,7 @@
                                 </StackPanel>
                             </StackPanel>
 
-                            <!-- Кнопка обновления -->
+                            <!- - Кнопка обновления - ->
                             <Button Grid.Column="3" Content="Применить фильтры" 
                                    Click="ApplyFiltersButton_Click"
                                    Style="{StaticResource SimpleButton}"
@@ -212,6 +208,7 @@
                         </Grid>
                     </StackPanel>
                 </Border>
+                -->
 
                 <!-- Основная статистика -->
                 <Grid Grid.Row="1" Margin="0,0,0,20">
@@ -274,8 +271,8 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Против ИИ -->
-                    <Border Grid.Column="1" Style="{StaticResource StatCard}" Margin="10,0">
+                    <!-- ЗАКОММЕНТИРОВАНО: Блок "Против ИИ" -->
+                    <!-- <Border Grid.Column="1" Style="{StaticResource StatCard}" Margin="10,0">
                         <StackPanel>
                             <TextBlock Text="🤖 Против ИИ" Style="{StaticResource StatTitle}"/>
 
@@ -286,20 +283,17 @@
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <!-- Всего игр против ИИ -->
                                 <StackPanel Grid.Row="0" Margin="0,0,0,15">
                                     <TextBlock x:Name="VsAIGamesText" Text="0" Style="{StaticResource StatValue}"/>
                                     <TextBlock Text="Всего игр" Style="{StaticResource StatLabel}"/>
                                 </StackPanel>
 
-                                <!-- Побед против ИИ -->
                                 <StackPanel Grid.Row="1" Margin="0,0,0,15">
                                     <TextBlock x:Name="VsAIWinsText" Text="0" FontSize="22" FontWeight="Bold"
                                               Foreground="#2ecc71" HorizontalAlignment="Center"/>
                                     <TextBlock Text="Побед" Style="{StaticResource StatLabel}"/>
                                 </StackPanel>
 
-                                <!-- Процент побед против ИИ -->
                                 <StackPanel Grid.Row="2">
                                     <TextBlock x:Name="VsAIWinRateText" Text="0%" FontSize="22" FontWeight="Bold"
                                               Foreground="#9b59b6" HorizontalAlignment="Center"/>
@@ -307,7 +301,7 @@
                                 </StackPanel>
                             </Grid>
                         </StackPanel>
-                    </Border>
+                    </Border> -->
 
                     <!-- Против людей -->
                     <Border Grid.Column="2" Style="{StaticResource StatCard}">
@@ -483,7 +477,8 @@
                                         <Style TargetType="TextBlock">
                                             <Setter Property="HorizontalAlignment" Value="Center"/>
                                             <Setter Property="FontWeight" Value="Bold"/>
-                                          
+                                            <Setter Property="Foreground" 
+                                                   Value="{Binding RatingChange}"/>
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>

@@ -15,6 +15,7 @@ namespace shahmati.Services
     public class ApiService
     {
         private readonly HttpClient _httpClient;
+        private readonly int _userId; // Добавляем поле
         private const string BaseUrl = "https://localhost:7259/";
 
         public ApiService()
@@ -32,6 +33,8 @@ namespace shahmati.Services
             Console.WriteLine($"=== API SERVICE INIT ===");
             Console.WriteLine($"Base URL: {BaseUrl}");
         }
+
+
 
         // ========== ТЕСТИРОВАНИЕ ПОДКЛЮЧЕНИЯ ==========
         public async Task<bool> TestConnectionAsync()
@@ -719,6 +722,11 @@ namespace shahmati.Services
             }
         }
 
+
+
+
+
+
         // ========== СТАТИСТИКА ==========
         public async Task<GameStatsDto> GetUserStatsAsync(int userId)
         {
@@ -873,5 +881,69 @@ namespace shahmati.Services
                 return new List<PlayerStatsDto>();
             }
         }
+
+
+        // В ApiService.cs добавьте:
+        // ИСПРАВЛЕННЫЙ метод:
+        public async Task<bool> UpdateUserRatingAsync(int userId, int ratingChange)
+        {
+            try
+            {
+                Console.WriteLine($"=== UPDATE USER RATING ===");
+                Console.WriteLine($"UserId: {userId}");
+                Console.WriteLine($"RatingChange: {ratingChange}");
+
+                // Используем существующий эндпоинт из GamesController
+                var request = new { RatingChange = ratingChange };
+                var response = await _httpClient.PutAsJsonAsync($"api/users/{userId}/rating", request);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"✅ Рейтинг пользователя {userId} обновлен на {ratingChange}");
+                    return true;
+                }
+                else
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"❌ Ошибка обновления рейтинга: {error}");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка при обновлении рейтинга: {ex.Message}");
+                return false;
+            }
+        }
+        public async Task<bool> UpdateUserRatingWithGameAsync(UpdateRatingDto updateDto)
+        {
+            try
+            {
+                Console.WriteLine($"=== UPDATE RATING WITH GAME ===");
+                Console.WriteLine($"UserId: {updateDto.UserId}");
+                Console.WriteLine($"RatingChange: {updateDto.RatingChange}");
+                Console.WriteLine($"GameId: {updateDto.GameId}");
+
+                var response = await _httpClient.PostAsJsonAsync("api/users/update-rating-with-game", updateDto);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"✅ Рейтинг обновлен для игры {updateDto.GameId}");
+                    return true;
+                }
+                else
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"❌ Ошибка: {error}");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка при обновлении рейтинга: {ex.Message}");
+                return false;
+            }
+        }
+
     }
 }

@@ -58,58 +58,28 @@ namespace shahmati.Views
         {
             try
             {
-                // Пробуем загрузить расширенную статистику
-                _currentStats = await _apiService.GetDetailedUserStatsAsync(_userId);
-
-                if (_currentStats == null)
+                // Получаем статистику пользователя
+                var basicStats = await _apiService.GetUserStatsAsync(_userId);
+                if (basicStats != null)
                 {
-                    // Если расширенной статистики нет, пробуем загрузить базовую
-                    var basicStats = await _apiService.GetUserStatsAsync(_userId);
-                    if (basicStats != null)
+                    _currentStats = new ExtendedGameStatsDto
                     {
-                        _currentStats = new ExtendedGameStatsDto
-                        {
-                            Overall = basicStats,
-                            VsAI = new GameStatsDto { TotalGames = 0, Wins = 0, Losses = 0, Draws = 0 },
-                            VsHuman = new GameStatsDto { TotalGames = 0, Wins = 0, Losses = 0, Draws = 0 },
-                            Performance = new PerformanceMetricsDto()
-                        };
-                    }
-                    else
-                    {
-                        MessageBox.Show("Не удалось загрузить статистику. Возможно, у вас еще нет сыгранных игр.",
-                            "Информация", MessageBoxButton.OK, MessageBoxImage.Information);
-                        return;
-                    }
-                }
+                        Overall = basicStats,
+                        VsHuman = basicStats, // Для локальных игр считаем как против людей
+                        Performance = new PerformanceMetricsDto()
+                    };
 
-                // Общая статистика
-                if (_currentStats.Overall != null)
-                {
-                    UpdateOverallStats(_currentStats.Overall);
+                    UpdateOverallStats(basicStats);
                 }
-
-                // Против ИИ
-                if (_currentStats.VsAI != null)
+                else
                 {
-                    UpdateVsAIStats(_currentStats.VsAI);
-                }
-
-                // Против людей
-                if (_currentStats.VsHuman != null)
-                {
-                    UpdateVsHumanStats(_currentStats.VsHuman);
-                }
-
-                // Рейтинг и достижения
-                if (_currentStats.Performance != null)
-                {
-                    UpdatePerformanceMetrics(_currentStats.Performance);
+                    MessageBox.Show("Не удалось загрузить статистику. Возможно, у вас еще нет сыгранных игр.",
+                        "Информация", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка загрузки детальной статистики: {ex.Message}",
+                MessageBox.Show($"Ошибка загрузки статистики: {ex.Message}",
                     "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -131,16 +101,17 @@ namespace shahmati.Views
             BestRatingText.Text = stats.HighestRating.ToString();
         }
 
-        private void UpdateVsAIStats(GameStatsDto stats)
-        {
-            VsAIGamesText.Text = stats.TotalGames.ToString();
-            VsAIWinsText.Text = stats.Wins.ToString();
-
-            double winPercentage = stats.TotalGames > 0
-                ? (stats.Wins * 100.0 / stats.TotalGames)
-                : 0;
-            VsAIWinRateText.Text = $"{winPercentage:F1}%";
-        }
+        // ЗАКОММЕНТИРОВАНО: Статистика против ИИ
+        // private void UpdateVsAIStats(GameStatsDto stats)
+        // {
+        //     VsAIGamesText.Text = stats.TotalGames.ToString();
+        //     VsAIWinsText.Text = stats.Wins.ToString();
+        // 
+        //     double winPercentage = stats.TotalGames > 0
+        //         ? (stats.Wins * 100.0 / stats.TotalGames)
+        //         : 0;
+        //     VsAIWinRateText.Text = $"{winPercentage:F1}%";
+        // }
 
         private void UpdateVsHumanStats(GameStatsDto stats)
         {
@@ -210,6 +181,8 @@ namespace shahmati.Views
             }
         }
 
+        // ЗАКОММЕНТИРОВАНО: Метод для применения фильтров
+        /*
         private async void ApplyFiltersButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -251,7 +224,8 @@ namespace shahmati.Views
 
         private string GetSelectedGameMode()
         {
-            if (VsAIRadio.IsChecked == true) return "AI";
+            // ЗАКОММЕНТИРОВАНО: Против ИИ
+            // if (VsAIRadio.IsChecked == true) return "AI";
             if (VsHumanRadio.IsChecked == true) return "Human";
             return "All";
         }
@@ -271,7 +245,8 @@ namespace shahmati.Views
 
             string gameModeText = gameMode switch
             {
-                "AI" => "Против ИИ",
+                // ЗАКОММЕНТИРОВАНО: Против ИИ
+                // "AI" => "Против ИИ",
                 "Human" => "Против людей",
                 _ => "Все игры"
             };
@@ -286,6 +261,7 @@ namespace shahmati.Views
 
             return $"{gameModeText}, {difficultyText}";
         }
+        */
 
         private void ShowLoading(bool show)
         {

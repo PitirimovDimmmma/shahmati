@@ -84,7 +84,7 @@
                     <TextBlock Text="Никнейм" FontWeight="SemiBold" Margin="0,0,0,5" Foreground="#333"/>
                     <TextBox x:Name="NicknameTextBox" 
                             Style="{StaticResource InputFieldStyle}"
-                            TextChanged="NicknameTextBox_TextChanged"/>
+                            TextChanged="NicknameTextBox_TextChanged" Height="44"/>
                     <TextBlock x:Name="NicknameError" Foreground="Red" FontSize="11" Visibility="Collapsed"/>
 
                     <!-- Кнопка сохранения -->

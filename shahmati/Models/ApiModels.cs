@@ -72,10 +72,11 @@ namespace shahmati.Models
         public List<MoveDto> Moves { get; set; } = new();
     }
 
+    // ЕДИНСТВЕННОЕ определение CreateGameDto
     public class CreateGameDto
     {
         public int WhitePlayerId { get; set; }
-        public int? BlackPlayerId { get; set; }
+        public int? BlackPlayerId { get; set; }  // Используем nullable для гибкости
         public string GameMode { get; set; } = "HumanVsHuman";
         public string Difficulty { get; set; } = "Medium";
     }
@@ -168,5 +169,31 @@ namespace shahmati.Models
         public string Email { get; set; }
         public string Nickname { get; set; }
         public string PhotoPath { get; set; }
+    }
+
+  
+
+    // Класс для запроса обновления рейтинга
+    public class UpdateRatingRequest
+    {
+        public int RatingChange { get; set; }
+    }
+
+    // В Models/FinishGameDto.cs добавьте UserId:
+    public class FinishGameDto
+    {
+        public int GameId { get; set; }
+        public string Result { get; set; } = string.Empty;
+        public int RatingChange { get; set; }
+        public int UserId { get; set; } // Добавьте это свойство
+    }
+
+    // Модель для обновления рейтинга
+    public class UpdateRatingDto
+    {
+        public int UserId { get; set; }
+        public int RatingChange { get; set; }
+        public int GameId { get; set; }
+        public string Reason { get; set; }
     }
 }
