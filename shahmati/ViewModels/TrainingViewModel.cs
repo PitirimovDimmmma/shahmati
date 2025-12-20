@@ -1,171 +1,405 @@
-﻿using shahmati.Models;
-using shahmati.Services;
+﻿using shahmati.models;
+using shahmati.Models;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Input;
 
 namespace shahmati.ViewModels
 {
     public class TrainingViewModel : INotifyPropertyChanged
     {
-        private readonly ApiService _apiService;
         private readonly int _userId;
-
+        private readonly HttpClient _httpClient;
+        private TrainingTypeDto? _selectedTraining;
+        private ObservableCollection<TrainingPositionDto> _currentPositions;
+        private TrainingPositionDto? _currentPosition;
+        private int _currentPositionIndex;
+        private string? _timeElapsed;
+        private int _score;
+        private int _mistakes;
+        private string? _hintText;
+        private string? _statusText;
+        private Board _board;
+        private DateTime _startTime;
+        private DateTime _currentTime;
+        private Position? _selectedCell;
+        private List<Position> _possibleMoves;
+        private string? _positionTask;
+        private bool _isTrainingCompleted;
         private ObservableCollection<TrainingTypeDto> _allTrainings;
         private ObservableCollection<TrainingTypeDto> _filteredTrainings;
-        private TrainingTypeDto _selectedTraining;
-        private List<TrainingPositionDto> _currentPositions;
-        private TrainingPositionDto _currentPosition;
-        private int _currentPositionIndex = 0;
-        private int _score = 0;
-        private int _mistakes = 0;
-        private TimeSpan _timeElapsed = TimeSpan.Zero;
-        private bool _isTrainingActive = false;
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        public ICommand CellClickCommand { get; private set; }
+
+        public TrainingViewModel(int userId)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            _userId = userId;
+            _httpClient = new HttpClient
+            {
+                BaseAddress = new Uri("http://localhost:5242/api/") // Ваш API URL
+            };
+            _board = new Board();
+            _currentPositions = new ObservableCollection<TrainingPositionDto>();
+            _possibleMoves = new List<Position>();
+            _allTrainings = new ObservableCollection<TrainingTypeDto>();
+            _filteredTrainings = new ObservableCollection<TrainingTypeDto>();
+            _startTime = DateTime.Now;
+            _currentTime = DateTime.Now;
+
+            CellClickCommand = new RelayCommand<Position>(OnCellClicked);
         }
 
-        protected bool SetField<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
+        // Основные свойства
+        public Board Board
         {
-            if (EqualityComparer<T>.Default.Equals(field, value))
-                return false;
-
-            field = value;
-            OnPropertyChanged(propertyName);
-            return true;
+            get => _board;
+            set
+            {
+                _board = value;
+                OnPropertyChanged();
+            }
         }
 
-        public ObservableCollection<TrainingTypeDto> AllTrainings
-        {
-            get => _allTrainings;
-            set => SetField(ref _allTrainings, value);
-        }
-
-        public ObservableCollection<TrainingTypeDto> FilteredTrainings
-        {
-            get => _filteredTrainings;
-            set => SetField(ref _filteredTrainings, value);
-        }
-
-        public TrainingTypeDto SelectedTraining
+        public TrainingTypeDto? SelectedTraining
         {
             get => _selectedTraining;
-            set => SetField(ref _selectedTraining, value);
+            set
+            {
+                _selectedTraining = value;
+                OnPropertyChanged();
+            }
         }
 
-        public List<TrainingPositionDto> CurrentPositions
+        public ObservableCollection<TrainingPositionDto> CurrentPositions
         {
             get => _currentPositions;
-            set => SetField(ref _currentPositions, value);
+            set
+            {
+                _currentPositions = value;
+                OnPropertyChanged();
+            }
         }
 
-        public TrainingPositionDto CurrentPosition
+        public TrainingPositionDto? CurrentPosition
         {
             get => _currentPosition;
-            set => SetField(ref _currentPosition, value);
+            set
+            {
+                _currentPosition = value;
+                OnPropertyChanged();
+            }
         }
 
         public int CurrentPositionIndex
         {
             get => _currentPositionIndex;
-            set => SetField(ref _currentPositionIndex, value);
+            set
+            {
+                _currentPositionIndex = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string? TimeElapsed
+        {
+            get => _timeElapsed;
+            set
+            {
+                _timeElapsed = value;
+                OnPropertyChanged();
+            }
         }
 
         public int Score
         {
             get => _score;
-            set => SetField(ref _score, value);
+            set
+            {
+                _score = value;
+                OnPropertyChanged();
+            }
         }
 
         public int Mistakes
         {
             get => _mistakes;
-            set => SetField(ref _mistakes, value);
+            set
+            {
+                _mistakes = value;
+                OnPropertyChanged();
+            }
         }
 
-        public string TimeElapsed => $"{_timeElapsed:mm\\:ss}";
-
-        public bool IsTrainingActive
+        public string? HintText
         {
-            get => _isTrainingActive;
-            set => SetField(ref _isTrainingActive, value);
+            get => _hintText;
+            set
+            {
+                _hintText = value;
+                OnPropertyChanged();
+            }
         }
 
-        public TrainingViewModel(int userId)
+        public string? StatusText
         {
-            _apiService = new ApiService();
-            _userId = userId;
-            AllTrainings = new ObservableCollection<TrainingTypeDto>();
-            FilteredTrainings = new ObservableCollection<TrainingTypeDto>();
-            CurrentPositions = new List<TrainingPositionDto>();
+            get => _statusText;
+            set
+            {
+                _statusText = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string? PositionTask
+        {
+            get => _positionTask;
+            set
+            {
+                _positionTask = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool IsTrainingCompleted
+        {
+            get => _isTrainingCompleted;
+            set
+            {
+                _isTrainingCompleted = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public ObservableCollection<TrainingTypeDto> AllTrainings
+        {
+            get => _allTrainings;
+            set
+            {
+                _allTrainings = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public ObservableCollection<TrainingTypeDto> FilteredTrainings
+        {
+            get => _filteredTrainings;
+            set
+            {
+                _filteredTrainings = value;
+                OnPropertyChanged();
+            }
+        }
+
+        // Методы для тренировки
+        public async Task StartTraining()
+        {
+            try
+            {
+                StatusText = "Загрузка тренировки...";
+
+                // Загружаем позиции для выбранной тренировки из API
+                await LoadTrainingPositions();
+
+                if (CurrentPositions.Count > 0)
+                {
+                    CurrentPosition = CurrentPositions[0];
+                    CurrentPositionIndex = 0;
+                    await LoadPositionFromFen(CurrentPosition.Fen);
+
+                    PositionTask = $"Найдите лучший ход. Тема: {CurrentPosition.Theme}";
+                    HintText = CurrentPosition.Hint;
+                    StatusText = "Тренировка начата. Найдите лучший ход на доске.";
+                }
+                else
+                {
+                    StatusText = "Нет доступных позиций для тренировки";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Ошибка: {ex.Message}";
+            }
+        }
+
+        private async Task LoadTrainingPositions()
+        {
+            try
+            {
+                if (SelectedTraining == null) return;
+
+                // Загружаем позиции из API
+                var response = await _httpClient.GetAsync($"training/{SelectedTraining.Id}/positions");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    var positions = JsonSerializer.Deserialize<List<TrainingPositionDto>>(json,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    CurrentPositions.Clear();
+                    if (positions != null)
+                    {
+                        foreach (var position in positions)
+                        {
+                            // Парсим ходы решения
+                            if (!string.IsNullOrEmpty(position.Solution))
+                            {
+                                position.SolutionMoves = position.Solution.Split(' ')
+                                    .Where(m => !string.IsNullOrWhiteSpace(m))
+                                    .ToList();
+                            }
+                            CurrentPositions.Add(position);
+                        }
+                    }
+
+                    // Если нет позиций, создаем тестовые
+                    if (CurrentPositions.Count == 0)
+                    {
+                        await CreateSamplePositions();
+                    }
+                }
+                else
+                {
+                    // Создаем тестовые позиции если API недоступен
+                    await CreateSamplePositions();
+                }
+            }
+            catch
+            {
+                await CreateSamplePositions();
+            }
+        }
+
+        private async Task CreateSamplePositions()
+        {
+            // Примерные позиции для тренировки
+            var positions = new List<TrainingPositionDto>
+            {
+                new TrainingPositionDto
+                {
+                    Id = 1,
+                    TrainingTypeId = SelectedTraining?.Id ?? 1,
+                    Fen = "rnbqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+                    Theme = "Дебют - Открытая игра",
+                    Solution = "Bc4 Nf6 d3 Bc5 O-O O-O",
+                    Hint = "Развивайте фигуры, контролируйте центр. Слон на c4 атакует слабую пешку f7.",
+                    Difficulty = "Beginner",
+                    Rating = 1200
+                },
+                new TrainingPositionDto
+                {
+                    Id = 2,
+                    TrainingTypeId = SelectedTraining?.Id ?? 1,
+                    Fen = "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+                    Theme = "Дебют - Испанская партия",
+                    Solution = "O-O Bc5 c3 O-O d3 d6",
+                    Hint = "Защитите короля рокировкой. Белые готовы к атаке в центре.",
+                    Difficulty = "Medium",
+                    Rating = 1400
+                }
+            };
+
+            foreach (var position in positions)
+            {
+                position.SolutionMoves = position.Solution.Split(' ')
+                    .Where(m => !string.IsNullOrWhiteSpace(m))
+                    .ToList();
+                CurrentPositions.Add(position);
+            }
+
+            await Task.CompletedTask;
+        }
+
+        public async Task LoadPositionFromFen(string fen)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(fen)) return;
+
+                // Создаем новую доску с начальной позицией
+                Board = new Board();
+
+                // Здесь должна быть логика парсинга FEN и установки позиции
+                // Временная реализация - просто очищаем и ставим стандартную позицию
+
+                // Обновляем UI
+                OnPropertyChanged(nameof(Board));
+
+                // Сбрасываем выделение
+                ClearSelection();
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Ошибка загрузки позиции: {ex.Message}";
+            }
         }
 
         public async Task LoadTrainingsAsync()
         {
             try
             {
-                Console.WriteLine("=== Загрузка тренировок ===");
+                StatusText = "Загрузка тренировок...";
 
-                // Получаем тренировки через ApiService
-                var trainings = await _apiService.GetTrainingTypesAsync();
+                // Загружаем тренировки из API
+                var response = await _httpClient.GetAsync("training/types");
 
-                Console.WriteLine($"Получено тренировок: {trainings?.Count ?? 0}");
-
-                if (trainings == null || trainings.Count == 0)
+                if (response.IsSuccessStatusCode)
                 {
-                    Console.WriteLine("Тренировки не получены, используем демо-данные");
-                    LoadMockTrainings();
-                    return;
+                    var json = await response.Content.ReadAsStringAsync();
+                    var trainings = JsonSerializer.Deserialize<List<TrainingTypeDto>>(json,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    AllTrainings.Clear();
+                    FilteredTrainings.Clear();
+
+                    if (trainings != null && trainings.Any())
+                    {
+                        foreach (var training in trainings)
+                        {
+                            AllTrainings.Add(training);
+                            FilteredTrainings.Add(training);
+                        }
+                    }
+                    else
+                    {
+                        // Создаем тестовые тренировки если API пустой
+                        CreateSampleTrainings();
+                    }
+
+                    StatusText = $"Загружено тренировок: {AllTrainings.Count}";
                 }
-
-                // Очищаем коллекции
-                AllTrainings.Clear();
-                FilteredTrainings.Clear();
-
-                // Добавляем полученные тренировки
-                foreach (var training in trainings)
+                else
                 {
-                    AllTrainings.Add(training);
-                    FilteredTrainings.Add(training);
+                    CreateSampleTrainings();
+                    StatusText = $"Загружено тренировок: {AllTrainings.Count} (тестовые)";
                 }
-
-                Console.WriteLine($"Успешно загружено {trainings.Count} тренировок");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка загрузки тренировок: {ex.Message}");
-                Console.WriteLine($"StackTrace: {ex.StackTrace}");
-
-                MessageBox.Show($"Ошибка загрузки тренировок: {ex.Message}",
-                    "Ошибка",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-
-                // Используем демо-данные
-                LoadMockTrainings();
+                CreateSampleTrainings();
+                StatusText = $"Загружено тренировок: {AllTrainings.Count} (ошибка: {ex.Message})";
             }
         }
 
-        private void LoadMockTrainings()
+        private void CreateSampleTrainings()
         {
-            AllTrainings.Clear();
-            FilteredTrainings.Clear();
-
-            var mockTrainings = new List<TrainingTypeDto>
+            var trainings = new List<TrainingTypeDto>
             {
                 new TrainingTypeDto
                 {
                     Id = 1,
-                    Name = "Двойной удар (Демо)",
+                    Name = "Двойной удар (вилка)",
                     Description = "Найдите ход, который атакует две фигуры одновременно",
                     Difficulty = "Beginner",
                     Category = "Tactics",
@@ -175,7 +409,7 @@ namespace shahmati.ViewModels
                 new TrainingTypeDto
                 {
                     Id = 2,
-                    Name = "Связка (Демо)",
+                    Name = "Связка",
                     Description = "Используйте связку для выигрыша материала",
                     Difficulty = "Beginner",
                     Category = "Tactics",
@@ -185,169 +419,207 @@ namespace shahmati.ViewModels
                 new TrainingTypeDto
                 {
                     Id = 3,
-                    Name = "Испанская партия (Демо)",
-                    Description = "Освойте основные принципы испанской партии",
+                    Name = "Открытая атака",
+                    Description = "Обнаружьте скрытые тактические возможности",
                     Difficulty = "Medium",
-                    Category = "Opening",
-                    MaxTime = 300,
+                    Category = "Tactics",
+                    MaxTime = 240,
                     MaxMoves = 20
                 },
                 new TrainingTypeDto
                 {
                     Id = 4,
-                    Name = "Пешечный эндшпиль (Демо)",
-                    Description = "Техника проведения пешки в ферзи",
-                    Difficulty = "Beginner",
-                    Category = "Endgame",
-                    MaxTime = 240,
-                    MaxMoves = 30
-                },
-                new TrainingTypeDto
-                {
-                    Id = 5,
-                    Name = "Блиц: мат в 1 ход (Демо)",
-                    Description = "Найдите мат в один ход за ограниченное время",
-                    Difficulty = "Beginner",
-                    Category = "Speed",
-                    MaxTime = 60,
-                    MaxMoves = 30
+                    Name = "Матовые комбинации",
+                    Description = "Найдите путь к мату в несколько ходов",
+                    Difficulty = "Medium",
+                    Category = "Tactics",
+                    MaxTime = 300,
+                    MaxMoves = 25
                 }
             };
 
-            foreach (var training in mockTrainings)
+            AllTrainings.Clear();
+            FilteredTrainings.Clear();
+
+            foreach (var training in trainings)
             {
                 AllTrainings.Add(training);
                 FilteredTrainings.Add(training);
             }
-
-            Console.WriteLine("Загружены демо-тренировки");
         }
 
-        public async Task StartTraining()
+        // Обработка кликов по клеткам
+        private void OnCellClicked(Position position)
         {
-            if (SelectedTraining == null) return;
-
-            try
-            {
-                Console.WriteLine($"=== Начало тренировки: {SelectedTraining.Name} ===");
-
-                // Обнуляем статистику
-                Score = 0;
-                Mistakes = 0;
-                CurrentPositionIndex = 0;
-                _timeElapsed = TimeSpan.Zero;
-                OnPropertyChanged(nameof(TimeElapsed));
-                IsTrainingActive = true;
-
-                // Начинаем тренировку на сервере
-                var request = new StartTrainingRequest
-                {
-                    UserId = _userId,
-                    TrainingTypeId = SelectedTraining.Id
-                };
-
-                await _apiService.StartTrainingAsync(request);
-
-                // Загружаем позиции для тренировки
-                await LoadTrainingPositions();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка начала тренировки: {ex.Message}");
-
-                // Загружаем демо-позиции
-                LoadMockPositions();
-            }
+            HandleCellClick(position.Row, position.Column);
         }
 
-        private async Task LoadTrainingPositions()
+        private void HandleCellClick(int row, int col)
         {
             try
             {
-                Console.WriteLine($"Загрузка позиций для тренировки ID={SelectedTraining.Id}");
+                var position = new Position(row, col);
+                var piece = Board.GetPieceAt(position);
 
-                var positions = await _apiService.GetTrainingPositionsAsync(SelectedTraining.Id);
-
-                if (positions == null || positions.Count == 0)
+                if (_selectedCell == null)
                 {
-                    Console.WriteLine("Позиции не получены, используем демо-позиции");
-                    LoadMockPositions();
-                    return;
+                    // Выбор фигуры
+                    if (piece != null && piece.Color == PieceColor.White) // Только белые фигуры в тренировке
+                    {
+                        _selectedCell = position;
+                        _possibleMoves = piece.GetPossibleMoves(position, Board).ToList();
+
+                        // Подсветка возможных ходов
+                        foreach (var move in _possibleMoves)
+                        {
+                            Board.Cells[move.Row, move.Column].IsPossibleMove = true;
+                        }
+
+                        Board.Cells[row, col].IsSelected = true;
+                        StatusText = $"Выбрана фигура: {GetPieceName(piece)}. Выберите клетку для хода.";
+                    }
+                    else if (piece != null && piece.Color == PieceColor.Black)
+                    {
+                        StatusText = "В этой тренировке играют только белые фигуры.";
+                    }
                 }
+                else
+                {
+                    // Попытка сделать ход
+                    if (_possibleMoves.Contains(position))
+                    {
+                        // Проверяем, является ли ход правильным
+                        if (IsMoveCorrect(_selectedCell.Value, position))
+                        {
+                            Score += 10;
+                            StatusText = "Отличный ход! +10 очков";
 
-                CurrentPositions = positions;
-                CurrentPosition = positions.FirstOrDefault();
+                            // Делаем ход
+                            Board.MovePiece(_selectedCell.Value, position);
 
-                Console.WriteLine($"Загружено {positions.Count} позиций");
+                            // Проверяем завершение позиции
+                            CheckPositionCompletion();
+                        }
+                        else
+                        {
+                            Mistakes++;
+                            HintText = "Неверный ход! Попробуйте еще раз.";
+                            StatusText = $"Неверно! Ошибок: {Mistakes}";
+                        }
+                    }
+                    else
+                    {
+                        StatusText = "Невозможный ход. Выберите другую клетку.";
+                    }
+
+                    // Сбрасываем выделение
+                    ClearSelection();
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка загрузки позиций: {ex.Message}");
-                LoadMockPositions();
+                StatusText = $"Ошибка: {ex.Message}";
             }
         }
 
-        private void LoadMockPositions()
+        private bool IsMoveCorrect(Position from, Position to)
         {
-            CurrentPositions = new List<TrainingPositionDto>
+            // Здесь должна быть логика проверки правильности хода
+            // Сравниваем с решением из тренировочной позиции
+
+            if (CurrentPosition == null || CurrentPosition.SolutionMoves == null)
+                return false;
+
+            // Конвертируем позиции в шахматную нотацию (например, "e2e4")
+            var moveNotation = $"{ConvertToChessNotation(from)}{ConvertToChessNotation(to)}";
+
+            // Проверяем, есть ли такой ход в решении
+            return CurrentPosition.SolutionMoves.Any(m =>
+                m.Contains(moveNotation, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private string ConvertToChessNotation(Position position)
+        {
+            // Конвертация row/col в шахматную нотацию (например, "e4")
+            char file = (char)('a' + position.Column);
+            int rank = 8 - position.Row;
+            return $"{file}{rank}";
+        }
+
+        private string GetPieceName(ChessPiece? piece)
+        {
+            if (piece == null) return "Пусто";
+
+            return piece switch
             {
-                new TrainingPositionDto
-                {
-                    Id = 1,
-                    TrainingTypeId = SelectedTraining?.Id ?? 1,
-                    Fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                    Solution = "e2e4 e7e5 g1f3",
-                    Hint = "Конь на f3 атакует пешки на e5 и c7",
-                    Difficulty = "Beginner",
-                    Theme = "Knight Fork",
-                    Rating = 0
-                },
-                new TrainingPositionDto
-                {
-                    Id = 2,
-                    TrainingTypeId = SelectedTraining?.Id ?? 1,
-                    Fen = "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1",
-                    Solution = "d2d4 e5d4 f3d4",
-                    Hint = "Примите жертву пешки и развивайте фигуры",
-                    Difficulty = "Beginner",
-                    Theme = "Pawn Sacrifice",
-                    Rating = 1300
-                }
+                King => "Король",
+                Queen => "Ферзь",
+                Rook => "Ладья",
+                Bishop => "Слон",
+                Knight => "Конь",
+                Pawn => "Пешка",
+                _ => "Фигура"
             };
+        }
 
-            CurrentPosition = CurrentPositions.FirstOrDefault();
-            Console.WriteLine("Загружены демо-позиции");
+        private void CheckPositionCompletion()
+        {
+            // Проверяем, достигнут ли конец решения
+            // В реальной реализации здесь должна быть сложная логика проверки
+            StatusText = "Позиция решена! Переходите к следующей.";
+        }
+
+        private void ClearSelection()
+        {
+            if (_selectedCell.HasValue)
+            {
+                Board.Cells[_selectedCell.Value.Row, _selectedCell.Value.Column].IsSelected = false;
+                _selectedCell = null;
+            }
+
+            foreach (var move in _possibleMoves)
+            {
+                Board.Cells[move.Row, move.Column].IsPossibleMove = false;
+            }
+            _possibleMoves.Clear();
         }
 
         public async Task NextPosition()
         {
-            if (CurrentPositions == null || !CurrentPositions.Any()) return;
-
-            CurrentPositionIndex++;
-
-            if (CurrentPositionIndex >= CurrentPositions.Count)
+            try
             {
-                // Тренировка завершена
-                await CompleteTraining();
-                return;
+                if (CurrentPositionIndex < CurrentPositions.Count - 1)
+                {
+                    CurrentPositionIndex++;
+                    CurrentPosition = CurrentPositions[CurrentPositionIndex];
+                    await LoadPositionFromFen(CurrentPosition?.Fen ?? string.Empty);
+
+                    PositionTask = $"Найдите лучший ход. Тема: {CurrentPosition?.Theme ?? "Общая"}";
+                    HintText = CurrentPosition?.Hint;
+                    StatusText = $"Позиция {CurrentPositionIndex + 1} из {CurrentPositions.Count}";
+
+                    ClearSelection();
+                }
+                else
+                {
+                    // Последняя позиция завершена
+                    await CompleteTraining();
+                }
             }
-
-            CurrentPosition = CurrentPositions[CurrentPositionIndex];
-
-            // Добавляем очки за переход к следующей позиции
-            Score += 10;
+            catch (Exception ex)
+            {
+                StatusText = $"Ошибка: {ex.Message}";
+            }
         }
 
         public void ShowHint()
         {
-            if (CurrentPosition != null && !string.IsNullOrEmpty(CurrentPosition.Hint))
+            if (CurrentPosition != null)
             {
-                MessageBox.Show($"Подсказка: {CurrentPosition.Hint}",
-                    "Подсказка",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                HintText = CurrentPosition.Hint ?? "Используйте тактические приемы для получения преимущества.";
+                StatusText = "Подсказка показана";
 
-                // Штраф за использование подсказки
+                // Немного штрафуем за подсказку
                 Score = Math.Max(0, Score - 5);
             }
         }
@@ -356,89 +628,110 @@ namespace shahmati.ViewModels
         {
             try
             {
-                IsTrainingActive = false;
+                StatusText = "Завершение тренировки...";
 
-                // Сохраняем результат тренировки
-                var request = new CompleteTrainingRequest
+                // Сохраняем результаты тренировки в базу данных через API
+                var completeRequest = new CompleteTrainingRequest
                 {
                     UserId = _userId,
                     TrainingTypeId = SelectedTraining?.Id ?? 0,
                     Score = Score,
-                    TimeSpent = (int)_timeElapsed.TotalSeconds,
+                    TimeSpent = (int)(DateTime.Now - _startTime).TotalSeconds,
                     Mistakes = Mistakes,
                     Completed = true
                 };
 
-                await _apiService.CompleteTrainingAsync(request);
+                var json = JsonSerializer.Serialize(completeRequest);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                MessageBox.Show($"Тренировка завершена!\n\n" +
-                               $"Результаты:\n" +
-                               $"Очки: {Score}\n" +
-                               $"Ошибки: {Mistakes}\n" +
-                               $"Время: {TimeElapsed}",
-                    "Тренировка завершена",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                var response = await _httpClient.PostAsync("training/complete", content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    StatusText = $"Тренировка завершена! Счет: {Score}, Время: {TimeElapsed}";
+                    IsTrainingCompleted = true;
+
+                    MessageBox.Show(
+                        $"Тренировка завершена!\n\n" +
+                        $"Результаты:\n" +
+                        $"• Очки: {Score}\n" +
+                        $"• Ошибок: {Mistakes}\n" +
+                        $"• Время: {TimeElapsed}\n" +
+                        $"• Пройдено позиций: {CurrentPositionIndex + 1}/{CurrentPositions.Count}",
+                        "Тренировка завершена",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                else
+                {
+                    StatusText = "Тренировка завершена (результаты не сохранены)";
+                    IsTrainingCompleted = true;
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка завершения тренировки: {ex.Message}");
+                StatusText = $"Тренировка завершена (ошибка сохранения: {ex.Message})";
+                IsTrainingCompleted = true;
             }
         }
 
-        public void AddTime(TimeSpan time)
+        // Обновление таймера
+        public void UpdateTimer()
         {
-            _timeElapsed = _timeElapsed.Add(time);
-            OnPropertyChanged(nameof(TimeElapsed));
+            _currentTime = DateTime.Now;
+            var elapsed = _currentTime - _startTime;
+            TimeElapsed = $"{(int)elapsed.TotalMinutes:00}:{elapsed.Seconds:00}";
         }
 
-        public void AddScore(int points)
+        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
-            Score += points;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+
+    // RelayCommand для обработки команд
+    public class RelayCommand<T> : ICommand
+    {
+        private readonly Action<T> _execute;
+        private readonly Predicate<T>? _canExecute;
+
+        public RelayCommand(Action<T> execute, Predicate<T>? canExecute = null)
+        {
+            _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+            _canExecute = canExecute;
         }
 
-        public void AddMistake()
+        public bool CanExecute(object? parameter)
         {
-            Mistakes++;
+            return _canExecute == null || _canExecute((T)parameter!);
         }
 
-        public bool CheckMove(string move)
+        public void Execute(object? parameter)
         {
-            if (CurrentPosition == null || string.IsNullOrEmpty(CurrentPosition.Solution))
-                return false;
-
-            var solutionMoves = CurrentPosition.Solution.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            var currentMove = solutionMoves.Length > CurrentPositionIndex ?
-                            solutionMoves[CurrentPositionIndex] : null;
-
-            if (string.IsNullOrEmpty(currentMove))
-                return false;
-
-            // Упрощенная проверка хода
-            bool isCorrect = move.Equals(currentMove, StringComparison.OrdinalIgnoreCase);
-
-            if (isCorrect)
-            {
-                AddScore(20); // Награда за правильный ход
-            }
-            else
-            {
-                AddMistake();
-            }
-
-            return isCorrect;
+            _execute((T)parameter!);
         }
 
-        public void ResetTraining()
+        public event EventHandler? CanExecuteChanged
         {
-            Score = 0;
-            Mistakes = 0;
-            CurrentPositionIndex = 0;
-            _timeElapsed = TimeSpan.Zero;
-            OnPropertyChanged(nameof(TimeElapsed));
-            CurrentPositions?.Clear();
-            CurrentPosition = null;
-            IsTrainingActive = false;
+            add { CommandManager.RequerySuggested += value; }
+            remove { CommandManager.RequerySuggested -= value; }
         }
+    }
+
+    // DTO для запросов API
+    public class CompleteTrainingRequest
+    {
+        public int UserId { get; set; }
+        public int TrainingTypeId { get; set; }
+        public int Score { get; set; }
+        public int TimeSpent { get; set; }
+        public int Mistakes { get; set; }
+        public bool Completed { get; set; }
+    }
+
+    public class StartTrainingRequest
+    {
+        public int UserId { get; set; }
+        public int TrainingTypeId { get; set; }
     }
 }

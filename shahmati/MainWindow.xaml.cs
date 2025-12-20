@@ -1,20 +1,23 @@
-﻿using shahmati.Models;
+﻿using shahmati.Helpers;
+using shahmati.models;
+using shahmati.Models;
 using shahmati.Services;
 using shahmati.ViewModels;
 using shahmati.Views;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using System.IO;
-using System.Threading.Tasks;
-using shahmati.models;
-using System.Linq;
-using System.Windows.Media;
-using shahmati.Helpers;
 
 namespace shahmati
 {
@@ -48,6 +51,11 @@ namespace shahmati
         private const int RATING_LOSS_CHANGE = -10;
         private const int RATING_DRAW_CHANGE = 0;
 
+        // Дополнительные поля для индикатора загрузки
+        private Border _loadingPanel;
+        private TextBlock _loadingText;
+        private ProgressBar _loadingSpinner;
+
         public MainWindow(int userId)
         {
             InitializeComponent();
@@ -63,7 +71,7 @@ namespace shahmati
             // Подписываемся на события GameManager
             if (_viewModel.GameManager != null)
             {
-                _viewModel.GameManager.GameFinished += OnGameFinished;
+                _viewModel.GameManager.GameFinished += OnGameFinishedHandler;
                 _viewModel.GameManager.MoveMade += OnMoveMade;
                 _viewModel.GameManager.UpdateHistoryCallback = UpdateMoveHistoryInUI;
                 _viewModel.GameManager.UserIsWhite = true; // Пользователь всегда белые
@@ -76,6 +84,9 @@ namespace shahmati
             // Инициализируем список ходов
             _gameMoves = new List<string>();
 
+            // Создаем динамически индикатор загрузки
+            CreateLoadingIndicator();
+
             Loaded += async (s, e) => await InitializeGame();
         }
 
@@ -85,6 +96,54 @@ namespace shahmati
             DataContext = new MainViewModel();
             SetDefaultUserData();
             InitializeChessTimers();
+            CreateLoadingIndicator();
+        }
+
+        private void CreateLoadingIndicator()
+        {
+            // Создаем индикатор загрузки динамически
+            _loadingPanel = new Border
+            {
+                Name = "LoadingPanel",
+                Visibility = Visibility.Collapsed,
+                Background = new SolidColorBrush(Color.FromArgb(200, 0, 0, 0)),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch
+            };
+
+            var stackPanel = new StackPanel
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+
+            _loadingSpinner = new ProgressBar
+            {
+                Name = "LoadingSpinner",
+                Width = 50,
+                Height = 50,
+                IsIndeterminate = true,
+                Margin = new Thickness(0, 0, 0, 10)
+            };
+
+            _loadingText = new TextBlock
+            {
+                Name = "LoadingText",
+                Text = "Загрузка...",
+                Foreground = Brushes.White,
+                FontSize = 14,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+
+            stackPanel.Children.Add(_loadingSpinner);
+            stackPanel.Children.Add(_loadingText);
+            _loadingPanel.Child = stackPanel;
+
+            // Добавляем в главную сетку
+            if (MainGrid != null)
+            {
+                MainGrid.Children.Add(_loadingPanel);
+            }
         }
 
         private void InitializeChessTimers()
@@ -448,49 +507,98 @@ namespace shahmati
                 string gameMode = _isPlayingVsAI ? "HumanVsAI" : "HumanVsHuman";
                 string difficulty = DifficultyComboBox?.SelectedItem?.ToString() ?? "Medium";
 
-                Console.WriteLine($"=== СОЗДАНИЕ ИГРЫ ===");
-                Console.WriteLine($"Режим: {gameMode}");
-                Console.WriteLine($"Сложность: {difficulty}");
+                Console.WriteLine($"=== СОЗДАНИЕ НОВОЙ ИГРЫ ===");
+                Console.WriteLine($"UserId: {_userId}");
+                Console.WriteLine($"GameMode: {gameMode}");
+                Console.WriteLine($"Difficulty: {difficulty}");
 
-                // Для игры против ИИ или против человека (за одним компьютером)
-                // В обоих случаях BlackPlayerId = null
                 var createDto = new CreateGameDto
                 {
-                    WhitePlayerId = _userId,      // Текущий пользователь - белые
-                    BlackPlayerId = null,         // null для гостя или ИИ
+                    WhitePlayerId = _userId,
+                    BlackPlayerId = null,
                     GameMode = gameMode,
                     Difficulty = difficulty
                 };
 
-                var game = await _apiService.CreateGameAsync(createDto);
-                if (game != null)
+                // ПРЯМОЙ CURL ЗАПРОС для отладки
+                Console.WriteLine("=== ПРЯМОЙ CURL ЗАПРОС НА СОЗДАНИЕ ИГРЫ ===");
+                string jsonData = JsonSerializer.Serialize(createDto);
+                string tempJsonFile = Path.GetTempFileName() + ".json";
+                await File.WriteAllTextAsync(tempJsonFile, jsonData, Encoding.UTF8);
+
+                string curlCommand = $"curl -X POST \"https://localhost:7259/api/games\" " +
+                                    $"-H \"Content-Type: application/json\" " +
+                                    $"-v " +
+                                    $"--data-binary \"@{tempJsonFile}\" " +
+                                    $"--insecure";
+
+                Console.WriteLine($"Curl command: {curlCommand}");
+
+                ProcessStartInfo psi = new ProcessStartInfo
                 {
-                    _currentGameId = game.Id;
+                    FileName = "cmd.exe",
+                    Arguments = $"/c {curlCommand}",
+                    UseShellExecute = false,
+                    CreateNoWindow = false,
+                    WindowStyle = ProcessWindowStyle.Normal,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    StandardOutputEncoding = Encoding.UTF8
+                };
 
-                    // Записываем первый ход (начало игры)
-                    _gameMoves.Clear();
-                    _gameMoves.Add("Game Started");
-
-                    UpdateGameHistory();
-
-                    if (StatusText != null)
-                        StatusText.Text = $"Игра #{game.Id} начата! Вы играете белыми.";
-
-                    Console.WriteLine($"✅ Игра создана: ID={game.Id}");
-                }
-                else
+                using (Process process = new Process { StartInfo = psi })
                 {
-                    Console.WriteLine($"❌ Не удалось создать игру в API");
-                    if (StatusText != null)
-                        StatusText.Text = "Игра создана локально (офлайн режим)";
+                    process.Start();
+                    string output = await process.StandardOutput.ReadToEndAsync();
+                    string error = await process.StandardError.ReadToEndAsync();
+                    await process.WaitForExitAsync();
+                    File.Delete(tempJsonFile);
+
+                    Console.WriteLine($"=== CURL OUTPUT ===");
+                    Console.WriteLine(output);
+                    Console.WriteLine($"=== CURL ERROR ===");
+                    Console.WriteLine(error);
+
+                    // Парсим ID из ответа
+                    if (output.Contains("\"id\":"))
+                    {
+                        try
+                        {
+                            int startIndex = output.IndexOf("\"id\":") + 5;
+                            int endIndex = output.IndexOf(",", startIndex);
+                            string idStr = output.Substring(startIndex, endIndex - startIndex).Trim();
+
+                            if (int.TryParse(idStr, out int gameId))
+                            {
+                                _currentGameId = gameId;
+                                Console.WriteLine($"✅ Игра создана с ID: {gameId}");
+
+                                // Сохраняем ID в файл
+                                File.WriteAllText("current_game.txt",
+                                    $"Game ID: {gameId}\n" +
+                                    $"User ID: {_userId}\n" +
+                                    $"Time: {DateTime.Now:HH:mm:ss}");
+
+                                MessageBox.Show($"Игра #{gameId} создана!", "Успех",
+                                    MessageBoxButton.OK, MessageBoxImage.Information);
+
+                                return;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"❌ Ошибка парсинга ID: {ex.Message}");
+                        }
+                    }
+
+                    Console.WriteLine($"❌ Не удалось получить ID игры из ответа");
+                    _currentGameId = 0;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка создания онлайн игры: {ex.Message}");
-                // Игра продолжается в локальном режиме
-                if (StatusText != null)
-                    StatusText.Text = "Офлайн игра (без сохранения)";
+                Console.WriteLine($"❌ Ошибка создания игры: {ex.Message}");
+                _currentGameId = 0;
             }
         }
 
@@ -628,37 +736,24 @@ namespace shahmati
 
         // ===== ОБРАБОТЧИКИ ИГРОВЫХ СОБЫТИЙ =====
 
-        private async void OnGameFinished(string result)
+        private async void OnGameFinishedHandler(string result)
         {
             await Dispatcher.Invoke(async () =>
             {
                 try
                 {
-                    // Останавливаем все таймеры
+                    // Останавливаем таймеры
                     _gameTimer.Stop();
                     _whiteTimer.Stop();
                     _blackTimer.Stop();
 
-                    // Обновляем статус в UI
-                    if (StatusText != null)
-                        StatusText.Text = result;
+                    // Определяем, кто победил
+                    bool whiteWon = result.Contains("Победа белых") ||
+                                   result.Contains("Черные сдались") ||
+                                   result.Contains("White wins");
+                    bool isDraw = result.Contains("Ничья") || result.Contains("Draw");
 
-                    if (StatusIcon != null)
-                        StatusIcon.Text = "🏁";
-
-                    // Определяем, выиграли ли белые (пользователь)
-                    bool whiteWon = result.Contains("Победа белых") || result.Contains("Черные сдались");
-                    bool isDraw = result.Contains("Ничья");
-                    string apiResult = isDraw ? "Draw" : (whiteWon ? "White" : "Black");
-
-                    // Рассчитываем изменение рейтинга для белых (пользователя)
-                    int ratingChange = 0;
-                    if (whiteWon)
-                        ratingChange = RATING_WIN_CHANGE;
-                    else if (!isDraw)
-                        ratingChange = RATING_LOSS_CHANGE;
-
-                    // Показываем сообщение о результате
+                    // Показываем уведомление
                     string message = "";
                     string title = "";
 
@@ -667,7 +762,7 @@ namespace shahmati
                         message = $"🎉 ПОБЕДА БЕЛЫХ! 🎉\n\n" +
                                  $"Вы выиграли партию!\n" +
                                  $"Противник: {_opponentName}\n" +
-                                 $"Ваш рейтинг увеличен на {RATING_WIN_CHANGE} очков";
+                                 $"Результат будет сохранен в истории.";
                         title = "Поздравляем!";
                     }
                     else if (isDraw)
@@ -675,7 +770,7 @@ namespace shahmati
                         message = $"🤝 НИЧЬЯ! 🤝\n\n" +
                                  $"Партия закончилась вничью\n" +
                                  $"Противник: {_opponentName}\n" +
-                                 $"Ваш рейтинг не изменился";
+                                 $"Результат будет сохранен в истории.";
                         title = "Ничья";
                     }
                     else
@@ -683,7 +778,7 @@ namespace shahmati
                         message = $"😔 ПОРАЖЕНИЕ БЕЛЫХ\n\n" +
                                  $"Вы проиграли партию\n" +
                                  $"Противник: {_opponentName}\n" +
-                                 $"Ваш рейтинг уменьшен на {Math.Abs(RATING_LOSS_CHANGE)} очков";
+                                 $"Результат будет сохранен в истории.";
                         title = "Сожалеем";
                     }
 
@@ -691,26 +786,24 @@ namespace shahmati
                         whiteWon ? MessageBoxImage.Exclamation :
                         isDraw ? MessageBoxImage.Information : MessageBoxImage.Exclamation);
 
-                    // Сохраняем игру в базу данных (только для белых)
-                    await SaveGameToDatabase(apiResult, result, ratingChange);
-
-                    // Обновляем рейтинг пользователя
-                    if (ratingChange != 0)
-                    {
-                        await UpdateUserRating(ratingChange);
-                    }
-
                     // Показываем панель с результатом
-                    ShowGameResultButtons(whiteWon, isDraw);
+                    ShowGameResultButtonsInternal(whiteWon, isDraw);
+
+                    // Обновляем статус
+                    if (StatusText != null)
+                        StatusText.Text = result;
+
+                    if (StatusIcon != null)
+                        StatusIcon.Text = "🏁";
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Ошибка при завершении игры: {ex.Message}");
+                    Console.WriteLine($"❌ Ошибка при завершении игры: {ex.Message}");
                 }
             });
         }
 
-        private void ShowGameResultButtons(bool whiteWon, bool isDraw)
+        private void ShowGameResultButtonsInternal(bool whiteWon, bool isDraw)
         {
             GameOverPanel.Visibility = Visibility.Visible;
 
@@ -718,20 +811,154 @@ namespace shahmati
             {
                 GameResultDescription.Text = $"Поздравляем с победой!\n" +
                                             $"Вы выиграли у {_opponentName}\n" +
-                                            $"Ваш рейтинг увеличен на {RATING_WIN_CHANGE} очков";
+                                            $"Игра сохранена в истории";
             }
             else if (isDraw)
             {
                 GameResultDescription.Text = $"Партия закончилась вничью\n" +
                                             $"Противник: {_opponentName}\n" +
-                                            $"Рейтинг не изменился";
+                                            $"Игра сохранена в истории";
             }
             else
             {
                 GameResultDescription.Text = $"Вы проиграли {_opponentName}\n" +
-                                            $"Ваш рейтинг уменьшен на {Math.Abs(RATING_LOSS_CHANGE)} очков";
+                                            $"Игра сохранена в истории";
             }
         }
+
+
+        private async Task<bool> UpdateUserRatingAfterGame(int ratingChange)
+        {
+            try
+            {
+                Console.WriteLine($"=== ОБНОВЛЕНИЕ РЕЙТИНГА ПОСЛЕ ИГРЫ ===");
+                Console.WriteLine($"UserId: {_userId}");
+                Console.WriteLine($"RatingChange: {ratingChange}");
+                Console.WriteLine($"CurrentGameId: {_currentGameId}");
+
+                // 1. Получить текущий профиль пользователя
+                var user = await _apiService.GetUserAsync(_userId);
+                if (user == null)
+                {
+                    Console.WriteLine("❌ Пользователь не найден");
+                    return false;
+                }
+
+                // 2. Получить текущий рейтинг из профиля
+                int currentRating = user.Profile?.Rating ?? 1200;
+                Console.WriteLine($"Текущий рейтинг из профиля: {currentRating}");
+
+                // 3. Рассчитать новый рейтинг
+                int newRating = currentRating + ratingChange;
+                Console.WriteLine($"Новый рейтинг: {newRating}");
+
+                // 4. Обновить профиль напрямую (как в тренировке)
+                bool profileUpdated = await UpdateProfileRatingDirectly(_userId, newRating);
+
+                if (profileUpdated)
+                {
+                    Console.WriteLine($"✅ Профиль обновлен: {newRating}");
+
+                    // 5. Добавить запись в историю рейтинга
+                    if (_currentGameId > 0)
+                    {
+                        bool historyAdded = await AddRatingHistory(_userId, _currentGameId,
+                            currentRating, newRating, ratingChange);
+
+                        if (historyAdded)
+                        {
+                            Console.WriteLine($"✅ История рейтинга добавлена");
+                        }
+                    }
+
+                    // 6. Обновить UI
+                    await UpdateRatingUI();
+
+                    return true;
+                }
+                else
+                {
+                    Console.WriteLine("❌ Не удалось обновить профиль");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка обновления рейтинга: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                return false;
+            }
+        }
+
+        // Метод для прямого обновления профиля (как в тренировке)
+        private async Task<bool> UpdateProfileRatingDirectly(int userId, int newRating)
+        {
+            try
+            {
+                // Создаем запрос для обновления профиля
+                var updateRequest = new UpdateProfileRequest
+                {
+                    Rating = newRating
+                    // Можно добавить другие поля, если нужно
+                };
+
+                // Вызываем API для обновления профиля
+                bool result = await _apiService.UpdateProfileAsync(userId, updateRequest);
+
+                if (result)
+                {
+                    Console.WriteLine($"✅ Профиль ID={userId} обновлен на рейтинг {newRating}");
+                }
+                else
+                {
+                    Console.WriteLine($"❌ Не удалось обновить профиль ID={userId}");
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка обновления профиля: {ex.Message}");
+                return false;
+            }
+        }
+
+        // Метод для добавления истории рейтинга
+        private async Task<bool> AddRatingHistory(int userId, int gameId, int oldRating, int newRating, int ratingChange)
+        {
+            try
+            {
+                var historyDto = new AddRatingHistoryDto
+                {
+                    UserId = userId,
+                    GameId = gameId,
+                    OldRating = oldRating,
+                    NewRating = newRating,
+                    RatingChange = ratingChange,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                var result = await _apiService.AddRatingHistoryAsync(historyDto);
+
+                if (result)
+                {
+                    Console.WriteLine($"✅ История рейтинга добавлена для игры {gameId}");
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ Не удалось добавить историю рейтинга");
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка добавления истории рейтинга: {ex.Message}");
+                return false;
+            }
+        }
+
+
 
         private void OnMoveMade(string moveNotation)
         {
@@ -789,57 +1016,67 @@ namespace shahmati
         {
             try
             {
+                Console.WriteLine($"=== СОХРАНЕНИЕ ИГРЫ ===");
+                Console.WriteLine($"GameId: {_currentGameId}");
+                Console.WriteLine($"Result: {result}");
+                Console.WriteLine($"RatingChange: {ratingChange} (+15 за победу, -10 за поражение)");
+                Console.WriteLine($"UserId: {_userId}");
+
                 if (_currentGameId > 0)
                 {
-                    Console.WriteLine($"=== СОХРАНЕНИЕ ИГРЫ ===");
-                    Console.WriteLine($"GameId: {_currentGameId}");
-                    Console.WriteLine($"Result: {result}");
-                    Console.WriteLine($"Description: {description}");
-                    Console.WriteLine($"RatingChange: {ratingChange}");
+                    // ПРЯМОЕ СОХРАНЕНИЕ ЧЕРЕЗ CURL
+                    var apiService = new ApiService(); // Твой текущий ApiService
 
-                    // 1. Завершаем игру на сервере
-                    bool gameFinished = await _apiService.FinishGameAsync(_currentGameId, result);
+                    // 1. Завершаем игру через CURL
+                    bool gameFinished = await apiService.FinishGameWithCurlAsync(_currentGameId, result);
 
                     if (gameFinished)
                     {
-                        Console.WriteLine($"✅ Игра #{_currentGameId} завершена на сервере");
+                        Console.WriteLine($"✅ Игра #{_currentGameId} завершена!");
 
-                        // 2. Обновляем рейтинг пользователя (если нужно)
-                        if (ratingChange != 0)
+                        // 2. Обновляем рейтинг через CURL
+                        await Task.Delay(1000); // Ждем 1 секунду
+
+                        bool ratingUpdated = await apiService.UpdateRatingWithCurlAsync(_userId, ratingChange);
+
+                        if (ratingUpdated)
                         {
-                            // Дождитесь немного, чтобы сервер успел обработать игру
-                            await Task.Delay(500);
+                            Console.WriteLine($"✅ Рейтинг обновлен на {ratingChange}");
 
-                            // Обновляем рейтинг через отдельный эндпоинт
-                            bool ratingUpdated = await _apiService.UpdateUserRatingAsync(_userId, ratingChange);
+                            // Показываем сообщение пользователю
+                            string message = ratingChange > 0
+                                ? $"🎉 ПОБЕДА! Ваш рейтинг увеличен на +{ratingChange} очков!"
+                                : $"📉 ПОРАЖЕНИЕ! Ваш рейтинг уменьшен на {Math.Abs(ratingChange)} очков.";
 
-                            if (ratingUpdated)
-                            {
-                                Console.WriteLine($"✅ Рейтинг обновлен на {ratingChange}");
-                            }
-                            else
-                            {
-                                Console.WriteLine($"⚠️ Рейтинг не обновлен на сервере");
-                            }
+                            MessageBox.Show(message, "Рейтинг обновлен",
+                                MessageBoxButton.OK, MessageBoxImage.Information);
                         }
-
-                        // 3. Обновляем статистику пользователя
-                        await UpdateRatingUI();
+                        else
+                        {
+                            Console.WriteLine($"⚠️ Рейтинг не обновлен, но игра сохранена");
+                            MessageBox.Show("Игра сохранена, но не удалось обновить рейтинг",
+                                "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        }
                     }
                     else
                     {
-                        Console.WriteLine($"❌ Не удалось завершить игру #{_currentGameId} на сервере");
+                        Console.WriteLine($"❌ Не удалось завершить игру");
+                        MessageBox.Show("Не удалось сохранить игру на сервере",
+                            "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
                 else
                 {
-                    Console.WriteLine("⚠️ Локальная игра, не сохраняем в БД");
+                    Console.WriteLine($"⚠️ GameId = 0, игра не сохранена");
+                    MessageBox.Show("Игра не может быть сохранена (ID не найден)",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Ошибка сохранения игры: {ex.Message}");
-                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                Console.WriteLine($"❌ SaveGameToDatabase error: {ex.Message}");
+                MessageBox.Show($"Ошибка сохранения: {ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -875,7 +1112,6 @@ namespace shahmati
 
                     // 3. Обновляем локальный UI
                     await UpdateRatingUI();
-
                 }
             }
             catch (Exception ex)
@@ -900,31 +1136,25 @@ namespace shahmati
 
                     Console.WriteLine($"✅ UI обновлен: рейтинг = {stats.CurrentRating}");
                 }
+                else
+                {
+                    // Пытаемся получить пользователя напрямую
+                    var user = await _apiService.GetUserAsync(_userId);
+                    if (user?.Profile != null)
+                    {
+                        if (RatingText != null)
+                            RatingText.Text = user.Profile.Rating.ToString();
+
+                        if (UserRatingText != null)
+                            UserRatingText.Text = $"Рейтинг: {user.Profile.Rating}";
+
+                        Console.WriteLine($"✅ UI обновлен из профиля: рейтинг = {user.Profile.Rating}");
+                    }
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Ошибка обновления UI: {ex.Message}");
-            }
-        }
-
- 
-
-        private void ShowGameResultButtons(string result, bool userWon, bool isDraw)
-        {
-            // Показываем GameOverPanel вместо динамического создания
-            GameOverPanel.Visibility = Visibility.Visible;
-
-            if (userWon)
-            {
-                GameResultDescription.Text = $"Поздравляем с победой!\nВы выиграли у {_opponentName}\nВаш рейтинг увеличен на {RATING_WIN_CHANGE} очков";
-            }
-            else if (isDraw)
-            {
-                GameResultDescription.Text = $"Партия закончилась вничью\nПротивник: {_opponentName}\nРейтинг не изменился";
-            }
-            else
-            {
-                GameResultDescription.Text = $"Вы проиграли {_opponentName}\nВаш рейтинг уменьшен на {Math.Abs(RATING_LOSS_CHANGE)} очков";
             }
         }
 
@@ -950,7 +1180,255 @@ namespace shahmati
 
             // Определяем, выиграл ли пользователь (всегда белые)
             bool userWon = winner.Contains("Белые");
-            OnGameFinished(resultMessage);
+            OnGameFinishedHandler(resultMessage);
+        }
+
+
+        // ===== КНОПКА ЗАВЕРШЕНИЯ ИГРЫ =====
+        private async void FinishGameButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_currentGameId == 0)
+                {
+                    MessageBox.Show("Игра не найдена. Начните новую игру.", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Создаем диалоговое окно для выбора результата
+                var dialog = new FinishGameDialog();
+                if (dialog.ShowDialog() == true)
+                {
+                    string result = dialog.SelectedResult;
+
+                    // Показываем индикатор загрузки
+                    ShowLoadingIndicator("Завершение игры...");
+
+                    // Завершаем игру через API
+                    bool success = await FinishGameThroughApi(_currentGameId, result);
+
+                    // Скрываем индикатор загрузки
+                    HideLoadingIndicator();
+
+                    if (success)
+                    {
+                        // Обновляем UI
+                        UpdateGameUIAfterFinish(result);
+
+                        MessageBox.Show($"Игра завершена успешно!\nРезультат: {GetResultText(result)}",
+                            "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Не удалось завершить игру. Попробуйте снова.",
+                            "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при завершении игры: {ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+
+        private async Task<bool> FinishGameThroughApi(int gameId, string result)
+        {
+            try
+            {
+                Console.WriteLine($"=== ЗАВЕРШЕНИЕ ИГРЫ ЧЕРЕЗ API ===");
+                Console.WriteLine($"GameId: {gameId}");
+                Console.WriteLine($"Result: {result}");
+                Console.WriteLine($"UserId: {_userId}");
+
+                // 1. Завершаем игру на сервере
+                bool gameFinished = await _apiService.FinishGameAsync(gameId, result);
+
+                if (gameFinished)
+                {
+                    Console.WriteLine($"✅ Игра #{gameId} завершена на сервере");
+
+                    // 2. Обновляем рейтинг пользователя
+                    int ratingChange = CalculateRatingChange(result);
+                    Console.WriteLine($"Рассчитанное изменение рейтинга: {ratingChange}");
+
+                    if (ratingChange != 0)
+                    {
+                        // Создаем DTO для обновления рейтинга
+                        var updateDto = new UpdateRatingDto
+                        {
+                            UserId = _userId,
+                            GameId = gameId,
+                            RatingChange = ratingChange
+                        };
+
+                        // Отправляем запрос на обновление рейтинга
+                        bool ratingUpdated = await _apiService.UpdateUserRatingWithGameAsync(updateDto);
+
+                        if (ratingUpdated)
+                        {
+                            Console.WriteLine($"✅ Рейтинг обновлен: {ratingChange}");
+
+                            // Обновляем UI
+                            await UpdateRatingUI();
+                        }
+                        else
+                        {
+                            Console.WriteLine($"⚠️ Рейтинг не обновлен автоматически");
+
+                            // Пытаемся обновить рейтинг альтернативным способом
+                            bool altSuccess = await _apiService.UpdateRatingWithCurlAsync(_userId, ratingChange);
+                            if (altSuccess)
+                            {
+                                Console.WriteLine($"✅ Рейтинг обновлен через альтернативный метод");
+                                await UpdateRatingUI();
+                            }
+                        }
+                    }
+
+                    return true;
+                }
+                else
+                {
+                    Console.WriteLine($"❌ Не удалось завершить игру #{gameId}");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка завершения игры: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                return false;
+            }
+        }
+
+        private int CalculateRatingChange(string result)
+        {
+            Console.WriteLine($"=== РАСЧЕТ ИЗМЕНЕНИЯ РЕЙТИНГА ===");
+            Console.WriteLine($"Result: {result}");
+            Console.WriteLine($"UserIsWhite: {_userIsWhite}");
+
+            // Проверяем, кто победил
+            bool isWinForUser = false;
+            bool isDraw = false;
+
+            if (_userIsWhite)
+            {
+                // Пользователь играет белыми
+                isWinForUser = (result == "White");
+                isDraw = (result == "Draw");
+            }
+            else
+            {
+                // Пользователь играет черными (на всякий случай)
+                isWinForUser = (result == "Black");
+                isDraw = (result == "Draw");
+            }
+
+            // При сдаче пользователь всегда проигрывает
+            if (result == "Black" && _userIsWhite)
+            {
+                isWinForUser = false;
+                isDraw = false;
+            }
+
+            Console.WriteLine($"isWinForUser: {isWinForUser}, isDraw: {isDraw}");
+
+            // Расчет изменения рейтинга
+            if (isDraw)
+            {
+                Console.WriteLine($"Изменение рейтинга: 0 (ничья)");
+                return RATING_DRAW_CHANGE; // 0
+            }
+            else if (isWinForUser)
+            {
+                Console.WriteLine($"Изменение рейтинга: +{RATING_WIN_CHANGE} (победа)");
+                return RATING_WIN_CHANGE; // +15
+            }
+            else
+            {
+                Console.WriteLine($"Изменение рейтинга: {RATING_LOSS_CHANGE} (поражение)");
+                return RATING_LOSS_CHANGE; // -10
+            }
+        }
+
+        private string GetResultText(string result)
+        {
+            return result.ToLower() switch
+            {
+                "white" => "Победа белых",
+                "black" => "Победа черных",
+                "draw" => "Ничья",
+                _ => result
+            };
+        }
+
+        private void UpdateGameUIAfterFinish(string result)
+        {
+            // Останавливаем таймеры
+            _gameTimer.Stop();
+            _whiteTimer.Stop();
+            _blackTimer.Stop();
+
+            // Обновляем статус
+            if (StatusText != null)
+            {
+                StatusText.Text = $"Игра завершена: {GetResultText(result)}";
+            }
+
+            if (StatusIcon != null)
+            {
+                StatusIcon.Text = "🏁";
+            }
+
+            // Показываем панель с результатом
+            ShowGameResultPanel(result);
+        }
+
+        private void ShowGameResultPanel(string result)
+        {
+            GameOverPanel.Visibility = Visibility.Visible;
+
+            bool userWon = (_userIsWhite && result == "White") || (!_userIsWhite && result == "Black");
+            bool isDraw = result == "Draw";
+
+            if (userWon)
+            {
+                GameResultText.Text = "🎉 ПОБЕДА!";
+                GameResultDescription.Text = $"Вы победили {_opponentName}!\nРейтинг увеличен на +{RATING_WIN_CHANGE}";
+                GameOverPanel.Background = new SolidColorBrush(Color.FromRgb(34, 139, 34)); // Зеленый
+            }
+            else if (isDraw)
+            {
+                GameResultText.Text = "🤝 НИЧЬЯ";
+                GameResultDescription.Text = $"Партия завершилась вничью\nРейтинг не изменился";
+                GameOverPanel.Background = new SolidColorBrush(Color.FromRgb(255, 215, 0)); // Золотой
+            }
+            else
+            {
+                GameResultText.Text = "😔 ПОРАЖЕНИЕ";
+                GameResultDescription.Text = $"Вы проиграли {_opponentName}\nРейтинг уменьшен на {Math.Abs(RATING_LOSS_CHANGE)}";
+                GameOverPanel.Background = new SolidColorBrush(Color.FromRgb(220, 20, 60)); // Красный
+            }
+        }
+
+        private void ShowLoadingIndicator(string message)
+        {
+            if (_loadingPanel != null)
+            {
+                _loadingPanel.Visibility = Visibility.Visible;
+                _loadingText.Text = message;
+            }
+        }
+
+        private void HideLoadingIndicator()
+        {
+            if (_loadingPanel != null)
+            {
+                _loadingPanel.Visibility = Visibility.Collapsed;
+            }
         }
 
         public void SwitchTurn(string newPlayer)
@@ -1090,20 +1568,6 @@ namespace shahmati
             }
         }
 
-        private async void FinishButton_Click(object sender, RoutedEventArgs e)
-        {
-            var result = MessageBox.Show("Завершить текущую игру?\n\n" +
-                                       "Это засчитается как поражение (-10 рейтинга)",
-                "Подтверждение",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-
-            if (result == MessageBoxResult.Yes)
-            {
-                await FinishCurrentGame("Игрок завершил игру досрочно");
-            }
-        }
-
         private void NewGameButton_Click(object sender, RoutedEventArgs e)
         {
             var result = MessageBox.Show("Начать новую игру?\n\nТекущая игра будет завершена.",
@@ -1119,7 +1583,7 @@ namespace shahmati
                 // Завершаем текущую игру
                 if (_viewModel.GameManager != null && _viewModel.GameManager.IsGameInProgress)
                 {
-                    OnGameFinished("Игра прервана для начала новой");
+                    OnGameFinishedHandler("Игра прервана для начала новой");
                 }
 
                 // Начинаем новую игру
@@ -1157,7 +1621,7 @@ namespace shahmati
                 // Завершаем текущую игру
                 if (_viewModel.GameManager != null && _viewModel.GameManager.IsGameInProgress)
                 {
-                    OnGameFinished("Игра перезапущена");
+                    OnGameFinishedHandler("Игра перезапущена");
                 }
 
                 // Начинаем новую игру
@@ -1205,27 +1669,17 @@ namespace shahmati
             {
                 Console.WriteLine($"=== ЗАВЕРШЕНИЕ ИГРЫ ПРИ ВЫХОДЕ ===");
 
-                if (_currentGameId != 0 && _viewModel?.GameManager?.IsGameInProgress == true)
-                {
-                    // 1. Сохраняем игру как поражение
-                    await SaveGameToDatabase("Black", "Игра завершена досрочно", RATING_LOSS_CHANGE);
-
-                    // 2. Обновляем рейтинг
-                    await UpdateUserRating(RATING_LOSS_CHANGE);
-
-                    _currentGameId = 0;
-
-                    Console.WriteLine($"✅ Игра завершена, рейтинг обновлен");
-                }
+                // Просто показываем сообщение
+                MessageBox.Show("Игра прервана. Для сохранения результатов завершите игру нормально.",
+                    "Игра прервана", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Ошибка завершения игры: {ex.Message}");
-                MessageBox.Show($"Ошибка завершения игры: {ex.Message}");
+                Console.WriteLine($"❌ FinishCurrentGame error: {ex.Message}");
             }
             finally
             {
-                // Всегда останавливаем таймеры
+                // Останавливаем таймеры
                 _gameTimer.Stop();
                 _whiteTimer.Stop();
                 _blackTimer.Stop();
@@ -1245,7 +1699,7 @@ namespace shahmati
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    OnGameFinished("Игра завершена при выходе из приложения");
+                    OnGameFinishedHandler("Игра завершена при выходе из приложения");
                 }
                 else
                 {
@@ -1253,8 +1707,6 @@ namespace shahmati
                 }
             }
         }
-
-
 
         // Метод для обновления текущего игрока
         public void UpdateCurrentPlayer(string player)
@@ -1308,162 +1760,58 @@ namespace shahmati
         private async void ResignButton_Click(object sender, RoutedEventArgs e)
         {
             var result = MessageBox.Show("Вы уверены, что хотите сдаться?\n\n" +
-                                       "Это засчитается как поражение (-10 рейтинга)",
+                                       "Игра будет завершена как поражение.",
                 "Сдача",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
 
-            if (result == MessageBoxResult.Yes && _viewModel?.GameManager != null)
-            {
-                // Пользователь всегда белые, поэтому сдача белых
-                _viewModel.GameManager.Resign(PieceColor.White);
-
-                // ДОБАВЬТЕ: Вызов метода завершения игры
-                await FinishGameManually("Black", "Игрок сдался");
-            }
-        }
-
-        private async Task FinishGameManually(string result, string reason)
-        {
-            if (_currentGameId > 0)
-            {
-                Console.WriteLine($"=== РУЧНОЕ ЗАВЕРШЕНИЕ ИГРЫ ===");
-                Console.WriteLine($"GameId: {_currentGameId}");
-                Console.WriteLine($"Result: {result}");
-                Console.WriteLine($"Reason: {reason}");
-
-                // Завершаем игру на сервере
-                bool gameFinished = await _apiService.FinishGameAsync(_currentGameId, result);
-
-                if (gameFinished)
-                {
-                    Console.WriteLine($"✅ Игра #{_currentGameId} завершена на сервере");
-
-                    // Обновляем рейтинг
-                    int ratingChange = result == "White" ? RATING_WIN_CHANGE : RATING_LOSS_CHANGE;
-                    await UpdateUserRating(ratingChange);
-                }
-                else
-                {
-                    Console.WriteLine($"❌ Не удалось завершить игру #{_currentGameId}");
-                }
-            }
-            else
-            {
-                Console.WriteLine("⚠️ Нет ID игры для завершения");
-            }
-        }
-
-
-        private async void OnGameFinished(string result)
-        {
-            Console.WriteLine($"=== ON GAME FINISHED CALLED ===");
-            Console.WriteLine($"Result from GameManager: {result}");
-
-            await Dispatcher.Invoke(async () =>
+            if (result == MessageBoxResult.Yes)
             {
                 try
                 {
-                    Console.WriteLine($"Dispatcher invoked, processing game finish...");
+                    // Показываем индикатор загрузки
+                    ShowLoadingIndicator("Завершение игры...");
 
-                    // Останавливаем все таймеры
-                    _gameTimer.Stop();
-                    _whiteTimer.Stop();
-                    _blackTimer.Stop();
+                    // Определяем результат сдачи
+                    // Пользователь всегда играет белыми, поэтому сдача = победа черных
+                    string apiResult = "Black"; // Результат для API
 
-                    // Определяем результат для API
-                    string apiResult = "Draw"; // по умолчанию
-                    int ratingChange = 0;
+                    // Завершаем игру через API
+                    bool success = await FinishGameThroughApi(_currentGameId, apiResult);
 
-                    if (result.Contains("Победа белых") || result.Contains("белые сдались"))
+                    // Скрываем индикатор загрузки
+                    HideLoadingIndicator();
+
+                    if (success)
                     {
-                        apiResult = "White";
-                        ratingChange = RATING_WIN_CHANGE; // +15 за победу белых (пользователь)
+                        // Обновляем UI
+                        StatusText.Text = "Вы сдались. Игра завершена.";
+                        StatusIcon.Text = "🏳️";
+
+                        // Вызываем обработчик завершения игры
+                        OnGameFinishedHandler("Черные победили (сдача белых)");
+
+                        MessageBox.Show("Игра завершена! Результат сохранен.",
+                            "Сдача",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
                     }
-                    else if (result.Contains("Победа черных") || result.Contains("черные сдались"))
+                    else
                     {
-                        apiResult = "Black";
-                        ratingChange = RATING_LOSS_CHANGE; // -10 за поражение белых (пользователь)
+                        MessageBox.Show("Не удалось завершить игру. Попробуйте снова.",
+                            "Ошибка",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error);
                     }
-
-                    Console.WriteLine($"API Result: {apiResult}");
-                    Console.WriteLine($"Rating Change: {ratingChange}");
-                    Console.WriteLine($"Current Game ID: {_currentGameId}");
-
-                    // Сохраняем игру
-                    await SaveGameToDatabase(apiResult, result, ratingChange);
-
-                    // Обновляем статус в UI
-                    if (StatusText != null)
-                        StatusText.Text = result;
-
-                    if (StatusIcon != null)
-                        StatusIcon.Text = "🏁";
-
-                    // Показываем сообщение о результате
-                    string message = "";
-                    string title = "";
-
-                    if (apiResult == "White")
-                    {
-                        message = $"🎉 ПОБЕДА БЕЛЫХ! 🎉\n\n" +
-                                 $"Вы выиграли партию!\n" +
-                                 $"Противник: {_opponentName}\n" +
-                                 $"Ваш рейтинг увеличен на {RATING_WIN_CHANGE} очков";
-                        title = "Поздравляем!";
-                    }
-                    else if (apiResult == "Draw")
-                    {
-                        message = $"🤝 НИЧЬЯ! 🤝\n\n" +
-                                 $"Партия закончилась вничью\n" +
-                                 $"Противник: {_opponentName}\n" +
-                                 $"Ваш рейтинг не изменился";
-                        title = "Ничья";
-                    }
-                    else // Black
-                    {
-                        message = $"😔 ПОРАЖЕНИЕ БЕЛЫХ\n\n" +
-                                 $"Вы проиграли партию\n" +
-                                 $"Противник: {_opponentName}\n" +
-                                 $"Ваш рейтинг уменьшен на {Math.Abs(RATING_LOSS_CHANGE)} очков";
-                        title = "Сожалеем";
-                    }
-
-                    MessageBox.Show(message, title, MessageBoxButton.OK,
-                        apiResult == "White" ? MessageBoxImage.Exclamation :
-                        apiResult == "Draw" ? MessageBoxImage.Information : MessageBoxImage.Exclamation);
-
-                    // Показываем панель с результатом
-                    ShowGameResultButtons(apiResult == "White", apiResult == "Draw");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"❌ Ошибка в OnGameFinished: {ex.Message}");
-                    Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                    HideLoadingIndicator();
+                    MessageBox.Show($"Ошибка при сдаче: {ex.Message}",
+                        "Ошибка",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
                 }
-            });
-        }
-
-        private void ShowGameResultButtons(bool userWon, bool isDraw)
-        {
-            GameOverPanel.Visibility = Visibility.Visible;
-
-            if (userWon)
-            {
-                GameResultDescription.Text = $"Поздравляем с победой!\n" +
-                                            $"Вы выиграли у {_opponentName}\n" +
-                                            $"Ваш рейтинг увеличен на {RATING_WIN_CHANGE} очков";
-            }
-            else if (isDraw)
-            {
-                GameResultDescription.Text = $"Партия закончилась вничью\n" +
-                                            $"Противник: {_opponentName}\n" +
-                                            $"Рейтинг не изменился";
-            }
-            else
-            {
-                GameResultDescription.Text = $"Вы проиграли {_opponentName}\n" +
-                                            $"Ваш рейтинг уменьшен на {Math.Abs(RATING_LOSS_CHANGE)} очков";
             }
         }
 

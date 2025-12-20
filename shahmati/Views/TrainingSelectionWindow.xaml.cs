@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Threading.Tasks;
 
 namespace shahmati.Views
 {
@@ -20,81 +21,97 @@ namespace shahmati.Views
             _viewModel = new TrainingViewModel(userId);
             DataContext = _viewModel;
 
-            Loaded += async (s, e) => await _viewModel.LoadTrainingsAsync();
+            // Устанавливаем плейсхолдер
+            SearchPlaceholder.Text = "Поиск тренировок...";
+
+            Loaded += async (s, e) => await InitializeTrainings();
+        }
+
+        private async Task InitializeTrainings()
+        {
+            try
+            {
+                await _viewModel.LoadTrainingsAsync();
+                TrainingsList.ItemsSource = _viewModel.FilteredTrainings;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки тренировок: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
-            DashboardWindow dashboardWindow = new DashboardWindow(_userId);
-            dashboardWindow.Show();
-            this.Close();
+            try
+            {
+                DashboardWindow dashboardWindow = new DashboardWindow(_userId);
+                dashboardWindow.Show();
+                this.Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void StatsButton_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Статистика тренировок будет показана здесь", "Статистика",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            try
+            {
+                MessageBox.Show("Статистика тренировок будет реализована в следующем обновлении",
+                    "Статистика",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void TrainingCard_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            if (sender is Border border && border.Tag is int trainingId)
+            try
             {
-                var selectedTraining = _viewModel.AllTrainings.FirstOrDefault(t => t.Id == trainingId);
-                if (selectedTraining != null)
+                if (sender is Border border && border.Tag is int trainingId)
                 {
-                    // Открываем окно тренировки
-                    TrainingWindow trainingWindow = new TrainingWindow(_userId, selectedTraining);
-                    trainingWindow.Show();
-                    this.Close();
+                    var selectedTraining = _viewModel.AllTrainings.FirstOrDefault(t => t.Id == trainingId);
+                    if (selectedTraining != null)
+                    {
+                        // Открываем окно тренировки
+                        TrainingWindow trainingWindow = new TrainingWindow(_userId, selectedTraining);
+                        trainingWindow.Show();
+                        this.Close();
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка открытия тренировки: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(SearchTextBox.Text) || SearchTextBox.Text == "Поиск тренировок...")
+            try
             {
-                // Создаем новую ObservableCollection из AllTrainings
-                _viewModel.FilteredTrainings = new ObservableCollection<TrainingTypeDto>(_viewModel.AllTrainings);
-            }
-            else
-            {
-                var query = SearchTextBox.Text.ToLower();
-                var filtered = _viewModel.AllTrainings
-                    .Where(t => t.Name.ToLower().Contains(query) ||
-                               t.Description.ToLower().Contains(query))
-                    .ToList();
+                var searchText = SearchTextBox.Text.ToLower();
 
-                _viewModel.FilteredTrainings = new ObservableCollection<TrainingTypeDto>(filtered);
-            }
-
-            // Обновляем ItemsSource
-            TrainingsList.ItemsSource = _viewModel.FilteredTrainings;
-        }
-
-        private void CategoryRadio_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is RadioButton radioButton)
-            {
-                string category = radioButton.Content.ToString() switch
-                {
-                    "Тактика" => "Tactics",
-                    "Дебюты" => "Opening",
-                    "Эндшпиль" => "Endgame",
-                    "Скорость" => "Speed",
-                    "Специальные" => "Special",
-                    _ => null
-                };
-
-                if (category == null)
+                if (string.IsNullOrWhiteSpace(searchText) || searchText == "поиск тренировок...")
                 {
                     _viewModel.FilteredTrainings = new ObservableCollection<TrainingTypeDto>(_viewModel.AllTrainings);
                 }
                 else
                 {
                     var filtered = _viewModel.AllTrainings
-                        .Where(t => t.Category == category)
+                        .Where(t => t.Name.ToLower().Contains(searchText) ||
+                                   t.Description.ToLower().Contains(searchText) ||
+                                   t.Category.ToLower().Contains(searchText) ||
+                                   t.Difficulty.ToLower().Contains(searchText))
                         .ToList();
 
                     _viewModel.FilteredTrainings = new ObservableCollection<TrainingTypeDto>(filtered);
@@ -102,38 +119,96 @@ namespace shahmati.Views
 
                 TrainingsList.ItemsSource = _viewModel.FilteredTrainings;
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка поиска: {ex.Message}");
+            }
+        }
+
+        private void CategoryRadio_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender is RadioButton radioButton)
+                {
+                    string category = radioButton.Content.ToString() switch
+                    {
+                        "Тактика" => "Tactics",
+                        "Дебюты" => "Opening",
+                        "Эндшпиль" => "Endgame",
+                        "Скорость" => "Speed",
+                        "Специальные" => "Special",
+                        _ => null
+                    };
+
+                    if (category == null)
+                    {
+                        _viewModel.FilteredTrainings = new ObservableCollection<TrainingTypeDto>(_viewModel.AllTrainings);
+                    }
+                    else
+                    {
+                        var filtered = _viewModel.AllTrainings
+                            .Where(t => t.Category == category)
+                            .ToList();
+
+                        _viewModel.FilteredTrainings = new ObservableCollection<TrainingTypeDto>(filtered);
+                    }
+
+                    TrainingsList.ItemsSource = _viewModel.FilteredTrainings;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка фильтрации по категории: {ex.Message}");
+            }
         }
 
         private void ResetFiltersButton_Click(object sender, RoutedEventArgs e)
         {
-            SearchTextBox.Text = "";
-            AllCategoryRadio.IsChecked = true;
-            BeginnerCheckBox.IsChecked = true;
-            MediumCheckBox.IsChecked = true;
-            HardCheckBox.IsChecked = true;
+            try
+            {
+                SearchTextBox.Text = "";
+                AllCategoryRadio.IsChecked = true;
+                BeginnerCheckBox.IsChecked = true;
+                MediumCheckBox.IsChecked = true;
+                HardCheckBox.IsChecked = true;
 
-            _viewModel.FilteredTrainings = new ObservableCollection<TrainingTypeDto>(_viewModel.AllTrainings);
-            TrainingsList.ItemsSource = _viewModel.FilteredTrainings;
+                _viewModel.FilteredTrainings = new ObservableCollection<TrainingTypeDto>(_viewModel.AllTrainings);
+                TrainingsList.ItemsSource = _viewModel.FilteredTrainings;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка сброса фильтров: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void SearchTextBox_GotFocus(object sender, RoutedEventArgs e)
         {
-            if (SearchTextBox.Text == "Поиск тренировок...")
+            try
             {
-                SearchTextBox.Text = "";
-                SearchTextBox.Foreground = System.Windows.Media.Brushes.Black;
-                SearchTextBox.FontStyle = FontStyles.Normal;
+                if (SearchTextBox.Text == "Поиск тренировок...")
+                {
+                    SearchTextBox.Text = "";
+                    SearchTextBox.Foreground = System.Windows.Media.Brushes.Black;
+                    SearchTextBox.FontStyle = FontStyles.Normal;
+                }
             }
+            catch { }
         }
 
         private void SearchTextBox_LostFocus(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(SearchTextBox.Text))
+            try
             {
-                SearchTextBox.Text = "Поиск тренировок...";
-                SearchTextBox.Foreground = System.Windows.Media.Brushes.Gray;
-                SearchTextBox.FontStyle = FontStyles.Italic;
+                if (string.IsNullOrWhiteSpace(SearchTextBox.Text))
+                {
+                    SearchTextBox.Text = "Поиск тренировок...";
+                    SearchTextBox.Foreground = System.Windows.Media.Brushes.Gray;
+                    SearchTextBox.FontStyle = FontStyles.Italic;
+                }
             }
+            catch { }
         }
     }
 }

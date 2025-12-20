@@ -313,12 +313,7 @@
                            Margin="10,0,10,0"
                            Click="ResignButton_Click"/>
 
-                    <!-- Кнопка завершения -->
-                    <Button x:Name="FinishButton" 
-                           Content="🏁 Завершить" 
-                           Style="{StaticResource ControlButtonStyle}"
-                           Background="#E74C3C"
-                           Click="FinishButton_Click"/>
+
                 </StackPanel>
             </Grid>
         </Border>
@@ -389,7 +384,7 @@
                         </StackPanel>
 
                         <!-- ЦИФРЫ СПРАВА (8-1) -->
-                        <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Height="599" Width="24">
                             <TextBlock Text="8" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
                             <TextBlock Text="7" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
                             <TextBlock Text="6" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
@@ -397,7 +392,7 @@
                             <TextBlock Text="4" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
                             <TextBlock Text="3" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
                             <TextBlock Text="2" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,55"/>
-                            <TextBlock Text="1" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial"/>
+                            <TextBlock Text="1" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Height="25" Width="25"/>
                         </StackPanel>
 
                         <!-- БУКВЫ СВЕРХУ (a-h) -->

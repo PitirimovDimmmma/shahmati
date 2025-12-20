@@ -49,10 +49,12 @@ namespace shahmati.Models
         public UserProfileDto Profile { get; set; }
     }
 
+    // ОБЪЕДИНЕННЫЙ класс для обновления профиля
     public class UpdateProfileRequest
     {
-        public string Nickname { get; set; }
-        public string PhotoPath { get; set; }
+        public string? Nickname { get; set; }
+        public string? PhotoPath { get; set; }
+        public int? Rating { get; set; }
     }
 
     // DTO для игр
@@ -171,8 +173,6 @@ namespace shahmati.Models
         public string PhotoPath { get; set; }
     }
 
-  
-
     // Класс для запроса обновления рейтинга
     public class UpdateRatingRequest
     {
@@ -195,5 +195,39 @@ namespace shahmati.Models
         public int RatingChange { get; set; }
         public int GameId { get; set; }
         public string Reason { get; set; }
+    }
+
+    public class AddRatingHistoryDto
+    {
+        public int UserId { get; set; }
+        public int GameId { get; set; }
+        public int OldRating { get; set; }
+        public int NewRating { get; set; }
+        public int RatingChange { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
+    
+
+    public class UpdateTrainingProgressDto
+    {
+        public int Score { get; set; }
+        public int Mistakes { get; set; }
+        public int TimeSpent { get; set; }
+        public bool Completed { get; set; }
+    }
+
+    // DTO для лидерборда
+    public class LeaderboardDto
+    {
+        public int UserId { get; set; }
+        public string Username { get; set; }
+        public string Nickname { get; set; }
+        public int Rating { get; set; }
+        public int Wins { get; set; }
+        public int Losses { get; set; }
+        public int Draws { get; set; }
+        public double WinRate { get; set; }
+        public int Rank { get; set; }
     }
 }

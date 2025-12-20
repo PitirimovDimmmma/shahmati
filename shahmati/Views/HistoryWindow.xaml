@@ -31,11 +31,14 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
+                <Button x:Name="FindGamesButton" Content="🔍 Найти мои игры" 
+        Click="FindGamesButton_Click" Margin="96,5,383,5" Padding="10,5" 
+        Background="#3498db" Foreground="White" Grid.ColumnSpan="2"/>
                 <Button Grid.Column="0" Content="← Назад" 
                        Click="BackButton_Click"
                        Background="Transparent" 
                        Foreground="White"
-                       BorderThickness="0"/>
+                       BorderThickness="0" Grid.ColumnSpan="2" Margin="23,10,520,5"/>
 
                 <TextBlock Grid.Column="1" Text="📊 История игр" 
                           Foreground="White" FontSize="20" FontWeight="Bold"
@@ -54,7 +57,7 @@
 
         <!-- Список игр -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="20" x:Name="GamesContainer">
+            <StackPanel Margin="20" x:Name="GamesContainer" Height="404">
                 <!-- Игры будут добавляться динамически -->
             </StackPanel>
         </ScrollViewer>

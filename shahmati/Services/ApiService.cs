@@ -9,6 +9,9 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
+using System.IO;
+using System.Diagnostics;
+using System.Text;
 
 namespace shahmati.Services
 {
@@ -372,15 +375,64 @@ namespace shahmati.Services
         {
             try
             {
-                Console.WriteLine($"=== UPDATE PROFILE ID={userId} ===");
-                var response = await _httpClient.PutAsJsonAsync($"api/auth/profile/{userId}", request);
-                return response.IsSuccessStatusCode;
+                var response = await _httpClient.PutAsJsonAsync($"api/profiles/{userId}", request);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"✅ Профиль пользователя {userId} обновлен");
+                    return true;
+                }
+                else
+                {
+                    Console.WriteLine($"❌ Ошибка обновления профиля: {response.StatusCode}");
+                    return false;
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Ошибка обновления профиля: {ex.Message}");
-                MessageBox.Show($"Ошибка обновления профиля: {ex.Message}",
-                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateUserRatingAsync(int userId, int ratingChange)
+        {
+            try
+            {
+                // 1. Получить текущий профиль
+                var user = await GetUserAsync(userId);
+                if (user == null) return false;
+
+                // 2. Рассчитать новый рейтинг
+                int currentRating = user.Profile?.Rating ?? 1200;
+                int newRating = currentRating + ratingChange;
+
+                // 3. Обновить профиль
+                var updateRequest = new UpdateProfileRequest
+                {
+                    Rating = newRating
+                };
+
+                return await UpdateProfileAsync(userId, updateRequest);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка обновления рейтинга: {ex.Message}");
+                return false;
+            }
+        }
+
+
+        public async Task<bool> AddRatingHistoryAsync(AddRatingHistoryDto dto)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync("api/rating/history", dto);
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка добавления истории рейтинга: {ex.Message}");
                 return false;
             }
         }
@@ -406,18 +458,35 @@ namespace shahmati.Services
         {
             try
             {
-                Console.WriteLine($"=== GET USER GAMES ID={userId} ===");
-                return await _httpClient.GetFromJsonAsync<List<GameDto>>($"api/games/user/{userId}");
+                Console.WriteLine($"=== GET USER GAMES ===");
+                Console.WriteLine($"URL: {_httpClient.BaseAddress}api/games/user/{userId}");
+
+                var response = await _httpClient.GetAsync($"api/games/user/{userId}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"✅ Статус: {response.StatusCode}, Длина: {content.Length}");
+
+                    var games = JsonSerializer.Deserialize<List<GameDto>>(content,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    Console.WriteLine($"✅ Найдено игр: {games?.Count ?? 0}");
+                    return games ?? new List<GameDto>();
+                }
+                else
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"❌ Ошибка: {response.StatusCode}, {error}");
+                    return new List<GameDto>();
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Ошибка получения игр пользователя: {ex.Message}");
-                MessageBox.Show($"Ошибка при получении игр пользователя: {ex.Message}",
-                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                Console.WriteLine($"❌ Exception: {ex.Message}");
                 return new List<GameDto>();
             }
         }
-
         public async Task<GameDto> GetGameAsync(int id)
         {
             try
@@ -492,16 +561,50 @@ namespace shahmati.Services
         {
             try
             {
-                Console.WriteLine($"=== FINISH GAME ID={gameId} ===");
-                var finishData = new { Result = result };
-                var response = await _httpClient.PutAsJsonAsync($"api/games/{gameId}/finish", finishData);
-                return response.IsSuccessStatusCode;
+                Console.WriteLine($"=== API: FINISH GAME ===");
+                Console.WriteLine($"GameId: {gameId}");
+                Console.WriteLine($"Result: {result}");
+                Console.WriteLine($"API URL: {_httpClient.BaseAddress}api/games/{gameId}/finish");
+
+                var request = new FinishGameRequest { Result = result };
+
+                // Логируем отправляемые данные
+                string jsonData = JsonSerializer.Serialize(request);
+                Console.WriteLine($"Request JSON: {jsonData}");
+
+                var response = await _httpClient.PutAsJsonAsync($"api/games/{gameId}/finish", request);
+
+                Console.WriteLine($"Response Status: {response.StatusCode}");
+                var responseContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Response: {responseContent}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"✅ Игра #{gameId} завершена успешно!");
+                    return true;
+                }
+                else
+                {
+                    Console.WriteLine($"❌ Ошибка завершения игры: {response.StatusCode}");
+                    Console.WriteLine($"Error: {responseContent}");
+
+                    // Попробуем через curl если обычный запрос не сработал
+                    Console.WriteLine($"Пробую через CURL...");
+                    return await FinishGameWithCurlAsync(gameId, result);
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                Console.WriteLine($"❌ HTTP Error: {ex.Message}");
+
+                // Пробуем через curl
+                Console.WriteLine($"Пробую через CURL после HTTP ошибки...");
+                return await FinishGameWithCurlAsync(gameId, result);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Ошибка при завершении игры: {ex.Message}");
-                MessageBox.Show($"Ошибка при завершении игры: {ex.Message}",
-                               "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                Console.WriteLine($"❌ Exception: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
                 return false;
             }
         }
@@ -586,6 +689,361 @@ namespace shahmati.Services
                 Console.WriteLine($"❌ Ошибка обновления сохраненной игры: {ex.Message}");
                 MessageBox.Show($"Ошибка обновления сохраненной игры: {ex.Message}",
                                "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+        }
+
+
+        // В твой ApiService.cs добавляем эти методы:
+        public async Task<bool> FinishGameWithCurlAsync(int gameId, string result)
+        {
+            try
+            {
+                Console.WriteLine($"=== CURL FINISH GAME START ===");
+                Console.WriteLine($"GameId: {gameId}");
+                Console.WriteLine($"Result: {result}");
+
+                // 1. Создаем JSON данные
+                var request = new { result };
+                string jsonData = JsonSerializer.Serialize(request);
+                Console.WriteLine($"JSON для отправки: {jsonData}");
+
+                // 2. Сохраняем во временный файл
+                string tempFile = Path.GetTempFileName() + ".json";
+                Console.WriteLine($"Создаем временный файл: {tempFile}");
+
+                await File.WriteAllTextAsync(tempFile, jsonData, Encoding.UTF8);
+
+                // Проверим что записалось
+                string fileContent = await File.ReadAllTextAsync(tempFile);
+                Console.WriteLine($"Содержимое файла: {fileContent}");
+
+                // 3. Формируем curl команду БЕЗ -silent
+                string curlCommand = $"curl -X PUT \"https://localhost:7259/api/games/{gameId}/finish\" " +
+                                    $"-H \"Content-Type: application/json\" " +
+                                    $"--data-binary \"@{tempFile}\" " +
+                                    $"--insecure -v"; // ТОЛЬКО -v, НЕ -silent
+
+                Console.WriteLine($"=== ПОЛНАЯ CURL КОМАНДА ===");
+                Console.WriteLine(curlCommand);
+                Console.WriteLine($"=== КОНЕЦ КОМАНДЫ ===");
+
+                // 4. Выполняем команду
+                ProcessStartInfo psi = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c {curlCommand}",
+                    UseShellExecute = false,
+                    CreateNoWindow = false, // Показываем окно!
+                    WindowStyle = ProcessWindowStyle.Normal,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    StandardOutputEncoding = Encoding.UTF8
+                };
+
+                Console.WriteLine($"Запускаем процесс...");
+
+                using (Process process = new Process { StartInfo = psi })
+                {
+                    process.Start();
+
+                    // Асинхронно читаем вывод
+                    StringBuilder outputBuilder = new StringBuilder();
+                    StringBuilder errorBuilder = new StringBuilder();
+
+                    process.OutputDataReceived += (sender, e) => {
+                        if (!string.IsNullOrEmpty(e.Data))
+                        {
+                            outputBuilder.AppendLine(e.Data);
+                            Console.WriteLine($"CURL OUTPUT: {e.Data}");
+                        }
+                    };
+
+                    process.ErrorDataReceived += (sender, e) => {
+                        if (!string.IsNullOrEmpty(e.Data))
+                        {
+                            errorBuilder.AppendLine(e.Data);
+                            Console.WriteLine($"CURL ERROR: {e.Data}");
+                        }
+                    };
+
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
+
+                    await process.WaitForExitAsync();
+
+                    string output = outputBuilder.ToString();
+                    string error = errorBuilder.ToString();
+
+                    Console.WriteLine($"Код завершения процесса: {process.ExitCode}");
+
+                    // Удаляем временный файл
+                    if (File.Exists(tempFile))
+                    {
+                        File.Delete(tempFile);
+                        Console.WriteLine($"Временный файл удален");
+                    }
+
+                    // Анализируем ответ
+                    Console.WriteLine($"=== АНАЛИЗ ОТВЕТА ===");
+
+                    bool requestSent = false;
+                    bool gotResponse = false;
+                    string statusCode = "Нет ответа";
+
+                    string[] lines = output.Split('\n');
+                    foreach (string line in lines)
+                    {
+                        Console.WriteLine($"LINE: {line}");
+
+                        if (line.Contains("> PUT /api/games/"))
+                        {
+                            requestSent = true;
+                            Console.WriteLine($"✅ Запрос отправлен на сервер");
+                        }
+
+                        if (line.Contains("HTTP/1.1") || line.Contains("HTTP/2"))
+                        {
+                            gotResponse = true;
+                            statusCode = line.Trim();
+                            Console.WriteLine($"✅ Получен ответ: {statusCode}");
+                        }
+
+                        if (line.Contains("{")) // JSON ответ
+                        {
+                            Console.WriteLine($"JSON ответ: {line}");
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(error))
+                    {
+                        Console.WriteLine($"=== ОШИБКИ CURL ===");
+                        Console.WriteLine(error);
+                    }
+
+                    // Проверяем результат
+                    if (gotResponse && output.Contains("200"))
+                    {
+                        Console.WriteLine($"✅ Игра #{gameId} завершена успешно!");
+                        Console.WriteLine($"Статус: {statusCode}");
+                        return true;
+                    }
+                    else if (gotResponse && output.Contains("404"))
+                    {
+                        Console.WriteLine($"❌ Ошибка 404: Игра #{gameId} не найдена");
+                        return false;
+                    }
+                    else if (gotResponse && output.Contains("400"))
+                    {
+                        Console.WriteLine($"❌ Ошибка 400: Неверный запрос");
+                        return false;
+                    }
+                    else if (requestSent)
+                    {
+                        Console.WriteLine($"⚠️ Запрос отправлен, но нет ответа от сервера");
+                        return false;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"❌ Запрос не отправлен. Код выхода: {process.ExitCode}");
+                        return false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Критическая ошибка в FinishGameWithCurlAsync:");
+                Console.WriteLine($"Сообщение: {ex.Message}");
+                Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateRatingWithCurlAsync(int userId, int ratingChange)
+        {
+            try
+            {
+                Console.WriteLine($"=== CURL UPDATE RATING ===");
+                Console.WriteLine($"UserId: {userId}");
+                Console.WriteLine($"RatingChange: {ratingChange} (+15 за победу, -10 за поражение)");
+
+                // 1. Создаем JSON данные
+                var request = new { ratingChange };
+                string jsonData = JsonSerializer.Serialize(request);
+
+                // 2. Сохраняем во временный файл
+                string tempFile = Path.GetTempFileName() + ".json";
+                await File.WriteAllTextAsync(tempFile, jsonData, Encoding.UTF8);
+
+                // 3. Формируем curl команду
+                string curlCommand = $"curl -X PUT \"https://localhost:7259/api/games/{userId}/rating\" " +
+                                    $"-H \"Content-Type: application/json\" " +
+                                    $"--data-binary \"@{tempFile}\" " +
+                                    $"--insecure -v";
+
+                Console.WriteLine($"Curl command: {curlCommand}");
+
+                // 4. Выполняем команду
+                ProcessStartInfo psi = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c {curlCommand}",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    StandardOutputEncoding = Encoding.UTF8
+                };
+
+                using (Process process = new Process { StartInfo = psi })
+                {
+                    process.Start();
+                    string output = await process.StandardOutput.ReadToEndAsync();
+                    string error = await process.StandardError.ReadToEndAsync();
+                    await process.WaitForExitAsync();
+
+                    // Удаляем временный файл
+                    if (File.Exists(tempFile))
+                        File.Delete(tempFile);
+
+                    Console.WriteLine($"=== CURL OUTPUT ===");
+                    Console.WriteLine(output);
+
+                    // Проверяем успешность
+                    bool success = output.Contains("HTTP/1.1 200") ||
+                                  output.Contains("HTTP/2 200") ||
+                                  output.Contains("Rating updated");
+
+                    if (success)
+                    {
+                        Console.WriteLine($"✅ Рейтинг пользователя {userId} обновлен на {ratingChange}");
+                        return true;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"❌ Ошибка обновления рейтинга через CURL");
+
+                        // Альтернативный способ: через обновление профиля
+                        return await UpdateRatingViaProfileCurlAsync(userId, ratingChange);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ UpdateRatingWithCurlAsync error: {ex.Message}");
+                return false;
+            }
+        }
+
+        // Альтернативный метод обновления рейтинга через профиль
+        private async Task<bool> UpdateRatingViaProfileCurlAsync(int userId, int ratingChange)
+        {
+            try
+            {
+                Console.WriteLine($"=== CURL UPDATE RATING VIA PROFILE ===");
+
+                // 1. Сначала получаем текущий профиль
+                string getCommand = $"curl -X GET \"https://localhost:7259/api/users/{userId}\" --insecure";
+
+                ProcessStartInfo getPsi = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c {getCommand}",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    StandardOutputEncoding = Encoding.UTF8
+                };
+
+                string userJson = "";
+                using (Process getProcess = new Process { StartInfo = getPsi })
+                {
+                    getProcess.Start();
+                    userJson = await getProcess.StandardOutput.ReadToEndAsync();
+                    await getProcess.WaitForExitAsync();
+                }
+
+                // Парсим текущий рейтинг
+                int currentRating = 1200;
+                if (!string.IsNullOrEmpty(userJson))
+                {
+                    try
+                    {
+                        var userData = JsonSerializer.Deserialize<Dictionary<string, object>>(userJson);
+                        if (userData != null && userData.TryGetValue("profile", out var profileObj))
+                        {
+                            var profileJson = profileObj.ToString();
+                            var profile = JsonSerializer.Deserialize<Dictionary<string, object>>(profileJson);
+
+                            if (profile != null && profile.TryGetValue("rating", out var ratingObj))
+                            {
+                                currentRating = int.Parse(ratingObj.ToString());
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"⚠️ Ошибка парсинга профиля: {ex.Message}");
+                    }
+                }
+
+                int newRating = currentRating + ratingChange;
+                Console.WriteLine($"Текущий рейтинг: {currentRating}, Новый рейтинг: {newRating}");
+
+                // 2. Обновляем профиль с новым рейтингом
+                var updateData = new
+                {
+                    nickname = "",
+                    photoPath = "",
+                    rating = newRating
+                };
+
+                string updateJson = JsonSerializer.Serialize(updateData);
+                string tempFile = Path.GetTempFileName() + ".json";
+                await File.WriteAllTextAsync(tempFile, updateJson, Encoding.UTF8);
+
+                string updateCommand = $"curl -X PUT \"https://localhost:7259/api/auth/profile/{userId}\" " +
+                                      $"-H \"Content-Type: application/json\" " +
+                                      $"--data-binary \"@{tempFile}\" " +
+                                      $"--insecure";
+
+                ProcessStartInfo updatePsi = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c {updateCommand}",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    StandardOutputEncoding = Encoding.UTF8
+                };
+
+                using (Process updateProcess = new Process { StartInfo = updatePsi })
+                {
+                    updateProcess.Start();
+                    string output = await updateProcess.StandardOutput.ReadToEndAsync();
+                    await updateProcess.WaitForExitAsync();
+
+                    if (File.Exists(tempFile))
+                        File.Delete(tempFile);
+
+                    bool success = output.Contains("successfully") || output.Contains("200");
+
+                    if (success)
+                    {
+                        Console.WriteLine($"✅ Профиль обновлен! Рейтинг: {newRating}");
+                        return true;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"❌ Не удалось обновить профиль");
+                        return false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ UpdateRatingViaProfileCurlAsync error: {ex.Message}");
                 return false;
             }
         }
@@ -885,36 +1343,7 @@ namespace shahmati.Services
 
         // В ApiService.cs добавьте:
         // ИСПРАВЛЕННЫЙ метод:
-        public async Task<bool> UpdateUserRatingAsync(int userId, int ratingChange)
-        {
-            try
-            {
-                Console.WriteLine($"=== UPDATE USER RATING ===");
-                Console.WriteLine($"UserId: {userId}");
-                Console.WriteLine($"RatingChange: {ratingChange}");
-
-                // Используем существующий эндпоинт из GamesController
-                var request = new { RatingChange = ratingChange };
-                var response = await _httpClient.PutAsJsonAsync($"api/users/{userId}/rating", request);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    Console.WriteLine($"✅ Рейтинг пользователя {userId} обновлен на {ratingChange}");
-                    return true;
-                }
-                else
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine($"❌ Ошибка обновления рейтинга: {error}");
-                    return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ Ошибка при обновлении рейтинга: {ex.Message}");
-                return false;
-            }
-        }
+   
         public async Task<bool> UpdateUserRatingWithGameAsync(UpdateRatingDto updateDto)
         {
             try

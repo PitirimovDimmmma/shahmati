@@ -25,22 +25,39 @@ namespace shahmati.Views
         {
             try
             {
+                // Используем правильный метод
                 var leaderboard = await _apiService.GetLeaderboardAsync();
                 if (leaderboard != null && leaderboard.Count > 0)
                 {
-                    // Назначаем ранги
+                    // Для PlayerStatsDto нет свойства Rank, добавляем его
                     for (int i = 0; i < leaderboard.Count; i++)
                     {
-                        leaderboard[i].Rank = i + 1;
+                        // Создаем новый объект или используем динамический
+                        var player = leaderboard[i];
+                        // Можно добавить свойство через dynamic или создать новый тип
                     }
 
-                    LeaderboardGrid.ItemsSource = leaderboard;
+                    // Вместо привязки к PlayerRatingDto привязываемся к PlayerStatsDto
+                    // Создаем новый список с добавленным Rank
+                    var rankedList = leaderboard.Select((p, index) => new
+                    {
+                        Rank = index + 1,
+                        p.UserId,
+                        p.Username,
+                        p.Rating,
+                        p.GamesPlayed,
+                        p.Wins,
+                        p.WinRate
+                    }).ToList();
+
+                    LeaderboardGrid.ItemsSource = rankedList;
 
                     // Находим позицию текущего пользователя
                     var userRank = leaderboard.FirstOrDefault(p => p.UserId == _userId);
                     if (userRank != null)
                     {
-                        UserRankText.Text = $"🏆 Ваш ранг: {userRank.Rank}";
+                        int rank = leaderboard.IndexOf(userRank) + 1;
+                        UserRankText.Text = $"🏆 Ваш ранг: {rank}";
                     }
                     else
                     {
