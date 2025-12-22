@@ -40,8 +40,7 @@ namespace shahmati.Views
                 // Загружаем детальную статистику
                 await LoadDetailedStatistics();
 
-                // Загружаем историю рейтинга
-                await LoadRatingHistory();
+
             }
             catch (Exception ex)
             {
@@ -148,7 +147,7 @@ namespace shahmati.Views
             }
         }
 
-        private async Task LoadRatingHistory()
+        /*private async Task LoadRatingHistory()
         {
             try
             {
@@ -179,7 +178,7 @@ namespace shahmati.Views
                 MessageBox.Show($"Ошибка загрузки истории рейтинга: {ex.Message}",
                     "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
-        }
+        }*/
 
         // ЗАКОММЕНТИРОВАНО: Метод для применения фильтров
         /*
@@ -273,6 +272,11 @@ namespace shahmati.Views
             DashboardWindow dashboardWindow = new DashboardWindow(_userId);
             dashboardWindow.Show();
             this.Close();
+        }
+
+        private void RatingHistoryGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+
         }
     }
 }

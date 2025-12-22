@@ -188,11 +188,8 @@ namespace shahmati
                         MessageBoxImage.Warning);
                 }
 
-                // Обновляем интерфейс в зависимости от режима игры
-                UpdateGameModeUI();
-
-                // Устанавливаем имя противника в зависимости от режима игры
-                SetOpponentName();
+                // Устанавливаем имя противника
+                _opponentName = "Гость";
 
                 // Показываем уведомление о начале игры
                 ShowGameStartNotification();
@@ -210,37 +207,10 @@ namespace shahmati
             }
         }
 
-        private void SetOpponentName()
-        {
-            _isPlayingVsAI = GameModeComboBox.SelectedIndex == 1;
-
-            if (_isPlayingVsAI)
-            {
-                string difficulty = DifficultyComboBox?.SelectedItem?.ToString() ?? "Средний";
-                _opponentName = $"ИИ ({difficulty})";
-            }
-            else
-            {
-                _opponentName = "Гость";
-            }
-
-            // Обновляем текст для противника в уведомлении
-            OpponentColorText.Text = _isPlayingVsAI ? "ИИ" : "ГОСТЬ";
-        }
-
         private void ShowGameStartNotification()
         {
             // Формируем текст уведомления
-            string gameMode = _isPlayingVsAI ? "против ИИ" : "против Гостя";
-            string difficultyText = "";
-
-            if (_isPlayingVsAI)
-            {
-                string difficulty = DifficultyComboBox?.SelectedItem?.ToString() ?? "Средний";
-                difficultyText = $"\nУровень сложности: {difficulty}";
-            }
-
-            GameInfoText.Text = $"Режим: {gameMode}{difficultyText}\n" +
+            GameInfoText.Text = $"Режим: Человек vs Человек\n" +
                                $"Противник играет ЧЕРНЫМИ\n" +
                                $"Вы играете БЕЛЫМИ";
 
@@ -472,40 +442,12 @@ namespace shahmati
             SetDefaultAvatar();
         }
 
-        private void UpdateGameModeUI()
-        {
-            if (GameModeComboBox == null || AIDifficultyPanel == null ||
-                DifficultyComboBox == null || HighlightMovesToggle == null)
-                return;
-
-            _isPlayingVsAI = GameModeComboBox.SelectedIndex == 1;
-
-            if (_isPlayingVsAI)
-            {
-                AIDifficultyPanel.Visibility = Visibility.Visible;
-
-                if (DifficultyComboBox.SelectedIndex > 0)
-                {
-                    HighlightMovesToggle.Visibility = Visibility.Collapsed;
-                }
-                else
-                {
-                    HighlightMovesToggle.Visibility = Visibility.Visible;
-                }
-            }
-            else
-            {
-                AIDifficultyPanel.Visibility = Visibility.Collapsed;
-                HighlightMovesToggle.Visibility = Visibility.Visible;
-            }
-        }
-
         private async Task CreateNewOnlineGame()
         {
             try
             {
-                string gameMode = _isPlayingVsAI ? "HumanVsAI" : "HumanVsHuman";
-                string difficulty = DifficultyComboBox?.SelectedItem?.ToString() ?? "Medium";
+                string gameMode = "HumanVsHuman";
+                string difficulty = "Medium";
 
                 Console.WriteLine($"=== СОЗДАНИЕ НОВОЙ ИГРЫ ===");
                 Console.WriteLine($"UserId: {_userId}");
@@ -673,46 +615,6 @@ namespace shahmati
             }
         }
 
-        private void SetTimersBasedOnDifficulty()
-        {
-            if (DifficultyComboBox == null)
-                return;
-
-            if (DifficultyComboBox.SelectedIndex == 0) // Новичок (без времени)
-            {
-                _whiteTimeLeft = TimeSpan.MaxValue;
-                _blackTimeLeft = TimeSpan.MaxValue;
-            }
-            else
-            {
-                switch (DifficultyComboBox.SelectedIndex)
-                {
-                    case 1: // Легкий (10 минут)
-                        _whiteTimeLeft = TimeSpan.FromMinutes(10);
-                        _blackTimeLeft = TimeSpan.FromMinutes(10);
-                        break;
-                    case 2: // Средний (5 минут)
-                        _whiteTimeLeft = TimeSpan.FromMinutes(5);
-                        _blackTimeLeft = TimeSpan.FromMinutes(5);
-                        break;
-                    case 3: // Сложный (3 минуты)
-                        _whiteTimeLeft = TimeSpan.FromMinutes(3);
-                        _blackTimeLeft = TimeSpan.FromMinutes(3);
-                        break;
-                    case 4: // Эксперт (1 минута)
-                        _whiteTimeLeft = TimeSpan.FromMinutes(1);
-                        _blackTimeLeft = TimeSpan.FromMinutes(1);
-                        break;
-                    default:
-                        _whiteTimeLeft = TimeSpan.FromMinutes(5);
-                        _blackTimeLeft = TimeSpan.FromMinutes(5);
-                        break;
-                }
-            }
-
-            UpdateTimerDisplays();
-        }
-
         private void OnPlayerTurnChanged(string playerColor)
         {
             Dispatcher.Invoke(() =>
@@ -826,7 +728,6 @@ namespace shahmati
             }
         }
 
-
         private async Task<bool> UpdateUserRatingAfterGame(int ratingChange)
         {
             try
@@ -852,7 +753,7 @@ namespace shahmati
                 int newRating = currentRating + ratingChange;
                 Console.WriteLine($"Новый рейтинг: {newRating}");
 
-                // 4. Обновить профиль напрямую (как в тренировке)
+                // 4. Обновить профиль напрямую
                 bool profileUpdated = await UpdateProfileRatingDirectly(_userId, newRating);
 
                 if (profileUpdated)
@@ -890,7 +791,7 @@ namespace shahmati
             }
         }
 
-        // Метод для прямого обновления профиля (как в тренировке)
+        // Метод для прямого обновления профиля
         private async Task<bool> UpdateProfileRatingDirectly(int userId, int newRating)
         {
             try
@@ -899,7 +800,6 @@ namespace shahmati
                 var updateRequest = new UpdateProfileRequest
                 {
                     Rating = newRating
-                    // Можно добавить другие поля, если нужно
                 };
 
                 // Вызываем API для обновления профиля
@@ -958,8 +858,6 @@ namespace shahmati
             }
         }
 
-
-
         private void OnMoveMade(string moveNotation)
         {
             Dispatcher.Invoke(() =>
@@ -1009,74 +907,6 @@ namespace shahmati
 
                 if (MoveHistoryList.Items.Count > 0)
                     MoveHistoryList.ScrollIntoView(MoveHistoryList.Items[MoveHistoryList.Items.Count - 1]);
-            }
-        }
-
-        private async Task SaveGameToDatabase(string result, string description, int ratingChange)
-        {
-            try
-            {
-                Console.WriteLine($"=== СОХРАНЕНИЕ ИГРЫ ===");
-                Console.WriteLine($"GameId: {_currentGameId}");
-                Console.WriteLine($"Result: {result}");
-                Console.WriteLine($"RatingChange: {ratingChange} (+15 за победу, -10 за поражение)");
-                Console.WriteLine($"UserId: {_userId}");
-
-                if (_currentGameId > 0)
-                {
-                    // ПРЯМОЕ СОХРАНЕНИЕ ЧЕРЕЗ CURL
-                    var apiService = new ApiService(); // Твой текущий ApiService
-
-                    // 1. Завершаем игру через CURL
-                    bool gameFinished = await apiService.FinishGameWithCurlAsync(_currentGameId, result);
-
-                    if (gameFinished)
-                    {
-                        Console.WriteLine($"✅ Игра #{_currentGameId} завершена!");
-
-                        // 2. Обновляем рейтинг через CURL
-                        await Task.Delay(1000); // Ждем 1 секунду
-
-                        bool ratingUpdated = await apiService.UpdateRatingWithCurlAsync(_userId, ratingChange);
-
-                        if (ratingUpdated)
-                        {
-                            Console.WriteLine($"✅ Рейтинг обновлен на {ratingChange}");
-
-                            // Показываем сообщение пользователю
-                            string message = ratingChange > 0
-                                ? $"🎉 ПОБЕДА! Ваш рейтинг увеличен на +{ratingChange} очков!"
-                                : $"📉 ПОРАЖЕНИЕ! Ваш рейтинг уменьшен на {Math.Abs(ratingChange)} очков.";
-
-                            MessageBox.Show(message, "Рейтинг обновлен",
-                                MessageBoxButton.OK, MessageBoxImage.Information);
-                        }
-                        else
-                        {
-                            Console.WriteLine($"⚠️ Рейтинг не обновлен, но игра сохранена");
-                            MessageBox.Show("Игра сохранена, но не удалось обновить рейтинг",
-                                "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine($"❌ Не удалось завершить игру");
-                        MessageBox.Show("Не удалось сохранить игру на сервере",
-                            "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"⚠️ GameId = 0, игра не сохранена");
-                    MessageBox.Show("Игра не может быть сохранена (ID не найден)",
-                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ SaveGameToDatabase error: {ex.Message}");
-                MessageBox.Show($"Ошибка сохранения: {ex.Message}",
-                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1183,237 +1013,6 @@ namespace shahmati
             OnGameFinishedHandler(resultMessage);
         }
 
-
-        // ===== КНОПКА ЗАВЕРШЕНИЯ ИГРЫ =====
-        private async void FinishGameButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (_currentGameId == 0)
-                {
-                    MessageBox.Show("Игра не найдена. Начните новую игру.", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                // Создаем диалоговое окно для выбора результата
-                var dialog = new FinishGameDialog();
-                if (dialog.ShowDialog() == true)
-                {
-                    string result = dialog.SelectedResult;
-
-                    // Показываем индикатор загрузки
-                    ShowLoadingIndicator("Завершение игры...");
-
-                    // Завершаем игру через API
-                    bool success = await FinishGameThroughApi(_currentGameId, result);
-
-                    // Скрываем индикатор загрузки
-                    HideLoadingIndicator();
-
-                    if (success)
-                    {
-                        // Обновляем UI
-                        UpdateGameUIAfterFinish(result);
-
-                        MessageBox.Show($"Игра завершена успешно!\nРезультат: {GetResultText(result)}",
-                            "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
-                    }
-                    else
-                    {
-                        MessageBox.Show("Не удалось завершить игру. Попробуйте снова.",
-                            "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка при завершении игры: {ex.Message}",
-                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-
-        private async Task<bool> FinishGameThroughApi(int gameId, string result)
-        {
-            try
-            {
-                Console.WriteLine($"=== ЗАВЕРШЕНИЕ ИГРЫ ЧЕРЕЗ API ===");
-                Console.WriteLine($"GameId: {gameId}");
-                Console.WriteLine($"Result: {result}");
-                Console.WriteLine($"UserId: {_userId}");
-
-                // 1. Завершаем игру на сервере
-                bool gameFinished = await _apiService.FinishGameAsync(gameId, result);
-
-                if (gameFinished)
-                {
-                    Console.WriteLine($"✅ Игра #{gameId} завершена на сервере");
-
-                    // 2. Обновляем рейтинг пользователя
-                    int ratingChange = CalculateRatingChange(result);
-                    Console.WriteLine($"Рассчитанное изменение рейтинга: {ratingChange}");
-
-                    if (ratingChange != 0)
-                    {
-                        // Создаем DTO для обновления рейтинга
-                        var updateDto = new UpdateRatingDto
-                        {
-                            UserId = _userId,
-                            GameId = gameId,
-                            RatingChange = ratingChange
-                        };
-
-                        // Отправляем запрос на обновление рейтинга
-                        bool ratingUpdated = await _apiService.UpdateUserRatingWithGameAsync(updateDto);
-
-                        if (ratingUpdated)
-                        {
-                            Console.WriteLine($"✅ Рейтинг обновлен: {ratingChange}");
-
-                            // Обновляем UI
-                            await UpdateRatingUI();
-                        }
-                        else
-                        {
-                            Console.WriteLine($"⚠️ Рейтинг не обновлен автоматически");
-
-                            // Пытаемся обновить рейтинг альтернативным способом
-                            bool altSuccess = await _apiService.UpdateRatingWithCurlAsync(_userId, ratingChange);
-                            if (altSuccess)
-                            {
-                                Console.WriteLine($"✅ Рейтинг обновлен через альтернативный метод");
-                                await UpdateRatingUI();
-                            }
-                        }
-                    }
-
-                    return true;
-                }
-                else
-                {
-                    Console.WriteLine($"❌ Не удалось завершить игру #{gameId}");
-                    return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ Ошибка завершения игры: {ex.Message}");
-                Console.WriteLine($"StackTrace: {ex.StackTrace}");
-                return false;
-            }
-        }
-
-        private int CalculateRatingChange(string result)
-        {
-            Console.WriteLine($"=== РАСЧЕТ ИЗМЕНЕНИЯ РЕЙТИНГА ===");
-            Console.WriteLine($"Result: {result}");
-            Console.WriteLine($"UserIsWhite: {_userIsWhite}");
-
-            // Проверяем, кто победил
-            bool isWinForUser = false;
-            bool isDraw = false;
-
-            if (_userIsWhite)
-            {
-                // Пользователь играет белыми
-                isWinForUser = (result == "White");
-                isDraw = (result == "Draw");
-            }
-            else
-            {
-                // Пользователь играет черными (на всякий случай)
-                isWinForUser = (result == "Black");
-                isDraw = (result == "Draw");
-            }
-
-            // При сдаче пользователь всегда проигрывает
-            if (result == "Black" && _userIsWhite)
-            {
-                isWinForUser = false;
-                isDraw = false;
-            }
-
-            Console.WriteLine($"isWinForUser: {isWinForUser}, isDraw: {isDraw}");
-
-            // Расчет изменения рейтинга
-            if (isDraw)
-            {
-                Console.WriteLine($"Изменение рейтинга: 0 (ничья)");
-                return RATING_DRAW_CHANGE; // 0
-            }
-            else if (isWinForUser)
-            {
-                Console.WriteLine($"Изменение рейтинга: +{RATING_WIN_CHANGE} (победа)");
-                return RATING_WIN_CHANGE; // +15
-            }
-            else
-            {
-                Console.WriteLine($"Изменение рейтинга: {RATING_LOSS_CHANGE} (поражение)");
-                return RATING_LOSS_CHANGE; // -10
-            }
-        }
-
-        private string GetResultText(string result)
-        {
-            return result.ToLower() switch
-            {
-                "white" => "Победа белых",
-                "black" => "Победа черных",
-                "draw" => "Ничья",
-                _ => result
-            };
-        }
-
-        private void UpdateGameUIAfterFinish(string result)
-        {
-            // Останавливаем таймеры
-            _gameTimer.Stop();
-            _whiteTimer.Stop();
-            _blackTimer.Stop();
-
-            // Обновляем статус
-            if (StatusText != null)
-            {
-                StatusText.Text = $"Игра завершена: {GetResultText(result)}";
-            }
-
-            if (StatusIcon != null)
-            {
-                StatusIcon.Text = "🏁";
-            }
-
-            // Показываем панель с результатом
-            ShowGameResultPanel(result);
-        }
-
-        private void ShowGameResultPanel(string result)
-        {
-            GameOverPanel.Visibility = Visibility.Visible;
-
-            bool userWon = (_userIsWhite && result == "White") || (!_userIsWhite && result == "Black");
-            bool isDraw = result == "Draw";
-
-            if (userWon)
-            {
-                GameResultText.Text = "🎉 ПОБЕДА!";
-                GameResultDescription.Text = $"Вы победили {_opponentName}!\nРейтинг увеличен на +{RATING_WIN_CHANGE}";
-                GameOverPanel.Background = new SolidColorBrush(Color.FromRgb(34, 139, 34)); // Зеленый
-            }
-            else if (isDraw)
-            {
-                GameResultText.Text = "🤝 НИЧЬЯ";
-                GameResultDescription.Text = $"Партия завершилась вничью\nРейтинг не изменился";
-                GameOverPanel.Background = new SolidColorBrush(Color.FromRgb(255, 215, 0)); // Золотой
-            }
-            else
-            {
-                GameResultText.Text = "😔 ПОРАЖЕНИЕ";
-                GameResultDescription.Text = $"Вы проиграли {_opponentName}\nРейтинг уменьшен на {Math.Abs(RATING_LOSS_CHANGE)}";
-                GameOverPanel.Background = new SolidColorBrush(Color.FromRgb(220, 20, 60)); // Красный
-            }
-        }
-
         private void ShowLoadingIndicator(string message)
         {
             if (_loadingPanel != null)
@@ -1482,71 +1081,13 @@ namespace shahmati
                 }
                 else
                 {
-                    if (_isPlayingVsAI)
-                        StatusText.Text = $"{_opponentName} обдумывает ход...";
-                    else
-                        StatusText.Text = $"Ход {_opponentName} (черные)";
+                    StatusText.Text = $"Ход {_opponentName} (черные)";
                     StatusIcon.Text = "⚫";
                 }
             }
         }
 
         // ===== ОБРАБОТЧИКИ СОБЫТИЙ UI =====
-
-        private void GameModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            UpdateGameModeUI();
-            SetOpponentName(); // Обновляем имя противника
-
-            if (_isPlayingVsAI)
-            {
-                if (AITurnIndicator != null)
-                    AITurnIndicator.Visibility = Visibility.Visible;
-
-                if (StatusText != null)
-                    StatusText.Text = "Игра против ИИ. Вы играете белыми.";
-
-                if (StatusIcon != null)
-                    StatusIcon.Text = "🤖";
-            }
-            else
-            {
-                if (AITurnIndicator != null)
-                    AITurnIndicator.Visibility = Visibility.Collapsed;
-
-                if (StatusText != null)
-                    StatusText.Text = "Игра против гостя. Вы играете белыми.";
-
-                if (StatusIcon != null)
-                    StatusIcon.Text = "👥";
-            }
-        }
-
-        private void DifficultyComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (DifficultyComboBox == null || HighlightMovesToggle == null)
-                return;
-
-            if (DifficultyComboBox.SelectedIndex == 0)
-            {
-                HighlightMovesToggle.Visibility = Visibility.Visible;
-                HighlightMovesToggle.IsChecked = true;
-
-                if (_viewModel != null)
-                    _viewModel.EnableMoveHighlighting = true;
-            }
-            else
-            {
-                HighlightMovesToggle.Visibility = Visibility.Collapsed;
-                HighlightMovesToggle.IsChecked = false;
-
-                if (_viewModel != null)
-                    _viewModel.EnableMoveHighlighting = false;
-            }
-
-            SetTimersBasedOnDifficulty();
-            SetOpponentName(); // Обновляем имя противника с новым уровнем сложности
-        }
 
         private void HighlightMovesToggle_Checked(object sender, RoutedEventArgs e)
         {
@@ -1591,43 +1132,9 @@ namespace shahmati
                 _currentGameId = 0;
 
                 // Сбрасываем таймеры и счетчики
-                SetTimersBasedOnDifficulty();
-                _gameStartTime = DateTime.Now;
-                _whiteTimer.Start();
-
-                if (MovesCountText != null)
-                    MovesCountText.Text = "0";
-
-                // Показываем уведомление о начале новой игры
-                ShowGameStartNotification();
-
-                // Создаем новую онлайн игру
-                _ = CreateNewOnlineGame();
-            }
-        }
-
-        private void RestartButton_Click(object sender, RoutedEventArgs e)
-        {
-            var result = MessageBox.Show("Начать игру заново?\n\nВсе ходы будут сброшены.",
-                "Начать заново",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (result == MessageBoxResult.Yes)
-            {
-                // Скрываем GameOverPanel если он виден
-                GameOverPanel.Visibility = Visibility.Collapsed;
-
-                // Завершаем текущую игру
-                if (_viewModel.GameManager != null && _viewModel.GameManager.IsGameInProgress)
-                {
-                    OnGameFinishedHandler("Игра перезапущена");
-                }
-
-                // Начинаем новую игру
-                _viewModel.StartNewGame();
-
-                SetTimersBasedOnDifficulty();
+                _whiteTimeLeft = TimeSpan.FromMinutes(5);
+                _blackTimeLeft = TimeSpan.FromMinutes(5);
+                UpdateTimerDisplays();
                 _gameStartTime = DateTime.Now;
                 _whiteTimer.Start();
 
@@ -1733,28 +1240,6 @@ namespace shahmati
             });
         }
 
-        // Метод для обновления статуса хода ИИ
-        public void UpdateAIThinking(bool isThinking)
-        {
-            Dispatcher.Invoke(() =>
-            {
-                if (isThinking)
-                {
-                    if (AITurnIndicator != null)
-                        AITurnIndicator.Visibility = Visibility.Visible;
-                    if (StatusText != null)
-                        StatusText.Text = "ИИ обдумывает ход...";
-                }
-                else
-                {
-                    if (AITurnIndicator != null)
-                        AITurnIndicator.Visibility = Visibility.Collapsed;
-                    if (StatusText != null)
-                        StatusText.Text = "Ваш ход";
-                }
-            });
-        }
-
         // ===== КНОПКА СДАЧИ =====
 
         private async void ResignButton_Click(object sender, RoutedEventArgs e)
@@ -1774,9 +1259,9 @@ namespace shahmati
 
                     // Определяем результат сдачи
                     // Пользователь всегда играет белыми, поэтому сдача = победа черных
-                    string apiResult = "Black"; // Результат для API
+                    string apiResult = "Black";
 
-                    // Завершаем игру через API
+                    // Прямое завершение игры
                     bool success = await FinishGameThroughApi(_currentGameId, apiResult);
 
                     // Скрываем индикатор загрузки
@@ -1812,6 +1297,126 @@ namespace shahmati
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
                 }
+            }
+        }
+
+        private async Task<bool> FinishGameThroughApi(int gameId, string result)
+        {
+            try
+            {
+                Console.WriteLine($"=== ЗАВЕРШЕНИЕ ИГРЫ ЧЕРЕЗ API ===");
+                Console.WriteLine($"GameId: {gameId}");
+                Console.WriteLine($"Result: {result}");
+                Console.WriteLine($"UserId: {_userId}");
+
+                // Завершаем игру на сервере
+                bool gameFinished = await _apiService.FinishGameAsync(gameId, result);
+
+                if (gameFinished)
+                {
+                    Console.WriteLine($"✅ Игра #{gameId} завершена на сервере");
+
+                    // Обновляем рейтинг пользователя
+                    int ratingChange = CalculateRatingChange(result);
+                    Console.WriteLine($"Рассчитанное изменение рейтинга: {ratingChange}");
+
+                    if (ratingChange != 0)
+                    {
+                        // Создаем DTO для обновления рейтинга
+                        var updateDto = new UpdateRatingDto
+                        {
+                            UserId = _userId,
+                            GameId = gameId,
+                            RatingChange = ratingChange
+                        };
+
+                        // Отправляем запрос на обновление рейтинга
+                        bool ratingUpdated = await _apiService.UpdateUserRatingWithGameAsync(updateDto);
+
+                        if (ratingUpdated)
+                        {
+                            Console.WriteLine($"✅ Рейтинг обновлен: {ratingChange}");
+
+                            // Обновляем UI
+                            await UpdateRatingUI();
+                        }
+                        else
+                        {
+                            Console.WriteLine($"⚠️ Рейтинг не обновлен автоматически");
+
+                            // Пытаемся обновить рейтинг альтернативным способом
+                            bool altSuccess = await _apiService.UpdateRatingWithCurlAsync(_userId, ratingChange);
+                            if (altSuccess)
+                            {
+                                Console.WriteLine($"✅ Рейтинг обновлен через альтернативный метод");
+                                await UpdateRatingUI();
+                            }
+                        }
+                    }
+
+                    return true;
+                }
+                else
+                {
+                    Console.WriteLine($"❌ Не удалось завершить игру #{gameId}");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка завершения игры: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                return false;
+            }
+        }
+
+        private int CalculateRatingChange(string result)
+        {
+            Console.WriteLine($"=== РАСЧЕТ ИЗМЕНЕНИЯ РЕЙТИНГА ===");
+            Console.WriteLine($"Result: {result}");
+            Console.WriteLine($"UserIsWhite: {_userIsWhite}");
+
+            // Проверяем, кто победил
+            bool isWinForUser = false;
+            bool isDraw = false;
+
+            if (_userIsWhite)
+            {
+                // Пользователь играет белыми
+                isWinForUser = (result == "White");
+                isDraw = (result == "Draw");
+            }
+            else
+            {
+                // Пользователь играет черными (на всякий случай)
+                isWinForUser = (result == "Black");
+                isDraw = (result == "Draw");
+            }
+
+            // При сдаче пользователь всегда проигрывает
+            if (result == "Black" && _userIsWhite)
+            {
+                isWinForUser = false;
+                isDraw = false;
+            }
+
+            Console.WriteLine($"isWinForUser: {isWinForUser}, isDraw: {isDraw}");
+
+            // Расчет изменения рейтинга
+            if (isDraw)
+            {
+                Console.WriteLine($"Изменение рейтинга: 0 (ничья)");
+                return RATING_DRAW_CHANGE;
+            }
+            else if (isWinForUser)
+            {
+                Console.WriteLine($"Изменение рейтинга: +{RATING_WIN_CHANGE} (победа)");
+                return RATING_WIN_CHANGE;
+            }
+            else
+            {
+                Console.WriteLine($"Изменение рейтинга: {RATING_LOSS_CHANGE} (поражение)");
+                return RATING_LOSS_CHANGE;
             }
         }
 

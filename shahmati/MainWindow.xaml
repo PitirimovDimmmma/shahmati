@@ -313,7 +313,6 @@
                            Margin="10,0,10,0"
                            Click="ResignButton_Click"/>
 
-
                 </StackPanel>
             </Grid>
         </Border>
@@ -438,43 +437,6 @@
                                   Margin="0,0,0,15" 
                                   Foreground="#8B4513"/>
 
-                        <!-- Режим игры -->
-                        <StackPanel Margin="0,0,0,15">
-                            <TextBlock Text="Режим:" 
-                                      FontWeight="Bold" 
-                                      Margin="0,0,0,5" 
-                                      Foreground="#333"/>
-                            <ComboBox x:Name="GameModeComboBox"
-                                     SelectedIndex="0"
-                                     Height="35"
-                                     FontSize="12"
-                                     SelectionChanged="GameModeComboBox_SelectionChanged">
-                                <ComboBoxItem>Человек vs Человек</ComboBoxItem>
-                                <ComboBoxItem>Человек vs ИИ</ComboBoxItem>
-                            </ComboBox>
-                        </StackPanel>
-
-                        <!-- Сложность ИИ -->
-                        <StackPanel x:Name="AIDifficultyPanel" 
-                                   Margin="0,0,0,15"
-                                   Visibility="Collapsed">
-                            <TextBlock Text="Сложность ИИ:" 
-                                      FontWeight="Bold" 
-                                      Margin="0,0,0,5" 
-                                      Foreground="#333"/>
-                            <ComboBox x:Name="DifficultyComboBox"
-                                     SelectedIndex="2"
-                                     Height="35"
-                                     FontSize="12"
-                                     SelectionChanged="DifficultyComboBox_SelectionChanged">
-                                <ComboBoxItem>Новичок (без времени)</ComboBoxItem>
-                                <ComboBoxItem>Лёгкий (10 мин)</ComboBoxItem>
-                                <ComboBoxItem>Средний (5 мин)</ComboBoxItem>
-                                <ComboBoxItem>Сложный (3 мин)</ComboBoxItem>
-                                <ComboBoxItem>Эксперт (1 мин)</ComboBoxItem>
-                            </ComboBox>
-                        </StackPanel>
-
                         <!-- Текущий игрок -->
                         <Border Background="#8B4513" 
                                Padding="12" 
@@ -550,14 +512,6 @@
                                    Background="#27AE60"
                                    FontSize="13"
                                    Click="NewGameButton_Click"/>
-
-                            <Button x:Name="RestartButton" 
-                                   Content="🔄 НАЧАТЬ ЗАНОВО" 
-                                   Height="38"
-                                   Style="{StaticResource ControlButtonStyle}"
-                                   Background="#3498DB"
-                                   Margin="0,10,0,0"
-                                   Click="RestartButton_Click"/>
 
                             <Button x:Name="HomeButton" 
                                    Content="🏠 НА ГЛАВНУЮ" 

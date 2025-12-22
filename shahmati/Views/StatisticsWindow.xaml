@@ -432,7 +432,7 @@
                     </Border>
                 </Grid>
 
-                <!-- История рейтинга -->
+
                 <Border Grid.Row="3" Style="{StaticResource StatCard}">
                     <StackPanel>
                         <TextBlock Text="📈 История рейтинга (последние 20 игр)" Style="{StaticResource StatTitle}"/>
@@ -444,7 +444,7 @@
                                  Margin="0,10"
                                  MaxHeight="250"
                                  BorderThickness="0"
-                                 Background="Transparent">
+                                 Background="Transparent" SelectionChanged="RatingHistoryGrid_SelectionChanged">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Дата" Width="120"
                                                    Binding="{Binding CreatedAt, StringFormat='{}{0:dd.MM.yy HH:mm}'}"/>
@@ -485,7 +485,7 @@
                             </DataGrid.Columns>
                         </DataGrid>
                     </StackPanel>
-                </Border>
+                </Border> 
             </Grid>
         </ScrollViewer>
 

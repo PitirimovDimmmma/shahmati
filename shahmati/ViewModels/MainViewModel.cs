@@ -170,18 +170,7 @@ namespace shahmati.ViewModels
             }
         }
 
-        public bool IsAITurn
-        {
-            get => _isAITurn;
-            private set
-            {
-                _isAITurn = value;
-                OnPropertyChanged(nameof(IsAITurn));
 
-                // Обновляем статус хода ИИ в MainWindow
-                UpdateAITurnInMainWindow(value);
-            }
-        }
 
         public string GameMode
         {
@@ -194,11 +183,7 @@ namespace shahmati.ViewModels
                     _isHumanVsHuman = (value == "Человек vs Человек");
                     OnPropertyChanged(nameof(GameMode));
 
-                    // Если переключаемся в режим ИИ, проверяем чей сейчас ход
-                    if (!_isHumanVsHuman && _isGameActive)
-                    {
-                        CheckAITurn();
-                    }
+                  
                 }
             }
         }
@@ -247,14 +232,7 @@ namespace shahmati.ViewModels
         public double AnimationProgress => _animationProgress;
         public bool IsAnimating => _animationTimer?.IsEnabled ?? false;
 
-        // ДОБАВЛЕНО: Метод для обновления статуса ИИ в MainWindow
-        private void UpdateAITurnInMainWindow(bool isThinking)
-        {
-            if (Application.Current.Windows.OfType<MainWindow>().FirstOrDefault() is MainWindow window)
-            {
-                window.UpdateAIThinking(isThinking);
-            }
-        }
+     
 
         // ИСПРАВЛЕНО: Явно устанавливаем текущего игрока при старте новой игры
         public void StartNewGame()
@@ -284,8 +262,7 @@ namespace shahmati.ViewModels
                 CurrentPlayerColor = "Белые";
             }
 
-            // Проверяем, нужно ли ИИ делать ход
-            CheckAITurn();
+
 
             // Уведомляем MainWindow о начале игры
             NotifyMainWindowGameStarted();
@@ -401,7 +378,7 @@ namespace shahmati.ViewModels
                 }
 
                 OnPropertyChanged(nameof(CurrentPlayerText));
-                CheckAITurn();
+  
             }
             else if (e.PropertyName == nameof(GameManager.Board))
             {
@@ -409,66 +386,9 @@ namespace shahmati.ViewModels
             }
         }
 
-        // ИСПРАВЛЕНО: Четкая логика определения хода ИИ
-        private void CheckAITurn()
-        {
-            if (_gameManager == null || !_isGameActive) return;
 
-            bool shouldBeAITurn = false;
 
-            if (_gameMode == "Человек vs Компьютер")
-            {
-                // В этом режиме ИИ играет за черных
-                shouldBeAITurn = (_gameManager.CurrentPlayer == PieceColor.Black);
-            }
-            else if (_gameMode == "Компьютер vs Компьютер")
-            {
-                // В этом режиме ИИ играет за обоих
-                shouldBeAITurn = true;
-            }
 
-            if (shouldBeAITurn && _gameManager.IsGameInProgress && !IsAITurn)
-            {
-                IsAITurn = true;
-                _ = MakeAIMoveAsync();
-            }
-            else if (!shouldBeAITurn)
-            {
-                IsAITurn = false;
-            }
-        }
-
-        private async Task MakeAIMoveAsync()
-        {
-            try
-            {
-                // Уведомляем UI, что ИИ думает
-                UpdateAITurnInMainWindow(true);
-
-                // Имитация размышлений ИИ
-                int delay = _difficulty switch
-                {
-                    "Новичок" => 1500,
-                    "Лёгкий" => 1000,
-                    "Средний" => 700,
-                    "Сложный" => 400,
-                    "Эксперт" => 200,
-                    _ => 500
-                };
-
-                await Task.Delay(delay);
-
-                // Делаем ход ИИ
-                await _gameManager?.MakeAIMoveAsync();
-
-                // После хода ИИ снова проверяем, чей ход
-                CheckAITurn();
-            }
-            finally
-            {
-                UpdateAITurnInMainWindow(false);
-            }
-        }
 
         private void AnimationTimer_Tick(object sender, EventArgs e)
         {
@@ -487,8 +407,7 @@ namespace shahmati.ViewModels
         {
             if (IsAnimating || !position.IsValid() || !_isGameActive) return;
 
-            // Если сейчас ход ИИ - игнорируем клики
-            if (IsAITurn) return;
+ 
 
             var clickedPiece = Board.GetPieceAt(position);
 
