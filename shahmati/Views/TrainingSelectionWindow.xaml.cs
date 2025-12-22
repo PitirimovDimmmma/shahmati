@@ -68,17 +68,27 @@ namespace shahmati.Views
                     return;
                 }
 
+                // Загружаем тренировки и прогресс
                 await _viewModel.LoadTrainingsAsync();
 
-                if (TrainingsList != null && _viewModel.FilteredTrainings != null)
-                {
-                    TrainingsList.ItemsSource = _viewModel.FilteredTrainings;
-                }
+                // Обновляем список тренировок с учетом прогресса
+                UpdateTrainingsList();
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка загрузки тренировок: {ex.Message}", "Ошибка",
                     MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void UpdateTrainingsList()
+        {
+            if (_viewModel == null || _viewModel.FilteredTrainings == null)
+                return;
+
+            if (TrainingsList != null)
+            {
+                TrainingsList.ItemsSource = _viewModel.FilteredTrainings;
             }
         }
 
@@ -98,21 +108,7 @@ namespace shahmati.Views
             }
         }
 
-        private void StatsButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                MessageBox.Show("Статистика тренировок будет реализована в следующем обновлении",
-                    "Статистика",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
+       
 
         // Обработчик для карточек тренировок
         private void TrainingCard_MouseDown(object sender, MouseButtonEventArgs e)
@@ -187,8 +183,8 @@ namespace shahmati.Views
                 if (SearchTextBox != null)
                 {
                     SearchTextBox.Text = "";
-                    SearchTextBox.Foreground = Brushes.Gray;
-                    SearchTextBox.FontStyle = FontStyles.Italic;
+                    SearchTextBox.Foreground = Brushes.Black;
+                    SearchTextBox.FontStyle = FontStyles.Normal;
                 }
 
                 // Обновление фильтрации
@@ -232,10 +228,8 @@ namespace shahmati.Views
 
                 _viewModel.FilteredTrainings = new ObservableCollection<TrainingTypeDto>(filtered);
 
-                if (TrainingsList != null)
-                {
-                    TrainingsList.ItemsSource = _viewModel.FilteredTrainings;
-                }
+                // Обновляем список
+                UpdateTrainingsList();
             }
             catch (Exception ex)
             {
@@ -322,21 +316,6 @@ namespace shahmati.Views
         }
 
         // Обработчик закрытия окна
-        private void Window_Closing(object sender, CancelEventArgs e)
-        {
-            try
-            {
-                var result = MessageBox.Show("Вы уверены, что хотите выйти из выбора тренировок?",
-                    "Подтверждение выхода",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (result == MessageBoxResult.No)
-                {
-                    e.Cancel = true;
-                }
-            }
-            catch { }
-        }
+        
     }
 }

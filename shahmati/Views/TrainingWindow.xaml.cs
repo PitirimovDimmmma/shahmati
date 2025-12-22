@@ -14,42 +14,13 @@ namespace shahmati.Views
         private readonly TrainingViewModel _viewModel;
         private DispatcherTimer _timer;
         private int _userId;
-        private string _trainingName;
-        private string _trainingDescription;
 
         public event PropertyChangedEventHandler PropertyChanged;
-
-        // Свойства для привязки
-        public string TrainingName
-        {
-            get => _trainingName;
-            set
-            {
-                _trainingName = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public string TrainingDescription
-        {
-            get => _trainingDescription;
-            set
-            {
-                _trainingDescription = value;
-                OnPropertyChanged();
-            }
-        }
 
         public TrainingWindow(int userId, TrainingTypeDto training = null)
         {
             _userId = userId;
             InitializeComponent();
-
-            if (training != null)
-            {
-                TrainingName = training.Name;
-                TrainingDescription = training.Description;
-            }
 
             _viewModel = new TrainingViewModel(userId);
             if (training != null)
@@ -58,17 +29,33 @@ namespace shahmati.Views
             }
 
             DataContext = _viewModel;
+
             InitializeTimer();
             LoadTraining();
         }
 
         private async void LoadTraining()
         {
-            await _viewModel.LoadTrainingsAsync();
-            if (_viewModel.SelectedTraining != null)
+            try
             {
-                await _viewModel.StartTraining();
-                UpdateUI();
+                // Загружаем все тренировки
+                await _viewModel.LoadTrainingsAsync();
+
+                // Если передана конкретная тренировка, начинаем ее
+                if (_viewModel.SelectedTraining != null)
+                {
+                    await _viewModel.StartTraining();
+                }
+                else
+                {
+                    // Если тренировка не выбрана, показываем сообщение
+                    _viewModel.StatusText = "Выберите тренировку для начала";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки тренировки: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -82,60 +69,30 @@ namespace shahmati.Views
 
         private void Timer_Tick(object sender, EventArgs e)
         {
-            _viewModel.UpdateTimer();
-        }
-
-        private void UpdateUI()
-        {
-            if (_viewModel.SelectedTraining != null)
+            try
             {
-                TrainingNameText.Text = _viewModel.SelectedTraining.Name;
-                TrainingDescriptionText.Text = _viewModel.SelectedTraining.Description;
+                _viewModel.UpdateTimer();
             }
-
-            if (_viewModel.CurrentPosition != null)
+            catch (Exception ex)
             {
-                PositionTitleText.Text = $"ПОЗИЦИЯ #{_viewModel.CurrentPositionIndex + 1}";
-                PositionTaskText.Text = _viewModel.PositionTask;
-
-                // Обновляем список ходов решения
-                SolutionMovesList.Items.Clear();
-                if (_viewModel.CurrentPosition?.SolutionMoves != null)
-                {
-                    foreach (var move in _viewModel.CurrentPosition.SolutionMoves)
-                    {
-                        SolutionMovesList.Items.Add(move);
-                    }
-                }
+                Console.WriteLine($"Ошибка таймера: {ex.Message}");
             }
-
-            // Обновляем прогресс
-            TrainingProgressBar.Value = _viewModel.CurrentPositionIndex;
-            TrainingProgressBar.Maximum = Math.Max(1, _viewModel.CurrentPositions.Count);
-
-            ProgressText.Text = $"{_viewModel.CurrentPositionIndex + 1}/{_viewModel.CurrentPositions.Count}";
-            MistakesText.Text = _viewModel.Mistakes.ToString();
-            HintText.Text = _viewModel.HintText;
-            StatusText.Text = _viewModel.StatusText;
         }
 
         // Обработчики событий кнопок
         private async void NextButton_Click(object sender, RoutedEventArgs e)
         {
             await _viewModel.NextPosition();
-            UpdateUI();
         }
 
         private void ShowSolutionButton_Click(object sender, RoutedEventArgs e)
         {
             _viewModel.ShowHint();
-            UpdateUI();
         }
 
         private void HintButton_Click(object sender, RoutedEventArgs e)
         {
             _viewModel.ShowHint();
-            UpdateUI();
         }
 
         private async void CompleteButton_Click(object sender, RoutedEventArgs e)
@@ -157,10 +114,7 @@ namespace shahmati.Views
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question);
 
-                if (result == MessageBoxResult.No)
-                {
-                    e.Cancel = true;
-                }
+                e.Cancel = result != MessageBoxResult.Yes;
             }
 
             _timer?.Stop();

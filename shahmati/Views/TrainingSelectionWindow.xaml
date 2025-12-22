@@ -14,8 +14,7 @@
         BorderBrush="#FF6A00"
         WindowStyle="None"
         AllowsTransparency="True"
-        ResizeMode="CanResizeWithGrip"
-Closing="Window_Closing">
+        ResizeMode="CanResizeWithGrip">
 
     <Window.Resources>
         <!-- Конвертеры -->
@@ -212,12 +211,7 @@ Closing="Window_Closing">
                               FontWeight="SemiBold"/>
                 </StackPanel>
 
-                <!-- СТАТИСТИКА -->
-                <Button Grid.Column="2" 
-                       Content="📊 СТАТИСТИКА" 
-                       Style="{StaticResource ControlButtonStyle}"
-                       Background="#9B59B6"
-                       Click="StatsButton_Click"/>
+               
             </Grid>
         </Border>
 
