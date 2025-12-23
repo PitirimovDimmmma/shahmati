@@ -200,9 +200,9 @@
                     <StackPanel Grid.Column="0" 
                                Orientation="Horizontal" 
                                VerticalAlignment="Center">
-                      
+
                         <StackPanel>
-                            
+
                         </StackPanel>
                     </StackPanel>
 
@@ -311,6 +311,12 @@
                                Margin="0,0,10,0"
                                Click="HintButton_Click"/>
 
+                        <Button x:Name="SolutionButton" 
+                               Content="👁️ РЕШЕНИЕ" 
+                               Style="{StaticResource ControlButtonStyle}"
+                               Background="#F39C12"
+                               Margin="0,0,10,0"
+                               Click="ShowSolutionButton_Click" Height="2" Width="1"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -518,7 +524,7 @@
 
                                         <StackPanel Orientation="Horizontal" 
                                                     Margin="0,0,0,8">
-                                           
+
 
                                             <Button x:Name="ShowSolutionButton" 
                                                    Content="👁️ РЕШЕНИЕ" 

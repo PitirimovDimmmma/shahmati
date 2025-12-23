@@ -85,10 +85,13 @@ namespace shahmati.Views
             await _viewModel.NextPosition();
         }
 
+
         private void ShowSolutionButton_Click(object sender, RoutedEventArgs e)
         {
-            _viewModel.ShowHint();
+            // Изменено: вызываем метод для показа полного решения
+            _viewModel.ShowFullSolution();
         }
+
 
         private void HintButton_Click(object sender, RoutedEventArgs e)
         {
