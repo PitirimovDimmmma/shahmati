@@ -97,8 +97,7 @@ namespace shahmati.Views
         {
             try
             {
-                DashboardWindow dashboardWindow = new DashboardWindow(_userId);
-                dashboardWindow.Show();
+                // Закрываем текущее окно
                 this.Close();
             }
             catch (Exception ex)
@@ -107,8 +106,6 @@ namespace shahmati.Views
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-
-       
 
         // Обработчик для карточек тренировок
         private void TrainingCard_MouseDown(object sender, MouseButtonEventArgs e)
@@ -127,6 +124,7 @@ namespace shahmati.Views
                     var selectedTraining = _viewModel.AllTrainings.FirstOrDefault(t => t.Id == trainingId);
                     if (selectedTraining != null)
                     {
+                        // Открываем окно тренировки
                         TrainingWindow trainingWindow = new TrainingWindow(_userId, selectedTraining);
                         trainingWindow.Show();
                         this.Close();
@@ -314,8 +312,5 @@ namespace shahmati.Views
         {
             CategoryRadio_Checked(sender, e);
         }
-
-        // Обработчик закрытия окна
-        
     }
 }

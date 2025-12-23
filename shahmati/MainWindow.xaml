@@ -305,13 +305,7 @@
                                  Checked="HighlightMovesToggle_Checked"
                                  Unchecked="HighlightMovesToggle_Unchecked"/>
 
-                    <!-- Кнопка сдачи -->
-                    <Button x:Name="ResignButton" 
-                           Content="🏳️ СДА́ТЬСЯ" 
-                           Style="{StaticResource ControlButtonStyle}"
-                           Background="#E67E22"
-                           Margin="10,0,10,0"
-                           Click="ResignButton_Click"/>
+                    
 
                 </StackPanel>
             </Grid>

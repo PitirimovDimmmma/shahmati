@@ -148,32 +148,38 @@ namespace shahmati.Views
 
             try
             {
-                string finalPhotoPath = _defaultAvatarPath; // Используем дефолтную аватарку
+                string finalPhotoPath = ""; // Пустая строка вместо null
 
                 // Если фото выбрано пользователем
                 if (!string.IsNullOrEmpty(_photoPath) && _photoPath != _defaultAvatarPath && File.Exists(_photoPath))
                 {
                     try
                     {
-                        // Создаем папку для аватарок в AppData
-                        string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                        string appFolder = Path.Combine(appDataPath, "ChessTrainer", "Avatars");
-                        Directory.CreateDirectory(appFolder);
+                        Console.WriteLine($"Загружаем фото: {_photoPath}");
+                        // Загружаем фото на сервер
+                        var uploadedPath = await _apiService.UploadAvatarAsync(_userId, _photoPath);
 
-                        // Генерируем уникальное имя файла
-                        string fileName = $"avatar_{_userId}_{DateTime.Now:yyyyMMddHHmmss}{Path.GetExtension(_photoPath)}";
-                        finalPhotoPath = Path.Combine(appFolder, fileName);
-
-                        // Копируем файл
-                        File.Copy(_photoPath, finalPhotoPath, true);
-                        Console.WriteLine($"✅ Фото сохранено: {finalPhotoPath}");
+                        if (!string.IsNullOrEmpty(uploadedPath))
+                        {
+                            // Формируем полный URL
+                            finalPhotoPath = $"https://localhost:7259/{uploadedPath.TrimStart('/')}";
+                            Console.WriteLine($"✅ Фото загружено на сервер: {finalPhotoPath}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"⚠️ Не удалось загрузить фото");
+                            finalPhotoPath = "";
+                        }
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"⚠️ Не удалось сохранить фото: {ex.Message}");
-                        // Продолжаем с дефолтной аватаркой
-                        finalPhotoPath = _defaultAvatarPath;
+                        Console.WriteLine($"⚠️ Ошибка загрузки фото: {ex.Message}");
+                        finalPhotoPath = "";
                     }
+                }
+                else
+                {
+                    finalPhotoPath = "";
                 }
 
                 Console.WriteLine($"🔄 Сохранение профиля для ID={_userId}");
@@ -183,7 +189,7 @@ namespace shahmati.Views
                 var updateRequest = new UpdateProfileRequest
                 {
                     Nickname = nickname,
-                    PhotoPath = finalPhotoPath
+                    PhotoPath = finalPhotoPath // Передаем пустую строку вместо null
                 };
 
                 bool success = await _apiService.UpdateProfileAsync(_userId, updateRequest);

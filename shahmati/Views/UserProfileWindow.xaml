@@ -167,11 +167,7 @@
                                    Click="SaveButton_Click"
                                    IsEnabled="False"/>
 
-                            <Button x:Name="ChangePasswordButton" 
-                                   Content="🔒 Сменить пароль" 
-                                   Style="{StaticResource PrimaryButtonStyle}"
-                                   Margin="0,10,0,0"
-                                   Click="ChangePasswordButton_Click"/>
+                           
 
                             <Button x:Name="DeleteAccountButton" 
                                    Content="🗑️ Удалить аккаунт" 

@@ -191,8 +191,6 @@ namespace shahmati
                 // Устанавливаем имя противника
                 _opponentName = "Гость";
 
-                // Показываем уведомление о начале игры
-                ShowGameStartNotification();
 
                 // Запускаем игру
                 _viewModel.StartNewGame();
@@ -207,47 +205,7 @@ namespace shahmati
             }
         }
 
-        private void ShowGameStartNotification()
-        {
-            // Формируем текст уведомления
-            GameInfoText.Text = $"Режим: Человек vs Человек\n" +
-                               $"Противник играет ЧЕРНЫМИ\n" +
-                               $"Вы играете БЕЛЫМИ";
 
-            // Анимация появления
-            GameStartNotification.Visibility = Visibility.Visible;
-
-            var fadeIn = new DoubleAnimation
-            {
-                From = 0,
-                To = 1,
-                Duration = TimeSpan.FromSeconds(0.5)
-            };
-
-            var scaleIn = new DoubleAnimation
-            {
-                From = 0.8,
-                To = 1,
-                Duration = TimeSpan.FromSeconds(0.3)
-            };
-
-            var translateIn = new DoubleAnimation
-            {
-                From = -20,
-                To = 0,
-                Duration = TimeSpan.FromSeconds(0.3)
-            };
-
-            var transformGroup = new TransformGroup();
-            transformGroup.Children.Add(new ScaleTransform());
-            transformGroup.Children.Add(new TranslateTransform());
-            GameStartNotification.RenderTransform = transformGroup;
-
-            GameStartNotification.BeginAnimation(UIElement.OpacityProperty, fadeIn);
-            GameStartNotification.RenderTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleIn);
-            GameStartNotification.RenderTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleIn);
-            GameStartNotification.RenderTransform.BeginAnimation(TranslateTransform.YProperty, translateIn);
-        }
 
         private void CloseNotification_Click(object sender, RoutedEventArgs e)
         {
@@ -1141,9 +1099,6 @@ namespace shahmati
                 if (MovesCountText != null)
                     MovesCountText.Text = "0";
 
-                // Показываем уведомление о начале новой игры
-                ShowGameStartNotification();
-
                 // Создаем новую онлайн игру
                 _ = CreateNewOnlineGame();
             }
@@ -1151,23 +1106,81 @@ namespace shahmati
 
         private async void HomeButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_currentGameId != 0 && _viewModel?.GameManager?.IsGameInProgress == true)
+            // Проверяем, есть ли активная игра
+            if (_viewModel?.GameManager?.IsGameInProgress == true)
             {
-                var result = MessageBox.Show("Завершить текущую игру и вернуться на главную?\n\n" +
-                                           "Это засчитается как поражение (-10 рейтинга)",
-                    "Подтверждение",
+                // Спрашиваем подтверждение
+                var result = MessageBox.Show(
+                    "Вы уверены, что хотите выйти в главное меню?\n\n" +
+                    "Если игра активна, это засчитается как поражение белых (-10 рейтинга).",
+                    "Подтверждение выхода",
                     MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning);
+                    MessageBoxImage.Question);
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    await FinishCurrentGame("Игрок вышел из игры");
-                }
-            }
+                    try
+                    {
+                        // Если есть онлайн-игра, завершаем ее с поражением белых
+                        if (_currentGameId > 0)
+                        {
+                            Console.WriteLine("=== ВЫХОД В ГЛАВНОЕ МЕНЮ - ЗАВЕРШЕНИЕ ИГРЫ ===");
 
-            DashboardWindow dashboardWindow = new DashboardWindow(_userId);
-            dashboardWindow.Show();
-            this.Close();
+                            // Завершаем игру через API с поражением белых
+                            bool gameFinished = await _apiService.FinishGameAsync(_currentGameId, "Black");
+
+                            if (gameFinished)
+                            {
+                                Console.WriteLine($"✅ Игра #{_currentGameId} завершена как поражение белых");
+
+                                // Обновляем рейтинг (-10 за поражение)
+                                int ratingChange = -10;
+                                bool ratingUpdated = await _apiService.UpdateRatingWithCurlAsync(_userId, ratingChange);
+
+                                if (ratingUpdated)
+                                {
+                                    Console.WriteLine($"✅ Рейтинг уменьшен на 10");
+                                }
+                            }
+                        }
+
+                        // Показываем сообщение о результате
+                        MessageBox.Show(
+                            "Вы вышли из игры.\n" +
+                            "Белые проиграли (выход из игры).\n" +
+                            "Рейтинг уменьшен на 10.",
+                            "Игра завершена",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
+
+                        // Переходим на главную
+                        DashboardWindow dashboardWindow = new DashboardWindow(_userId);
+                        dashboardWindow.Show();
+                        this.Close();
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Ошибка при завершении игры: {ex.Message}\n" +
+                                       "Переходим на главную...",
+                                       "Ошибка",
+                                       MessageBoxButton.OK,
+                                       MessageBoxImage.Warning);
+
+                        // Все равно переходим на главную
+                        DashboardWindow dashboardWindow = new DashboardWindow(_userId);
+                        dashboardWindow.Show();
+                        this.Close();
+                    }
+                }
+                // Если нажали "Нет" - остаемся в игре
+            }
+            else
+            {
+                // Если игры нет - просто переходим на главную
+                DashboardWindow dashboardWindow = new DashboardWindow(_userId);
+                dashboardWindow.Show();
+                this.Close();
+            }
         }
 
         private async Task FinishCurrentGame(string result)
@@ -1242,63 +1255,6 @@ namespace shahmati
 
         // ===== КНОПКА СДАЧИ =====
 
-        private async void ResignButton_Click(object sender, RoutedEventArgs e)
-        {
-            var result = MessageBox.Show("Вы уверены, что хотите сдаться?\n\n" +
-                                       "Игра будет завершена как поражение.",
-                "Сдача",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-
-            if (result == MessageBoxResult.Yes)
-            {
-                try
-                {
-                    // Показываем индикатор загрузки
-                    ShowLoadingIndicator("Завершение игры...");
-
-                    // Определяем результат сдачи
-                    // Пользователь всегда играет белыми, поэтому сдача = победа черных
-                    string apiResult = "Black";
-
-                    // Прямое завершение игры
-                    bool success = await FinishGameThroughApi(_currentGameId, apiResult);
-
-                    // Скрываем индикатор загрузки
-                    HideLoadingIndicator();
-
-                    if (success)
-                    {
-                        // Обновляем UI
-                        StatusText.Text = "Вы сдались. Игра завершена.";
-                        StatusIcon.Text = "🏳️";
-
-                        // Вызываем обработчик завершения игры
-                        OnGameFinishedHandler("Черные победили (сдача белых)");
-
-                        MessageBox.Show("Игра завершена! Результат сохранен.",
-                            "Сдача",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Information);
-                    }
-                    else
-                    {
-                        MessageBox.Show("Не удалось завершить игру. Попробуйте снова.",
-                            "Ошибка",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Error);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    HideLoadingIndicator();
-                    MessageBox.Show($"Ошибка при сдаче: {ex.Message}",
-                        "Ошибка",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error);
-                }
-            }
-        }
 
         private async Task<bool> FinishGameThroughApi(int gameId, string result)
         {

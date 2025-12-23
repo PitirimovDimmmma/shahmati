@@ -2,16 +2,17 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
-using System.IO;
-using System.Diagnostics;
-using System.Text;
 
 namespace shahmati.Services
 {
@@ -375,7 +376,19 @@ namespace shahmati.Services
         {
             try
             {
-                var response = await _httpClient.PutAsJsonAsync($"api/profiles/{userId}", request);
+                Console.WriteLine($"=== UPDATE PROFILE ID={userId} ===");
+                Console.WriteLine($"Request: Nickname={request.Nickname}, PhotoPath={request.PhotoPath}");
+
+                // Если PhotoPath null, устанавливаем пустую строку
+                var safeRequest = new UpdateProfileRequest
+                {
+                    Nickname = request.Nickname ?? "",
+                    PhotoPath = request.PhotoPath ?? ""
+                };
+
+                var response = await _httpClient.PutAsJsonAsync($"api/auth/profile/{userId}", safeRequest);
+
+                Console.WriteLine($"Response Status: {response.StatusCode}");
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -384,7 +397,8 @@ namespace shahmati.Services
                 }
                 else
                 {
-                    Console.WriteLine($"❌ Ошибка обновления профиля: {response.StatusCode}");
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"❌ Ошибка обновления профиля: {errorContent}");
                     return false;
                 }
             }
@@ -1341,7 +1355,131 @@ namespace shahmati.Services
         }
 
 
+        // ========== ЗАГРУЗКА ФАЙЛОВ ==========
+        public async Task<string> UploadAvatarAsync(int userId, string filePath)
+        {
+            try
+            {
+                Console.WriteLine($"=== UPLOAD AVATAR ===");
+                Console.WriteLine($"UserId: {userId}");
+                Console.WriteLine($"File: {filePath}");
 
+                // Проверяем существование файла
+                if (!File.Exists(filePath))
+                {
+                    Console.WriteLine($"❌ Файл не найден: {filePath}");
+                    return null;
+                }
+
+                // Создаем multipart/form-data
+                using var form = new MultipartFormDataContent();
+                using var fileStream = File.OpenRead(filePath);
+                using var fileContent = new StreamContent(fileStream);
+
+                // Устанавливаем Content-Type
+                string contentType = GetContentType(filePath);
+                fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
+
+                form.Add(fileContent, "File", Path.GetFileName(filePath));
+                form.Add(new StringContent(userId.ToString()), "UserId");
+
+                // Отправляем запрос
+                var response = await _httpClient.PostAsync("api/files/upload-avatar", form);
+
+                Console.WriteLine($"Response Status: {response.StatusCode}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<FileUploadResponse>();
+                    if (result?.Success == true)
+                    {
+                        Console.WriteLine($"✅ Файл загружен: {result.FilePath}");
+                        return result.FilePath;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"❌ Ошибка в ответе: {result?.ErrorMessage}");
+                        return null;
+                    }
+                }
+                else
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"❌ Ошибка сервера: {error}");
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка загрузки файла: {ex.Message}");
+                return null;
+            }
+        }
+
+        private string GetContentType(string filePath)
+        {
+            string extension = Path.GetExtension(filePath).ToLowerInvariant();
+            return extension switch
+            {
+                ".png" => "image/png",
+                ".jpg" => "image/jpeg",
+                ".jpeg" => "image/jpeg",
+                ".gif" => "image/gif",
+                _ => "application/octet-stream"
+            };
+        }
+
+        public async Task<bool> UpdateProfileWithPhotoAsync(int userId, UpdateProfileRequest request, string photoPath)
+        {
+            try
+            {
+                Console.WriteLine($"=== UPDATE PROFILE WITH PHOTO ===");
+
+                string finalPhotoPath = request.PhotoPath;
+
+                // Если есть новое фото - загружаем его
+                if (!string.IsNullOrEmpty(photoPath) && File.Exists(photoPath))
+                {
+                    var uploadedPath = await UploadAvatarAsync(userId, photoPath);
+                    if (!string.IsNullOrEmpty(uploadedPath))
+                    {
+                        // Полный URL к файлу
+                        finalPhotoPath = $"{BaseUrl.TrimEnd('/')}/{uploadedPath.TrimStart('/')}";
+                        Console.WriteLine($"✅ Фото загружено: {finalPhotoPath}");
+                    }
+                }
+
+                // Обновляем профиль с новым путем к фото
+                request.PhotoPath = finalPhotoPath;
+                var response = await _httpClient.PutAsJsonAsync($"api/auth/profile/{userId}", request);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"✅ Профиль обновлен с фото");
+                    return true;
+                }
+                else
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"❌ Ошибка обновления профиля: {error}");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка обновления профиля с фото: {ex.Message}");
+                return false;
+            }
+        }
+
+        // DTO для ответа от сервера
+        public class FileUploadResponse
+        {
+            public bool Success { get; set; }
+            public string FilePath { get; set; } = string.Empty;
+            public string FileName { get; set; } = string.Empty;
+            public string ErrorMessage { get; set; } = string.Empty;
+        }
 
         // В ApiService.cs добавьте:
         // ИСПРАВЛЕННЫЙ метод:

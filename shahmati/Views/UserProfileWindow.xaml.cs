@@ -162,35 +162,43 @@ namespace shahmati.Views
                 SaveButton.IsEnabled = false;
                 SaveButton.Content = "Сохранение...";
 
-                string finalPhotoPath = _user?.Profile?.PhotoPath;
+                bool success;
 
                 // Если выбрано новое фото
-                if (!string.IsNullOrEmpty(_photoPath) && _photoPath != finalPhotoPath)
+                if (!string.IsNullOrEmpty(_photoPath) && File.Exists(_photoPath) && _photoPath != (_user?.Profile?.PhotoPath ?? ""))
                 {
-                    string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                    string appFolder = Path.Combine(appDataPath, "ChessTrainer", "Avatars");
-                    Directory.CreateDirectory(appFolder);
+                    Console.WriteLine($"Загружаем новое фото: {_photoPath}");
 
-                    string fileName = $"{_userId}_{Guid.NewGuid()}{Path.GetExtension(_photoPath)}";
-                    finalPhotoPath = Path.Combine(appFolder, fileName);
+                    // Используем новый метод с загрузкой фото
+                    var updateRequest = new UpdateProfileRequest
+                    {
+                        Nickname = nickname,
+                        PhotoPath = _user?.Profile?.PhotoPath ?? "" // Старый путь или пустая строка
+                    };
 
-                    File.Copy(_photoPath, finalPhotoPath, true);
+                    success = await _apiService.UpdateProfileWithPhotoAsync(_userId, updateRequest, _photoPath);
                 }
-
-                // Обновляем профиль
-                var updateRequest = new UpdateProfileRequest
+                else
                 {
-                    Nickname = nickname,
-                    PhotoPath = finalPhotoPath
-                };
+                    // Если фото не менялось, просто обновляем профиль
+                    var updateRequest = new UpdateProfileRequest
+                    {
+                        Nickname = nickname,
+                        PhotoPath = _user?.Profile?.PhotoPath ?? "" // Используем пустую строку если null
+                    };
 
-                bool success = await _apiService.UpdateProfileAsync(_userId, updateRequest);
+                    var response = await _apiService.UpdateProfileAsync(_userId, updateRequest);
+                    success = response;
+                }
 
                 if (success)
                 {
                     MessageBox.Show("Профиль успешно обновлен!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
                     _dataChanged = false;
                     this.DialogResult = true;
+
+                    // Обновляем данные
+                    await LoadUserProfile();
                 }
                 else
                 {
@@ -200,6 +208,7 @@ namespace shahmati.Views
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка сохранения: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                Console.WriteLine($"❌ Exception details: {ex}");
             }
             finally
             {
@@ -208,13 +217,7 @@ namespace shahmati.Views
             }
         }
 
-        private void ChangePasswordButton_Click(object sender, RoutedEventArgs e)
-        {
-            MessageBox.Show("Функция смены пароля будет реализована в следующем обновлении",
-                "В разработке",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-        }
+
 
         private void DeleteAccountButton_Click(object sender, RoutedEventArgs e)
         {

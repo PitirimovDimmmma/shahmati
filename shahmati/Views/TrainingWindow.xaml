@@ -109,6 +109,33 @@
             </Setter>
         </Style>
 
+        <!-- Стиль для кнопки назад -->
+        <Style x:Key="BackButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#FF6A00"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="Transparent" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#FFD700"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Стиль для прогресс бара -->
         <Style x:Key="ProgressBarStyle" TargetType="ProgressBar">
             <Setter Property="Height" Value="24"/>
@@ -173,31 +200,9 @@
                     <StackPanel Grid.Column="0" 
                                Orientation="Horizontal" 
                                VerticalAlignment="Center">
-                        <Border Width="50" 
-                               Height="50" 
-                               CornerRadius="10"
-                               Background="#3498DB"
-                               Margin="0,0,15,0">
-                            <Viewbox>
-                                <TextBlock Text="{Binding CurrentPlayerSymbol}" 
-                                          FontSize="30"
-                                          HorizontalAlignment="Center"
-                                          VerticalAlignment="Center"
-                                          Foreground="White"
-                                          FontWeight="Bold"/>
-                            </Viewbox>
-                        </Border>
+                      
                         <StackPanel>
-                            <TextBlock x:Name="TrainingNameText" 
-                                      Text="{Binding SelectedTraining.Name, FallbackValue='ШАХМАТНЫЙ ТРЕНАЖЕР'}" 
-                                      Foreground="White" 
-                                      FontSize="20" 
-                                      FontWeight="Bold"
-                                      Margin="0,0,0,2"/>
-                            <TextBlock x:Name="TrainingDescriptionText" 
-                                      Text="{Binding SelectedTraining.Description, FallbackValue='Развивайте тактическое мышление и стратегию'}" 
-                                      Foreground="#BDC3C7" 
-                                      FontSize="12"/>
+                            
                         </StackPanel>
                     </StackPanel>
 
@@ -221,6 +226,24 @@
                                           Foreground="#3498DB" 
                                           FontSize="18" 
                                           FontWeight="Bold"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ОЧКИ -->
+                        <Border Style="{StaticResource StatCardStyle}" 
+                               Margin="0,0,10,0" 
+                               Width="120">
+                            <StackPanel>
+                                <TextBlock Text="⭐ ОЧКИ" 
+                                          FontSize="10" 
+                                          Foreground="#BDC3C7"
+                                          FontWeight="SemiBold"/>
+                                <TextBlock x:Name="ScoreText" 
+                                          Text="{Binding Score, FallbackValue='0'}" 
+                                          Foreground="#FFD700" 
+                                          FontSize="22" 
+                                          FontWeight="Bold"
+                                          FontFamily="Consolas"/>
                             </StackPanel>
                         </Border>
 
@@ -288,11 +311,6 @@
                                Margin="0,0,10,0"
                                Click="HintButton_Click"/>
 
-                        <Button x:Name="CompleteButton" 
-                               Content="🏁 ЗАВЕРШИТЬ" 
-                               Style="{StaticResource ControlButtonStyle}"
-                               Background="#E74C3C"
-                               Click="CompleteButton_Click"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -479,79 +497,74 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- РЕШЕНИЕ -->
+                            <!-- УПРАВЛЕНИЕ ТРЕНИРОВКОЙ -->
                             <Border Style="{StaticResource InfoCardStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="🧩 РЕШЕНИЕ" 
+                                    <TextBlock Text="⚙️ УПРАВЛЕНИЕ" 
                                               FontSize="13" 
                                               Foreground="#BDC3C7"
                                               FontWeight="Bold"
                                               Margin="0,0,0,8"/>
 
-                                    <Border Height="140" 
-                                           CornerRadius="8"
-                                           Background="#2C3E50"
-                                           BorderBrush="#4A6572"
-                                           BorderThickness="1">
-                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                            <ListBox x:Name="SolutionMovesList" 
-                                                    Background="Transparent"
-                                                    BorderThickness="0"
-                                                    FontFamily="Consolas"
-                                                    Foreground="White"
-                                                    ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                                                <ListBox.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Border Padding="10,6"
-                                                               Background="Transparent">
-                                                            <TextBlock Text="{Binding}" 
-                                                                      FontSize="12"
-                                                                      Foreground="#ECF0F1"
-                                                                      TextWrapping="Wrap"/>
-                                                        </Border>
-                                                    </DataTemplate>
-                                                </ListBox.ItemTemplate>
-                                            </ListBox>
-                                        </ScrollViewer>
-                                    </Border>
+                                    <StackPanel Margin="0,5,0,0">
+                                        <Button x:Name="NextButton" 
+                                               Content="➡️ СЛЕДУЮЩАЯ ПОЗИЦИЯ" 
+                                               Height="45"
+                                               Style="{StaticResource ControlButtonStyle}"
+                                               Background="#27AE60"
+                                               FontSize="13"
+                                               Click="NextButton_Click"
+                                               Margin="0,0,0,8"/>
+
+                                        <StackPanel Orientation="Horizontal" 
+                                                    Margin="0,0,0,8">
+                                           
+
+                                            <Button x:Name="ShowSolutionButton" 
+                                                   Content="👁️ РЕШЕНИЕ" 
+                                                   Width="160"
+                                                   Height="40"
+                                                   Style="{StaticResource ControlButtonStyle}"
+                                                   Background="#F39C12"
+                                                   FontSize="12"
+                                                   Click="ShowSolutionButton_Click"/>
+                                        </StackPanel>
+
+                                        <Button x:Name="CompleteTrainingButton" 
+                                               Content="🏁 ЗАВЕРШИТЬ ТРЕНИРОВКУ" 
+                                               Height="45"
+                                               Style="{StaticResource ControlButtonStyle}"
+                                               Background="#E74C3C"
+                                               FontSize="13"
+                                               Click="CompleteButton_Click"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
 
-                            <!-- КНОПКИ УПРАВЛЕНИЯ -->
-                            <StackPanel Margin="0,0,0,15">
-                                <Button x:Name="NextButton" 
-                                       Content="➡️ СЛЕДУЮЩАЯ ПОЗИЦИЯ" 
-                                       Height="50"
-                                       Style="{StaticResource ControlButtonStyle}"
-                                       Background="#27AE60"
-                                       FontSize="14"
-                                       Click="NextButton_Click"
-                                       Margin="0,0,0,12"/>
-
-                                <Button x:Name="ShowSolutionButton" 
-                                       Content="👁️ ПОКАЗАТЬ РЕШЕНИЕ" 
-                                       Height="45"
-                                       Style="{StaticResource ControlButtonStyle}"
-                                       Background="#3498DB"
-                                       FontSize="13"
-                                       Click="ShowSolutionButton_Click"/>
-                            </StackPanel>
-
-                            <!-- ПОДСКАЗКА -->
+                            <!-- ПОДСКАЗКА И РЕШЕНИЕ -->
                             <Border Style="{StaticResource InfoCardStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="💡 ПОДСКАЗКА" 
+                                    <TextBlock Text="💡 ПОДСКАЗКА И РЕШЕНИЕ" 
                                               FontSize="13" 
                                               Foreground="#BDC3C7"
                                               FontWeight="Bold"
                                               Margin="0,0,0,8"/>
 
-                                    <TextBlock x:Name="HintText" 
-                                              Text="{Binding HintText, FallbackValue='Нажмите на фигуру текущего игрока, чтобы увидеть возможные ходы'}"
-                                              FontSize="13"
-                                              Foreground="#FFD700"
-                                              TextWrapping="Wrap"
-                                              LineHeight="18"/>
+                                    <Border Height="160" 
+                                           CornerRadius="8"
+                                           Background="#2C3E50"
+                                           BorderBrush="#4A6572"
+                                           BorderThickness="1"
+                                           Padding="10">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                            <TextBlock x:Name="HintTextBlock" 
+                                                      Text="{Binding HintText, FallbackValue='Нажмите на фигуру текущего игрока, чтобы увидеть возможные ходы'}"
+                                                      FontSize="12"
+                                                      Foreground="#ECF0F1"
+                                                      TextWrapping="Wrap"
+                                                      LineHeight="18"/>
+                                        </ScrollViewer>
+                                    </Border>
                                 </StackPanel>
                             </Border>
                         </StackPanel>

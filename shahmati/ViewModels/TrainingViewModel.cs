@@ -1042,6 +1042,45 @@ namespace shahmati.ViewModels
             }
         }
 
+        public void ShowFullSolution()
+        {
+            if (CurrentPosition != null && _remainingSolutionMoves != null && _remainingSolutionMoves.Any())
+            {
+                string solution = "🧩 ПОЛНОЕ РЕШЕНИЕ:\n\n";
+
+                // Показываем все оставшиеся ходы решения
+                for (int i = 0; i < _remainingSolutionMoves.Count; i++)
+                {
+                    var move = _remainingSolutionMoves[i];
+                    solution += $"{i + 1}. {FormatMove(move)}\n";
+                }
+
+                HintText = solution;
+                StatusText = "Показано полное решение";
+                Score = Math.Max(0, Score - 15); // Больший штраф за полное решение
+                OnPropertyChanged(nameof(Score));
+
+                // Также очищаем список, чтобы игра продолжалась
+                _remainingSolutionMoves.Clear();
+            }
+            else if (CurrentPosition != null)
+            {
+                HintText = CurrentPosition.Hint ?? "Решение не найдено.";
+                StatusText = "Решение не найдено";
+            }
+        }
+
+        private string FormatMove(string move)
+        {
+            if (move.Length >= 4)
+            {
+                var from = move.Substring(0, 2);
+                var to = move.Substring(2, 2);
+                return $"{from.ToUpper()} → {to.ToUpper()}";
+            }
+            return move;
+        }
+
         public async Task CompleteTraining()
         {
             try
