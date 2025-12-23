@@ -201,7 +201,7 @@
                            HorizontalAlignment="Center" 
                            VerticalAlignment="Center">
                     <TextBlock Text="🏋️ ВЫБОР ТРЕНИРОВКИ" 
-                              Foreground="#FFD700" 
+                                           Foreground="White" 
                               FontSize="24" 
                               FontWeight="Bold"
                               FontFamily="Segoe UI Black"/>
@@ -235,7 +235,7 @@
                         <Border Style="{StaticResource FilterPanelStyle}">
                             <StackPanel>
                                 <TextBlock Text="🔍 ПОИСК ТРЕНИРОВКИ" 
-                                          Style="{StaticResource FilterHeaderStyle}"/>
+                                           Foreground="White"/>
                                 <TextBox x:Name="SearchTextBox" 
                                         Background="#2C3E50"
                                         Foreground="White"
@@ -255,7 +255,7 @@
                         <Border Style="{StaticResource FilterPanelStyle}">
                             <StackPanel>
                                 <TextBlock Text="📂 КАТЕГОРИИ" 
-                                          Style="{StaticResource FilterHeaderStyle}"/>
+                                           Foreground="White"/>
                                 <RadioButton x:Name="AllCategoryRadio" 
                                            Content="Все категории" 
                                            GroupName="Category"
@@ -298,7 +298,7 @@
                         <Border Style="{StaticResource FilterPanelStyle}">
                             <StackPanel>
                                 <TextBlock Text="⚡ СЛОЖНОСТЬ" 
-                                          Style="{StaticResource FilterHeaderStyle}"/>
+                                           Foreground="White"/>
                                 <CheckBox x:Name="BeginnerCheckBox" 
                                         Content="Новичок" 
                                         Foreground="White"
@@ -492,7 +492,7 @@
                               Foreground="#BDC3C7" 
                               FontSize="11"/>
                     <TextBlock Text="0" 
-                              Foreground="#FFD700" 
+                                           Foreground="White"
                               FontSize="11"
                               FontWeight="Bold"
                               Margin="5,0,0,0"/>

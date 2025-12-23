@@ -219,7 +219,7 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- Общая статистика -->
-                    <Border Grid.Column="0" Style="{StaticResource StatCard}">
+                    <Border Grid.Column="0" Style="{StaticResource StatCard}" Grid.ColumnSpan="2" Margin="10,10,265,10">
                         <StackPanel>
                             <TextBlock Text="📈 Общая статистика" Style="{StaticResource StatTitle}"/>
 
@@ -304,7 +304,15 @@
                     </Border> -->
 
                     <!-- Против людей -->
-                    <Border Grid.Column="2" Style="{StaticResource StatCard}">
+                    <Border Grid.Column="2" Style="{StaticResource StatCard}" Margin="338,284,10,-240" RenderTransformOrigin="0.5,0.5">
+                        <Border.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform ScaleY="-1"/>
+                                <SkewTransform/>
+                                <RotateTransform/>
+                                <TranslateTransform/>
+                            </TransformGroup>
+                        </Border.RenderTransform>
                         <StackPanel>
                             <TextBlock Text="👥 Против людей" Style="{StaticResource StatTitle}"/>
 
@@ -347,7 +355,7 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- Рейтинговая информация -->
-                    <Border Grid.Column="0" Style="{StaticResource StatCard}" Margin="0,0,10,0">
+                    <Border Grid.Column="0" Style="{StaticResource StatCard}" Margin="0,0,84,311">
                         <StackPanel>
                             <TextBlock Text="🏆 Рейтинг и достижения" Style="{StaticResource StatTitle}"/>
 
@@ -390,7 +398,15 @@
                     </Border>
 
                     <!-- Статистика по сложности -->
-                    <Border Grid.Column="1" Style="{StaticResource StatCard}">
+                    <Border Grid.Column="1" Style="{StaticResource StatCard}" Margin="512,212,9,231" RenderTransformOrigin="0.5,0.5">
+                        <Border.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform ScaleX="-1"/>
+                                <SkewTransform/>
+                                <RotateTransform/>
+                                <TranslateTransform/>
+                            </TransformGroup>
+                        </Border.RenderTransform>
                         <StackPanel>
                             <TextBlock Text="📊 Распределение по сложности" Style="{StaticResource StatTitle}"/>
 
@@ -433,7 +449,15 @@
                 </Grid>
 
 
-                <Border Grid.Row="3" Style="{StaticResource StatCard}">
+                <Border Grid.Row="2" Style="{StaticResource StatCard}" Margin="1050,559,8,10" RenderTransformOrigin="0.5,0.5" Grid.RowSpan="2">
+                    <Border.RenderTransform>
+                        <TransformGroup>
+                            <ScaleTransform ScaleX="-1"/>
+                            <SkewTransform/>
+                            <RotateTransform/>
+                            <TranslateTransform/>
+                        </TransformGroup>
+                    </Border.RenderTransform>
                     <StackPanel>
                         <TextBlock Text="📈 История рейтинга (последние 20 игр)" Style="{StaticResource StatTitle}"/>
 
@@ -485,7 +509,7 @@
                             </DataGrid.Columns>
                         </DataGrid>
                     </StackPanel>
-                </Border> 
+                </Border>
             </Grid>
         </ScrollViewer>
 

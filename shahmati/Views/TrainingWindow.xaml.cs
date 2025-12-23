@@ -101,8 +101,14 @@ namespace shahmati.Views
         private async void CompleteButton_Click(object sender, RoutedEventArgs e)
         {
             await _viewModel.CompleteTraining();
+
             if (_viewModel.IsTrainingCompleted)
             {
+                // Создаем и открываем окно выбора тренировок
+                var trainingSelectionWindow = new TrainingSelectionWindow(_userId);
+                trainingSelectionWindow.Show();
+
+                // Закрываем текущее окно
                 Close();
             }
         }

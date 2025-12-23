@@ -1112,7 +1112,7 @@ namespace shahmati
                 // Спрашиваем подтверждение
                 var result = MessageBox.Show(
                     "Вы уверены, что хотите выйти в главное меню?\n\n" +
-                    "Если игра активна, это засчитается как поражение белых (-10 рейтинга).",
+                    "Если игра активна, это засчитается как поражение белых",
                     "Подтверждение выхода",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question);
@@ -1137,10 +1137,7 @@ namespace shahmati
                                 int ratingChange = -10;
                                 bool ratingUpdated = await _apiService.UpdateRatingWithCurlAsync(_userId, ratingChange);
 
-                                if (ratingUpdated)
-                                {
-                                    Console.WriteLine($"✅ Рейтинг уменьшен на 10");
-                                }
+                              
                             }
                         }
 
@@ -1148,7 +1145,7 @@ namespace shahmati
                         MessageBox.Show(
                             "Вы вышли из игры.\n" +
                             "Белые проиграли (выход из игры).\n" +
-                            "Рейтинг уменьшен на 10.",
+                            "Тренируйтесь у нас и возвращайтесь мы вас ждём",
                             "Игра завершена",
                             MessageBoxButton.OK,
                             MessageBoxImage.Information);

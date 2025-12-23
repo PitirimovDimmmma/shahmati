@@ -307,7 +307,7 @@
                         <Button x:Name="HintButton" 
                                Content="💡 ПОДСКАЗКА" 
                                Style="{StaticResource ControlButtonStyle}"
-                               Background="#9B59B6"
+                                               Background="#27AE60"
                                Margin="0,0,10,0"
                                Click="HintButton_Click"/>
 
@@ -531,7 +531,7 @@
                                                    Width="160"
                                                    Height="40"
                                                    Style="{StaticResource ControlButtonStyle}"
-                                                   Background="#F39C12"
+                                               Background="#27AE60"
                                                    FontSize="12"
                                                    Click="ShowSolutionButton_Click"/>
                                         </StackPanel>
