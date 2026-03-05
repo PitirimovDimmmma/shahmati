@@ -2,66 +2,34 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using shahmati.models;
+using shahmati.Services;
 
 namespace shahmati.Services
 {
     public class GameManager : INotifyPropertyChanged
     {
-        // Добавьте свойство
-        public bool UserIsWhite { get; set; } = true;
-
-        // Обновите метод Resign
-        public void Resign(PieceColor resigningColor)
-        {
-            if (!IsGameInProgress) return;
-
-            Console.WriteLine($"=== RESIGN CALLED ===");
-            Console.WriteLine($"Resigning color: {resigningColor}");
-            Console.WriteLine($"User is white: {UserIsWhite}");
-
-            string result = "";
-            if (UserIsWhite)
-            {
-                // Пользователь = белые
-                if (resigningColor == PieceColor.White)
-                {
-                    result = "Черные победили (белые сдались)";
-                    Console.WriteLine($"User (White) resigns, Black wins");
-                }
-                else
-                {
-                    result = "Белые победили (черные сдались)";
-                    Console.WriteLine($"Opponent (Black) resigns, White wins");
-                }
-            }
-            else
-            {
-                // Пользователь = черные (на всякий случай)
-                if (resigningColor == PieceColor.White)
-                    result = "Черные победили (белые сдались)";
-                else
-                    result = "Белые победили (черные сдались)";
-            }
-
-            Console.WriteLine($"Ending game with result: {result}");
-            EndGame(result);
-        }
-
+        // ========== ПОЛЯ ==========
         private Board _board;
         private PieceColor _currentPlayer;
         private bool _isGameActive;
         private string _gameResult;
         private List<string> _moveHistory;
-        private ChessAIService _aiService;
         private string _gameMode;
         private string _difficulty;
 
-        // События для уведомления о конце игры
-        public event Action<string> GameFinished; // параметр - результат игры
-        public event Action<string> MoveMade; // параметр - нотация хода
+        // API поля
+        private ApiService _apiService;
+        private int _currentGameId;
+        private string _gameDifficulty = "Medium";
+        private bool _isAITurn = false;
+
+        // ========== СВОЙСТВА ==========
+        public bool UserIsWhite { get; set; } = true;
+        public string GameMode => _gameMode;
 
         public Board Board
         {
@@ -86,20 +54,36 @@ namespace shahmati.Services
         public bool IsGameInProgress => _isGameActive;
         public string GameResult => _gameResult;
         public List<string> MoveHistory => _moveHistory;
+        public bool IsAITurn => _isAITurn;
 
-        // Добавьте это свойство для связи с MainWindow
+        // ========== СОБЫТИЯ ==========
+        public event Action<string> GameFinished;
+        public event Action<string> MoveMade;
+        public event Action<string> AIMoveStarted;
+        public event Action<string> AIMoveCompleted;
+        public event PropertyChangedEventHandler PropertyChanged;
         public Action<string> UpdateHistoryCallback { get; set; }
 
+        // ========== КОНСТРУКТОР ==========
         public GameManager()
         {
             _board = new Board();
             _currentPlayer = PieceColor.White;
             _isGameActive = true;
             _moveHistory = new List<string>();
-            _aiService = new ChessAIService();
         }
 
-        public void StartNewGame(string gameMode = "Человек vs Человек", string difficulty = "Средний")
+        // ========== ИНИЦИАЛИЗАЦИЯ API ==========
+        public void InitializeApiService(ApiService apiService)
+        {
+            _apiService = apiService;
+            Console.WriteLine("✅ GameManager: API Service инициализирован");
+        }
+
+        // ========== НАЧАЛО ИГРЫ ==========
+        public async Task StartNewGameAsync(string gameMode = "Человек vs Компьютер",
+                                            string difficulty = "Medium",
+                                            bool userIsWhite = true)
         {
             _board = new Board();
             _currentPlayer = PieceColor.White;
@@ -108,56 +92,183 @@ namespace shahmati.Services
             _moveHistory.Clear();
             _gameMode = gameMode;
             _difficulty = difficulty;
+            _gameDifficulty = difficulty;
+            UserIsWhite = userIsWhite;
+            _isAITurn = false;
+            _currentGameId = 0;
 
             OnPropertyChanged(nameof(Board));
             OnPropertyChanged(nameof(CurrentPlayer));
 
-            // Уведомляем MainWindow о начале игры
             UpdateHistoryCallback?.Invoke("Новая игра начата!");
 
-            // Проверяем, нужно ли ИИ делать первый ход
-            if (gameMode == "Компьютер vs Компьютер" ||
-                (gameMode == "Человек vs Компьютер" && _currentPlayer == PieceColor.Black))
+            // Если игра с ИИ и пользователь черными - ИИ ходит первым
+            if (gameMode == "Человек vs Компьютер" && !userIsWhite)
             {
-                _ = MakeAIMoveAsync();
+                await MakeAIMoveViaApiAsync();
             }
         }
 
-        public async Task<bool> MakeMove(Position from, Position to)
+        // ========== СОЗДАНИЕ ИГРЫ НА СЕРВЕРЕ ==========
+        public async Task<int> CreateAIGameOnServerAsync(int userId, string difficulty = "Medium", string color = "White")
         {
-            if (!_isGameActive || !from.IsValid() || !to.IsValid())
+            try
+            {
+                if (_apiService == null)
+                {
+                    Console.WriteLine("❌ API Service не инициализирован");
+                    return 0;
+                }
+
+                var response = await _apiService.CreateAIGameAsync(userId, difficulty, color);
+
+                if (response?.Success == true)
+                {
+                    _currentGameId = response.GameId;
+                    Console.WriteLine($"✅ Игра #{_currentGameId} создана на сервере");
+                    return _currentGameId;
+                }
+                else
+                {
+                    Console.WriteLine($"❌ Не удалось создать игру на сервере");
+                    return 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка создания игры: {ex.Message}");
+                return 0;
+            }
+        }
+
+        // ========== ХОД ПОЛЬЗОВАТЕЛЯ ПРОТИВ ИИ ==========
+        public async Task<bool> MakeMoveVsAIAsync(Position from, Position to, int userId)
+        {
+            if (!_isGameActive || _isAITurn)
                 return false;
 
             var piece = Board.GetPieceAt(from);
             if (piece == null || piece.Color != CurrentPlayer)
                 return false;
 
-            // Проверяем валидность хода
+            // Проверяем валидность хода локально
             if (!Board.IsValidMove(from, to, CurrentPlayer))
                 return false;
 
-            // Сохраняем информацию о взятии
+            string moveNotation = $"{GetSquareNotation(from)}{GetSquareNotation(to)}";
+
+            // Если есть активная игра на сервере - отправляем ход
+            if (_currentGameId > 0 && _apiService != null && _gameMode == "Человек vs Компьютер")
+            {
+                return await MakeMoveViaApiAsync(moveNotation);
+            }
+            else
+            {
+                // Локальный ход (без сервера)
+                return MakeMoveLocal(from, to);
+            }
+        }
+
+        // ========== ОТПРАВКА ХОДА НА СЕРВЕР ==========
+        private async Task<bool> MakeMoveViaApiAsync(string moveNotation)
+        {
+            try
+            {
+                _isAITurn = true;
+                AIMoveStarted?.Invoke("Stockfish думает...");
+
+                var response = await _apiService.PlayAgainstAIAsync(_currentGameId, moveNotation);
+
+                if (response?.Success == true)
+                {
+                    // Применяем ход пользователя
+                    string userFrom = moveNotation.Substring(0, 2);
+                    string userTo = moveNotation.Substring(2, 2);
+
+                    var fromPos = SquareToPosition(userFrom);
+                    var toPos = SquareToPosition(userTo);
+
+                    // Делаем ход пользователя
+                    Board.MovePiece(fromPos, toPos);
+                    Board.UpdateSquaresFromCells();
+
+                    string userNotation = $"{GetSquareNotation(fromPos)}{GetSquareNotation(toPos)}";
+                    _moveHistory.Add($"{_moveHistory.Count + 1}. {userNotation}");
+                    UpdateHistoryCallback?.Invoke(string.Join("\n", _moveHistory));
+                    MoveMade?.Invoke(userNotation);
+
+                    // Проверяем, не закончилась ли игра
+                    if (response.GameFinished)
+                    {
+                        EndGame(GetResultMessage(response.Result));
+                        _isAITurn = false;
+                        return true;
+                    }
+
+                    // Применяем ход ИИ
+                    if (!string.IsNullOrEmpty(response.AIMove) && response.AIMove.Length >= 4)
+                    {
+                        string aiFrom = response.AIMove.Substring(0, 2);
+                        string aiTo = response.AIMove.Substring(2, 2);
+
+                        var aiFromPos = SquareToPosition(aiFrom);
+                        var aiToPos = SquareToPosition(aiTo);
+
+                        // Делаем ход ИИ
+                        if (aiFromPos.IsValid() && aiToPos.IsValid())
+                        {
+                            Board.MovePiece(aiFromPos, aiToPos);
+                            Board.UpdateSquaresFromCells();
+
+                            string aiNotation = $"{GetSquareNotation(aiFromPos)}{GetSquareNotation(aiToPos)}";
+                            _moveHistory.Add($"{_moveHistory.Count + 1}. {aiNotation}");
+                            UpdateHistoryCallback?.Invoke(string.Join("\n", _moveHistory));
+
+                            AIMoveCompleted?.Invoke(response.AIMove);
+                            MoveMade?.Invoke(aiNotation);
+                        }
+                    }
+
+                    // Обновляем текущего игрока
+                    CurrentPlayer = CurrentPlayer == PieceColor.White ? PieceColor.Black : PieceColor.White;
+                    OnPropertyChanged(nameof(CurrentPlayer));
+
+                    // Проверяем завершение игры
+                    if (response.GameFinished)
+                    {
+                        EndGame(GetResultMessage(response.Result));
+                    }
+
+                    _isAITurn = false;
+                    return true;
+                }
+                else
+                {
+                    Console.WriteLine($"❌ Ошибка при ходе: {response?.Message}");
+                    _isAITurn = false;
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка API хода: {ex.Message}");
+                _isAITurn = false;
+                return false;
+            }
+        }
+
+        // ========== ЛОКАЛЬНЫЙ ХОД ==========
+        private bool MakeMoveLocal(Position from, Position to)
+        {
             var capturedPiece = Board.GetPieceAt(to);
-            string capturedNotation = capturedPiece != null ? $"x{GetSquareNotation(to)}" : "";
 
             // Делаем ход
             Board.MovePiece(from, to);
+            Board.UpdateSquaresFromCells();
 
-            // Записываем ход в историю
-            string pieceSymbol = GetPieceSymbol(piece);
-            string moveNotation = $"{pieceSymbol}{GetSquareNotation(from)}{capturedNotation}{GetSquareNotation(to)}";
-
-            if (capturedPiece != null)
-            {
-                moveNotation = $"{pieceSymbol}{GetSquareNotation(from)}x{GetSquareNotation(to)}";
-            }
-
+            string moveNotation = $"{GetSquareNotation(from)}{GetSquareNotation(to)}";
             _moveHistory.Add($"{_moveHistory.Count + 1}. {moveNotation}");
-
-            // Обновляем историю в UI
             UpdateHistoryCallback?.Invoke(string.Join("\n", _moveHistory));
-
-            // Уведомляем о сделанном ходе
             MoveMade?.Invoke(moveNotation);
 
             // Проверяем условия окончания игры
@@ -167,17 +278,91 @@ namespace shahmati.Services
             {
                 // Переключаем игрока
                 CurrentPlayer = CurrentPlayer == PieceColor.White ? PieceColor.Black : PieceColor.White;
-
-                // После проверки конца игры и смены игрока
                 OnPropertyChanged(nameof(CurrentPlayer));
             }
 
             return true;
         }
 
+        // ========== ХОД ИИ ЧЕРЕЗ API ==========
+        public async Task MakeAIMoveViaApiAsync()
+        {
+            if (!_isGameActive || _currentGameId == 0 || _apiService == null)
+            {
+                Console.WriteLine("❌ Невозможно сделать ход ИИ");
+                return;
+            }
+
+            try
+            {
+                _isAITurn = true;
+                AIMoveStarted?.Invoke("Stockfish думает...");
+
+                // Получаем текущую FEN позицию
+                string fen = GetFenFromBoard();
+
+                // Запрашиваем ход у ИИ
+                string aiMove = await _apiService.GetAIMoveAsync(fen, _gameDifficulty);
+
+                if (!string.IsNullOrEmpty(aiMove) && aiMove.Length >= 4)
+                {
+                    string from = aiMove.Substring(0, 2);
+                    string to = aiMove.Substring(2, 2);
+
+                    var fromPos = SquareToPosition(from);
+                    var toPos = SquareToPosition(to);
+
+                    if (fromPos.IsValid() && toPos.IsValid())
+                    {
+                        // Делаем ход ИИ
+                        Board.MovePiece(fromPos, toPos);
+                        Board.UpdateSquaresFromCells();
+
+                        string aiNotation = $"{GetSquareNotation(fromPos)}{GetSquareNotation(toPos)}";
+                        _moveHistory.Add($"{_moveHistory.Count + 1}. {aiNotation}");
+                        UpdateHistoryCallback?.Invoke(string.Join("\n", _moveHistory));
+
+                        AIMoveCompleted?.Invoke(aiMove);
+                        MoveMade?.Invoke(aiNotation);
+
+                        // Переключаем игрока
+                        CurrentPlayer = CurrentPlayer == PieceColor.White ? PieceColor.Black : PieceColor.White;
+                        OnPropertyChanged(nameof(CurrentPlayer));
+
+                        // Проверяем условия окончания игры
+                        CheckGameEndConditions();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка при ходе ИИ: {ex.Message}");
+            }
+            finally
+            {
+                _isAITurn = false;
+            }
+        }
+
+        // ========== ОБЫЧНЫЙ ХОД (ДЛЯ ИГРЫ ЧЕЛОВЕК VS ЧЕЛОВЕК) ==========
+        public async Task<bool> MakeMove(Position from, Position to)
+        {
+            if (!_isGameActive)
+                return false;
+
+            var piece = Board.GetPieceAt(from);
+            if (piece == null || piece.Color != CurrentPlayer)
+                return false;
+
+            if (!Board.IsValidMove(from, to, CurrentPlayer))
+                return false;
+
+            return MakeMoveLocal(from, to);
+        }
+
+        // ========== ПРОВЕРКА ОКОНЧАНИЯ ИГРЫ ==========
         private void CheckGameEndConditions()
         {
-            // 1. Проверяем мат
             if (IsCheckmate(PieceColor.White))
             {
                 EndGame("Победа черных! Мат белому королю.");
@@ -190,51 +375,260 @@ namespace shahmati.Services
                 return;
             }
 
-            // 2. Проверяем пат
             if (IsStalemate(CurrentPlayer))
             {
                 EndGame("Ничья! Пат.");
                 return;
             }
 
-            // 3. Проверяем недостаток материала
             if (IsInsufficientMaterial())
             {
                 EndGame("Ничья! Недостаточно материала для мата.");
                 return;
             }
 
-            // 4. Правило 50 ходов
-            if (_moveHistory.Count >= 100) // 50 ходов каждым игроком
+            if (_moveHistory.Count >= 100)
             {
                 EndGame("Ничья по правилу 50 ходов.");
                 return;
             }
         }
 
+        // ========== СДАЧА ==========
+        public async Task ResignAsync(PieceColor resigningColor)
+        {
+            if (!_isGameActive) return;
+
+            Console.WriteLine($"=== RESIGN CALLED ===");
+            Console.WriteLine($"Resigning color: {resigningColor}");
+            Console.WriteLine($"User is white: {UserIsWhite}");
+
+            string result = "";
+            string apiResult = "";
+
+            if (UserIsWhite)
+            {
+                if (resigningColor == PieceColor.White)
+                {
+                    result = "Черные победили (белые сдались)";
+                    apiResult = "Black";
+                }
+                else
+                {
+                    result = "Белые победили (черные сдались)";
+                    apiResult = "White";
+                }
+            }
+            else
+            {
+                if (resigningColor == PieceColor.White)
+                {
+                    result = "Черные победили (белые сдались)";
+                    apiResult = "Black";
+                }
+                else
+                {
+                    result = "Белые победили (черные сдались)";
+                    apiResult = "White";
+                }
+            }
+
+            // Завершаем игру на сервере
+            if (_currentGameId > 0 && _apiService != null)
+            {
+                try
+                {
+                    await _apiService.FinishGameAsync(_currentGameId, apiResult);
+                    Console.WriteLine($"✅ Игра #{_currentGameId} завершена на сервере");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Ошибка завершения игры на сервере: {ex.Message}");
+                }
+            }
+
+            EndGame(result);
+        }
+
+        // ========== ПРЕДЛОЖЕНИЕ НИЧЬЕЙ ==========
+        public void OfferDraw()
+        {
+            if (!_isGameActive)
+                return;
+
+            EndGame("Ничья по соглашению игроков.");
+        }
+
+        // ========== ЗАВЕРШЕНИЕ ИГРЫ ==========
+        private void EndGame(string result)
+        {
+            _isGameActive = false;
+            _gameResult = result;
+            _isAITurn = false;
+
+            Console.WriteLine($"Game ended: {result}");
+            GameFinished?.Invoke(result);
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                MessageBox.Show(result, "Игра окончена",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            });
+        }
+
+        // ========== ПОЛУЧИТЬ ВОЗМОЖНЫЕ ХОДЫ ==========
+        public List<Move> GetPossibleMoves(string position)
+        {
+            var moves = new List<Move>();
+            try
+            {
+                var pos = SquareToPosition(position);
+                if (!pos.IsValid()) return moves;
+
+                var piece = Board.GetPieceAt(pos);
+                if (piece == null || piece.Color != CurrentPlayer) return moves;
+
+                var possiblePositions = piece.GetPossibleMoves(pos, Board);
+
+                foreach (var targetPos in possiblePositions)
+                {
+                    moves.Add(new Move
+                    {
+                        OriginalPosition = new Position(pos.Row, pos.Column),
+                        NewPosition = new Position(targetPos.Row, targetPos.Column)
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при получении возможных ходов: {ex.Message}");
+            }
+            return moves;
+        }
+
+        // ========== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
+
+        private string GetPieceSymbol(ChessPiece piece)
+        {
+            return piece.Type switch
+            {
+                PieceType.King => "K",
+                PieceType.Queen => "Q",
+                PieceType.Rook => "R",
+                PieceType.Bishop => "B",
+                PieceType.Knight => "N",
+                _ => ""
+            };
+        }
+
+        private string GetSquareNotation(Position position)
+        {
+            char file = (char)('a' + position.Column);
+            int rank = 8 - position.Row;
+            return $"{file}{rank}";
+        }
+
+        private Position SquareToPosition(string square)
+        {
+            if (string.IsNullOrEmpty(square) || square.Length < 2)
+                return Position.Invalid;
+
+            char file = square[0];
+            char rank = square[1];
+
+            int col = file - 'a';
+            int row = 8 - (rank - '0');
+
+            if (row < 0 || row > 7 || col < 0 || col > 7)
+                return Position.Invalid;
+
+            return new Position(row, col);
+        }
+
+        private string GetFenFromBoard()
+        {
+            StringBuilder fen = new StringBuilder();
+
+            for (int row = 0; row < 8; row++)
+            {
+                int emptyCount = 0;
+                for (int col = 0; col < 8; col++)
+                {
+                    var piece = Board.Cells[row, col].Piece;
+                    if (piece == null)
+                    {
+                        emptyCount++;
+                    }
+                    else
+                    {
+                        if (emptyCount > 0)
+                        {
+                            fen.Append(emptyCount);
+                            emptyCount = 0;
+                        }
+
+                        char pieceChar = piece.Type switch
+                        {
+                            PieceType.King => 'k',
+                            PieceType.Queen => 'q',
+                            PieceType.Rook => 'r',
+                            PieceType.Bishop => 'b',
+                            PieceType.Knight => 'n',
+                            PieceType.Pawn => 'p',
+                            _ => ' '
+                        };
+
+                        if (piece.Color == PieceColor.White)
+                            pieceChar = char.ToUpper(pieceChar);
+
+                        fen.Append(pieceChar);
+                    }
+                }
+
+                if (emptyCount > 0)
+                    fen.Append(emptyCount);
+
+                if (row < 7)
+                    fen.Append('/');
+            }
+
+            fen.Append(CurrentPlayer == PieceColor.White ? " w " : " b ");
+            fen.Append("KQkq - 0 1");
+
+            return fen.ToString();
+        }
+
+        private string GetResultMessage(string apiResult)
+        {
+            return apiResult switch
+            {
+                "White" => UserIsWhite ? "Победа белых! Поздравляем!" : "Победа белых",
+                "Black" => !UserIsWhite ? "Победа черных! Поздравляем!" : "Победа черных",
+                "Draw" => "Ничья!",
+                _ => "Игра завершена"
+            };
+        }
+
+        // ========== МЕТОДЫ ПРОВЕРКИ ШАХМАТНЫХ УСЛОВИЙ ==========
+
         private bool IsCheckmate(PieceColor color)
         {
-            // Находим короля
             var kingPosition = FindKing(color);
             if (!kingPosition.IsValid())
                 return false;
 
-            // Проверяем, находится ли король под шахом
             if (!IsInCheck(color, kingPosition))
                 return false;
 
-            // Проверяем, есть ли хотя бы один легальный ход
             return !HasAnyLegalMove(color);
         }
 
         private bool IsStalemate(PieceColor color)
         {
-            // Король не под шахом
             var kingPosition = FindKing(color);
             if (IsInCheck(color, kingPosition))
                 return false;
 
-            // Нет легальных ходов
             return !HasAnyLegalMove(color);
         }
 
@@ -242,7 +636,6 @@ namespace shahmati.Services
         {
             var opponentColor = color == PieceColor.White ? PieceColor.Black : PieceColor.White;
 
-            // Проверяем все фигуры противника
             for (int row = 0; row < 8; row++)
             {
                 for (int col = 0; col < 8; col++)
@@ -262,7 +655,6 @@ namespace shahmati.Services
 
         private bool HasAnyLegalMove(PieceColor color)
         {
-            // Перебираем все фигуры текущего игрока
             for (int row = 0; row < 8; row++)
             {
                 for (int col = 0; col < 8; col++)
@@ -274,27 +666,17 @@ namespace shahmati.Services
                     {
                         var moves = piece.GetPossibleMoves(position, Board);
 
-                        // Проверяем каждый возможный ход
                         foreach (var move in moves)
                         {
-                            // Сохраняем оригинальное состояние
                             var capturedPiece = Board.GetPieceAt(move);
-
-                            // Делаем временный ход
                             Board.MovePiece(position, move);
 
-                            // Проверяем, находится ли король под шахом
                             var kingPosition = FindKing(color);
                             bool stillInCheck = IsInCheck(color, kingPosition);
 
-                            // Отменяем ход
                             Board.MovePiece(move, position);
-
-                            // Восстанавливаем взятый фигуру
                             if (capturedPiece != null)
                             {
-                                // Восстанавливаем фигуру на место
-                                // Поскольку у Board нет метода SetPieceAt, нужно обновить Cells
                                 Board.Cells[move.Row, move.Column].Piece = capturedPiece;
                                 Board.UpdateSquaresFromCells();
                             }
@@ -335,177 +717,49 @@ namespace shahmati.Services
             bool whiteHasMinor = false;
             bool blackHasMinor = false;
 
-            // Считаем фигуры
             for (int row = 0; row < 8; row++)
             {
                 for (int col = 0; col < 8; col++)
                 {
                     var piece = Board.GetPieceAt(new Position(row, col));
-                    if (piece != null)
+                    if (piece != null && piece.Type != PieceType.King)
                     {
-                        if (piece.Type != PieceType.King)
+                        if (piece.Color == PieceColor.White)
                         {
-                            if (piece.Color == PieceColor.White)
-                            {
-                                whitePieces++;
-                                if (piece.Type == PieceType.Bishop || piece.Type == PieceType.Knight)
-                                    whiteHasMinor = true;
-                            }
-                            else
-                            {
-                                blackPieces++;
-                                if (piece.Type == PieceType.Bishop || piece.Type == PieceType.Knight)
-                                    blackHasMinor = true;
-                            }
+                            whitePieces++;
+                            if (piece.Type == PieceType.Bishop || piece.Type == PieceType.Knight)
+                                whiteHasMinor = true;
+                        }
+                        else
+                        {
+                            blackPieces++;
+                            if (piece.Type == PieceType.Bishop || piece.Type == PieceType.Knight)
+                                blackHasMinor = true;
                         }
                     }
                 }
             }
 
-            // Недостаток материала если:
-            // 1. Только короли
             if (whitePieces == 0 && blackPieces == 0)
                 return true;
 
-            // 2. Король + слон/конь против короля
             if ((whitePieces == 1 && whiteHasMinor && blackPieces == 0) ||
                 (blackPieces == 1 && blackHasMinor && whitePieces == 0))
                 return true;
 
-            // 3. Король + слон против короля + слона (одинакового цвета полей)
-            // Здесь нужна дополнительная логика
-
             return false;
         }
 
-
-        private void EndGame(string result)
-        {
-            Console.WriteLine($"=== END GAME ===");
-            Console.WriteLine($"Result: {result}");
-
-            _isGameActive = false;
-            _gameResult = result;
-
-            // Уведомляем о конце игры
-            Console.WriteLine($"Invoking GameFinished event...");
-            GameFinished?.Invoke(result);
-
-            // Показываем сообщение
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                MessageBox.Show(result, "Игра окончена",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-            });
-
-
-        }
-
-
-
-        private string GetPieceSymbol(ChessPiece piece)
-        {
-            return piece.Type switch
-            {
-                PieceType.King => "K",
-                PieceType.Queen => "Q",
-                PieceType.Rook => "R",
-                PieceType.Bishop => "B",
-                PieceType.Knight => "N",
-                _ => "" // Для пешки символ не ставится
-            };
-        }
-
-        private string GetSquareNotation(Position position)
-        {
-            char file = (char)('a' + position.Column);
-            int rank = 8 - position.Row;
-            return $"{file}{rank}";
-        }
-
-        public async Task MakeAIMoveAsync()
-        {
-            if (!_isGameActive || CurrentPlayer != PieceColor.Black)
-                return;
-
-            try
-            {
-                // ИИ делает ход
-                var aiMove = await _aiService.GetBestMoveAsync(Board, CurrentPlayer, _difficulty);
-
-                if (aiMove.From.IsValid() && aiMove.To.IsValid())
-                {
-                    await Task.Delay(500); // Небольшая задержка для реалистичности
-                    await MakeMove(aiMove.From, aiMove.To);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка ИИ: {ex.Message}");
-            }
-        }
-
-       
-
-        // Метод для предложения ничьи
-        public void OfferDraw()
-        {
-            if (!_isGameActive)
-                return;
-
-            // В реальном приложении здесь должно быть ожидание ответа от противника
-            EndGame("Ничья по соглашению игроков.");
-        }
-
-        public event PropertyChangedEventHandler PropertyChanged;
         protected virtual void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 
-    // Простой класс для ИИ (заглушка)
-    public class ChessAIService
+    // Класс Move для хранения информации о ходе
+    public class Move
     {
-        public async Task<(Position From, Position To)> GetBestMoveAsync(Board board, PieceColor color, string difficulty)
-        {
-            await Task.Delay(100); // Имитация мышления
-
-            // Простой ИИ: выбирает случайный легальный ход
-            var random = new Random();
-            var pieces = new List<(Position pos, ChessPiece piece)>();
-
-            // Собираем все фигуры нужного цвета
-            for (int row = 0; row < 8; row++)
-            {
-                for (int col = 0; col < 8; col++)
-                {
-                    var pos = new Position(row, col);
-                    var piece = board.GetPieceAt(pos);
-                    if (piece != null && piece.Color == color)
-                    {
-                        pieces.Add((pos, piece));
-                    }
-                }
-            }
-
-            // Пытаемся найти легальный ход
-            for (int attempt = 0; attempt < 100; attempt++)
-            {
-                if (pieces.Count == 0)
-                    break;
-
-                var randomPiece = pieces[random.Next(pieces.Count)];
-                var moves = randomPiece.piece.GetPossibleMoves(randomPiece.pos, board);
-
-                if (moves.Count > 0)
-                {
-                    var randomMove = moves[random.Next(moves.Count)];
-                    return (randomPiece.pos, randomMove);
-                }
-            }
-
-            return (Position.Invalid, Position.Invalid);
-        }
+        public Position OriginalPosition { get; set; }
+        public Position NewPosition { get; set; }
     }
 }

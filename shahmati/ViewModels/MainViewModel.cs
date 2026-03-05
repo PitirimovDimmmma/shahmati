@@ -33,20 +33,23 @@ namespace shahmati.ViewModels
         private Position _animationFrom;
         private Position _animationTo;
         private ChessPiece _animatingPiece;
-        private string _gameMode = "Человек vs Человек";
-        private string _difficulty = "Средний";
+        private string _gameMode = "Человек vs Компьютер";
+        private string _difficulty = "Medium";
         private bool _isAITurn;
         private readonly ApiService _apiService;
         private int _currentUserId;
         private List<ApiGameDto> _activeGames;
         private string _currentPlayerDisplayColor = "Белые";
         private bool _enableMoveHighlighting = true;
-        private bool _isHumanVsHuman = true;
+        private bool _isHumanVsHuman = false;
         private bool _isGameActive = false;
         private bool _userIsWhite = true;
 
         // Событие для уведомления MainWindow о смене хода
         public event Action<string> PlayerTurnChanged;
+        public event Action<string> AIMoveStarted;
+        public event Action<string> AIMoveCompleted;
+        public event Action<string> GameFinished;
 
         public MainViewModel(int? userId = null)
         {
@@ -55,11 +58,22 @@ namespace shahmati.ViewModels
             _selectedPosition = Position.Invalid;
             _apiService = new ApiService();
 
+            // ИНИЦИАЛИЗАЦИЯ API В GAMEMANAGER
+            _gameManager.InitializeApiService(_apiService);
+
             InitializeAnimationTimer();
-            StartNewGameCommand = new RelayCommand(StartNewGame);
+
+            // ИСПРАВЛЕНО: используем асинхронный метод
+            StartNewGameCommand = new RelayCommand(async () => await StartNewGameAsync());
+
             CellClickCommand = new RelayCommand<Position>(HandleCellClick);
 
             _gameManager.PropertyChanged += GameManager_PropertyChanged;
+
+            // ИСПРАВЛЕНО: перенаправляем события через ViewModel
+            _gameManager.AIMoveStarted += (msg) => AIMoveStarted?.Invoke(msg);
+            _gameManager.AIMoveCompleted += (move) => AIMoveCompleted?.Invoke(move);
+            _gameManager.GameFinished += (result) => GameFinished?.Invoke(result);
 
             if (userId.HasValue)
             {
@@ -70,7 +84,6 @@ namespace shahmati.ViewModels
                 _currentUserId = 0;
             }
 
-            // Инициализируем начальное состояние
             _currentPlayerDisplayColor = "Белые";
         }
 
@@ -78,7 +91,7 @@ namespace shahmati.ViewModels
         {
         }
 
-        // ДОБАВЛЕНО: Публичное свойство для доступа к GameManager
+        // Публичное свойство для доступа к GameManager
         public GameManager GameManager => _gameManager;
 
         public Board Board
@@ -94,10 +107,11 @@ namespace shahmati.ViewModels
         public void SetUserIsWhite(bool isWhite)
         {
             _userIsWhite = isWhite;
+            if (_gameManager != null)
+                _gameManager.UserIsWhite = isWhite;
             OnPropertyChanged(nameof(CurrentPlayerDisplay));
         }
 
-        // ИСПРАВЛЕНО: Переименовано для устранения конфликта имен
         public string CurrentPlayerDisplay
         {
             get
@@ -105,7 +119,6 @@ namespace shahmati.ViewModels
                 if (GameManager?.CurrentPlayer == null)
                     return "Белые";
 
-                // Пользователь всегда белые
                 if (_userIsWhite)
                 {
                     return GameManager.CurrentPlayer == PieceColor.White
@@ -131,7 +144,6 @@ namespace shahmati.ViewModels
             }
         }
 
-        // ИСПРАВЛЕНО: Переименовано для устранения конфликта имен
         public string CurrentPlayerColor
         {
             get => _currentPlayerDisplayColor;
@@ -141,11 +153,7 @@ namespace shahmati.ViewModels
                 {
                     _currentPlayerDisplayColor = value;
                     OnPropertyChanged(nameof(CurrentPlayerColor));
-
-                    // Уведомляем MainWindow о смене хода
                     PlayerTurnChanged?.Invoke(value);
-
-                    // Обновляем текст для отображения
                     OnPropertyChanged(nameof(CurrentPlayerText));
                 }
             }
@@ -158,7 +166,6 @@ namespace shahmati.ViewModels
                 if (_gameManager == null)
                     return "⚪ БЕЛЫЕ";
 
-                // Определяем, чей сейчас ход по цвету фигур
                 if (_gameManager.CurrentPlayer == PieceColor.White)
                 {
                     return "⚪ БЕЛЫЕ";
@@ -170,8 +177,6 @@ namespace shahmati.ViewModels
             }
         }
 
-
-
         public string GameMode
         {
             get => _gameMode;
@@ -182,8 +187,6 @@ namespace shahmati.ViewModels
                     _gameMode = value;
                     _isHumanVsHuman = (value == "Человек vs Человек");
                     OnPropertyChanged(nameof(GameMode));
-
-                  
                 }
             }
         }
@@ -226,188 +229,84 @@ namespace shahmati.ViewModels
             }
         }
 
+        public bool IsAITurn
+        {
+            get => _isAITurn;
+            set
+            {
+                _isAITurn = value;
+                OnPropertyChanged(nameof(IsAITurn));
+                OnPropertyChanged(nameof(IsPlayerTurn));
+            }
+        }
+
+        public bool IsPlayerTurn => !_isAITurn;
+
         public ICommand StartNewGameCommand { get; }
         public ICommand CellClickCommand { get; }
 
         public double AnimationProgress => _animationProgress;
         public bool IsAnimating => _animationTimer?.IsEnabled ?? false;
 
-     
+        // ===== МЕТОД НОВОЙ ИГРЫ =====
+        public async Task StartNewGameAsync()
+        {
+            try
+            {
+                _isGameActive = true;
 
-        // ИСПРАВЛЕНО: Явно устанавливаем текущего игрока при старте новой игры
+                // Начинаем игру с ИИ
+                await _gameManager.StartNewGameAsync(
+                    gameMode: "Человек vs Компьютер",
+                    difficulty: _difficulty,
+                    userIsWhite: _userIsWhite
+                );
+
+                Board = _gameManager.Board;
+                SelectedPosition = Position.Invalid;
+                ResetSelection();
+
+                if (_gameManager.CurrentPlayer == PieceColor.White)
+                {
+                    CurrentPlayerColor = "Белые";
+                }
+                else
+                {
+                    CurrentPlayerColor = "Черные";
+                }
+
+                // Создаем игру на сервере
+                if (_currentUserId > 0)
+                {
+                    await _gameManager.CreateAIGameOnServerAsync(
+                        _currentUserId,
+                        _difficulty,
+                        _userIsWhite ? "White" : "Black"
+                    );
+                }
+
+                // Уведомляем через события вместо прямого вызова
+                PlayerTurnChanged?.Invoke(CurrentPlayerColor);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при создании игры: {ex.Message}");
+            }
+        }
+
+        // СТАРЫЙ МЕТОД - больше не используется
+        [Obsolete("Используйте StartNewGameAsync()")]
         public void StartNewGame()
         {
-            _gameManager?.StartNewGame(GameMode, Difficulty);
-            Board = _gameManager?.Board;
-            SelectedPosition = Position.Invalid;
-
-            // Сбрасываем состояние игры
-            _isGameActive = true;
-
-            // Явно устанавливаем первого игрока
-            if (_gameManager != null)
-            {
-                // Определяем первого игрока
-                if (_gameManager.CurrentPlayer == PieceColor.White)
-                {
-                    CurrentPlayerColor = "Белые";
-                }
-                else
-                {
-                    CurrentPlayerColor = "Черные";
-                }
-            }
-            else
-            {
-                CurrentPlayerColor = "Белые";
-            }
-
-
-
-            // Уведомляем MainWindow о начале игры
-            NotifyMainWindowGameStarted();
+            Console.WriteLine("⚠️ Вызван устаревший метод StartNewGame()");
+            _ = StartNewGameAsync();
         }
 
-        private void NotifyMainWindowGameStarted()
-        {
-            if (Application.Current.Windows.OfType<MainWindow>().FirstOrDefault() is MainWindow window)
-            {
-                // Устанавливаем текущего игрока в UI
-                window.UpdateCurrentPlayer(CurrentPlayerColor);
-
-                // Запускаем таймеры
-                if (CurrentPlayerColor == "Белые")
-                {
-                    window.SwitchTurn("Белые");
-                }
-                else
-                {
-                    window.SwitchTurn("Черные");
-                }
-            }
-        }
-
-        private void UpdateMoveHighlighting()
-        {
-            if (!_enableMoveHighlighting)
-            {
-                foreach (var cell in Board.CellsFlat)
-                {
-                    cell.IsPossibleMove = false;
-                }
-            }
-            else if (_selectedPosition.IsValid())
-            {
-                var piece = Board.GetPieceAt(_selectedPosition);
-                if (piece != null && piece.Color == _gameManager?.CurrentPlayer)
-                {
-                    var possibleMoves = piece.GetPossibleMoves(_selectedPosition, Board);
-                    foreach (var move in possibleMoves)
-                    {
-                        var cell = GetCellAt(move);
-                        if (cell != null)
-                        {
-                            cell.IsPossibleMove = true;
-                        }
-                    }
-                }
-            }
-            OnPropertyChanged(nameof(Board));
-        }
-
-        public async Task<bool> CheckApiConnection()
-        {
-            return await _apiService.TestConnectionAsync();
-        }
-
-        public async Task<bool> LoginAsync(string username, string password)
-        {
-            var user = await _apiService.LoginAsync(username, password);
-            if (user != null)
-            {
-                _currentUserId = user.Id;
-                return true;
-            }
-            return false;
-        }
-
-        public async Task LoadActiveGamesAsync()
-        {
-            var games = await _apiService.GetActiveGamesAsync();
-            ActiveGames = games ?? new List<ApiGameDto>();
-        }
-
-        public async Task<ApiGameDto> CreateNewGame(string gameMode, string difficulty)
-        {
-            var createDto = new ApiCreateGameDto
-            {
-                WhitePlayerId = _currentUserId,
-                GameMode = gameMode,
-                Difficulty = difficulty
-            };
-            return await _apiService.CreateGameAsync(createDto);
-        }
-
-        public void SelectGame(int gameId)
-        {
-            Console.WriteLine($"Выбрана игра: {gameId}");
-        }
-
-        private void InitializeAnimationTimer()
-        {
-            _animationTimer = new DispatcherTimer();
-            _animationTimer.Interval = TimeSpan.FromMilliseconds(50);
-            _animationTimer.Tick += AnimationTimer_Tick;
-        }
-
-        // ИСПРАВЛЕНО: Явно обновляем текущего игрока при изменении в GameManager
-        private void GameManager_PropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            if (_gameManager == null) return;
-
-            if (e.PropertyName == nameof(GameManager.CurrentPlayer))
-            {
-                // Обновляем CurrentPlayerColor на основе GameManager
-                if (_gameManager.CurrentPlayer == PieceColor.White)
-                {
-                    CurrentPlayerColor = "Белые";
-                }
-                else
-                {
-                    CurrentPlayerColor = "Черные";
-                }
-
-                OnPropertyChanged(nameof(CurrentPlayerText));
-  
-            }
-            else if (e.PropertyName == nameof(GameManager.Board))
-            {
-                Board = _gameManager.Board;
-            }
-        }
-
-
-
-
-
-        private void AnimationTimer_Tick(object sender, EventArgs e)
-        {
-            _animationProgress += 0.1;
-            if (_animationProgress >= 1.0)
-            {
-                _animationProgress = 0;
-                _animationTimer.Stop();
-                CompleteAnimation();
-            }
-            OnPropertyChanged(nameof(AnimationProgress));
-        }
-
-        // ИСПРАВЛЕНО: Проверка возможности хода и обновление статуса
+        // ===== ОБРАБОТЧИК КЛИКА ПО КЛЕТКЕ =====
         public async void HandleCellClick(Position position)
         {
-            if (IsAnimating || !position.IsValid() || !_isGameActive) return;
-
- 
+            if (IsAnimating || !position.IsValid() || !_isGameActive || IsAITurn)
+                return;
 
             var clickedPiece = Board.GetPieceAt(position);
 
@@ -469,21 +368,27 @@ namespace shahmati.ViewModels
             SelectedPosition = Position.Invalid;
         }
 
-        // ИСПРАВЛЕНО: После успешного хода обновляем UI в MainWindow
+        // ===== МЕТОД ХОДА =====
         private async Task<bool> TryMakeMove(Position from, Position to)
         {
-            bool moveMade = await _gameManager.MakeMove(from, to);
+            bool moveMade = false;
+
+            if (_gameMode == "Человек vs Компьютер")
+            {
+                moveMade = await _gameManager.MakeMoveVsAIAsync(from, to, _currentUserId);
+            }
+            else
+            {
+                moveMade = await _gameManager.MakeMove(from, to);
+            }
 
             if (moveMade)
             {
                 StartAnimation(from, to);
+                ResetSelection();
 
-                // Уведомляем MainWindow о смене хода
-                if (Application.Current.Windows.OfType<MainWindow>().FirstOrDefault() is MainWindow window)
-                {
-                    window.UpdateCurrentPlayer(CurrentPlayerColor);
-                    window.SwitchTurn(CurrentPlayerColor);
-                }
+                // Уведомляем через события вместо прямого вызова
+                PlayerTurnChanged?.Invoke(CurrentPlayerColor);
 
                 return true;
             }
@@ -492,6 +397,96 @@ namespace shahmati.ViewModels
                 ResetSelection();
                 return false;
             }
+        }
+
+        private void UpdateMoveHighlighting()
+        {
+            if (!_enableMoveHighlighting)
+            {
+                foreach (var cell in Board.CellsFlat)
+                {
+                    cell.IsPossibleMove = false;
+                }
+            }
+            else if (_selectedPosition.IsValid())
+            {
+                var piece = Board.GetPieceAt(_selectedPosition);
+                if (piece != null && piece.Color == _gameManager?.CurrentPlayer)
+                {
+                    var possibleMoves = piece.GetPossibleMoves(_selectedPosition, Board);
+                    foreach (var move in possibleMoves)
+                    {
+                        var cell = GetCellAt(move);
+                        if (cell != null)
+                        {
+                            cell.IsPossibleMove = true;
+                        }
+                    }
+                }
+            }
+            OnPropertyChanged(nameof(Board));
+        }
+
+        // ===== УДАЛЕНЫ ПРЯМЫЕ ВЫЗОВЫ MAINWINDOW =====
+        // Вместо них используем события AIMoveStarted, AIMoveCompleted, GameFinished
+
+        // ===== МЕТОДЫ ДЛЯ РАБОТЫ С API =====
+        public async Task<bool> CheckApiConnection()
+        {
+            return await _apiService.TestConnectionAsync();
+        }
+
+        public async Task<bool> LoginAsync(string username, string password)
+        {
+            var user = await _apiService.LoginAsync(username, password);
+            if (user != null)
+            {
+                _currentUserId = user.Id;
+                return true;
+            }
+            return false;
+        }
+
+        public async Task LoadActiveGamesAsync()
+        {
+            var games = await _apiService.GetActiveGamesAsync();
+            ActiveGames = games ?? new List<ApiGameDto>();
+        }
+
+        public async Task<ApiGameDto> CreateNewGame(string gameMode, string difficulty)
+        {
+            var createDto = new ApiCreateGameDto
+            {
+                WhitePlayerId = _currentUserId,
+                GameMode = gameMode,
+                Difficulty = difficulty
+            };
+            return await _apiService.CreateGameAsync(createDto);
+        }
+
+        public void SelectGame(int gameId)
+        {
+            Console.WriteLine($"Выбрана игра: {gameId}");
+        }
+
+        // ===== АНИМАЦИЯ =====
+        private void InitializeAnimationTimer()
+        {
+            _animationTimer = new DispatcherTimer();
+            _animationTimer.Interval = TimeSpan.FromMilliseconds(50);
+            _animationTimer.Tick += AnimationTimer_Tick;
+        }
+
+        private void AnimationTimer_Tick(object sender, EventArgs e)
+        {
+            _animationProgress += 0.1;
+            if (_animationProgress >= 1.0)
+            {
+                _animationProgress = 0;
+                _animationTimer.Stop();
+                CompleteAnimation();
+            }
+            OnPropertyChanged(nameof(AnimationProgress));
         }
 
         private void StartAnimation(Position from, Position to)
@@ -520,6 +515,29 @@ namespace shahmati.ViewModels
         private void PlayMoveSound()
         {
             // System.Media.SystemSounds.Beep.Play();
+        }
+
+        // ===== ОБРАБОТЧИК ИЗМЕНЕНИЙ GAMEMANAGER =====
+        private void GameManager_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (_gameManager == null) return;
+
+            if (e.PropertyName == nameof(GameManager.CurrentPlayer))
+            {
+                if (_gameManager.CurrentPlayer == PieceColor.White)
+                {
+                    CurrentPlayerColor = "Белые";
+                }
+                else
+                {
+                    CurrentPlayerColor = "Черные";
+                }
+                OnPropertyChanged(nameof(CurrentPlayerText));
+            }
+            else if (e.PropertyName == nameof(GameManager.Board))
+            {
+                Board = _gameManager.Board;
+            }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

@@ -1196,7 +1196,233 @@ namespace shahmati.Services
 
 
 
+        // Добавьте в ApiService.cs в WPF проекте:
 
+        // ========== ИГРА ПРОТИВ ИИ ==========
+
+        /// <summary>
+        /// Создать новую игру против ИИ
+        /// </summary>
+        public async Task<AIGameResponse> CreateAIGameAsync(int userId, string difficulty = "Medium", string color = "White")
+        {
+            try
+            {
+                Console.WriteLine($"=== СОЗДАНИЕ ИГРЫ ПРОТИВ ИИ ===");
+                Console.WriteLine($"UserId: {userId}, Difficulty: {difficulty}, Color: {color}");
+
+                var request = new
+                {
+                    UserId = userId,
+                    Difficulty = difficulty,
+                    Color = color
+                };
+
+                var response = await _httpClient.PostAsJsonAsync("api/chessai/game", request);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"✅ Игра создана: {json}");
+
+                    var result = JsonSerializer.Deserialize<AIGameResponse>(json,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    return result;
+                }
+                else
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"❌ Ошибка создания игры: {error}");
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Исключение: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Получить доступные уровни сложности от API
+        /// </summary>
+        public async Task<Dictionary<string, object>> GetAIDifficultiesAsync()
+        {
+            try
+            {
+                Console.WriteLine($"=== ПОЛУЧЕНИЕ УРОВНЕЙ СЛОЖНОСТИ ===");
+
+                var response = await _httpClient.GetAsync("api/chessai/difficulties");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"✅ Получены уровни сложности");
+
+                    var result = JsonSerializer.Deserialize<JsonElement>(json);
+                    if (result.TryGetProperty("difficulties", out var difficulties))
+                    {
+                        return JsonSerializer.Deserialize<Dictionary<string, object>>(
+                            difficulties.GetRawText());
+                    }
+                }
+
+                // Возвращаем стандартные уровни, если API недоступен
+                return new Dictionary<string, object>
+                {
+                    ["Beginner"] = new { Level = 0, MoveTime = 50, Description = "Для новичков" },
+                    ["Easy"] = new { Level = 5, MoveTime = 100, Description = "Легкий" },
+                    ["Medium"] = new { Level = 10, MoveTime = 300, Description = "Средний" },
+                    ["Hard"] = new { Level = 15, MoveTime = 800, Description = "Сложный" },
+                    ["Expert"] = new { Level = 20, MoveTime = 1500, Description = "Эксперт" }
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Сделать ход в игре против ИИ
+        /// </summary>
+        public async Task<PlayAIResponse> PlayAgainstAIAsync(int gameId, string userMove)
+        {
+            try
+            {
+                Console.WriteLine($"=== ХОД ПРОТИВ ИИ ===");
+                Console.WriteLine($"GameId: {gameId}, Move: {userMove}");
+
+                var request = new
+                {
+                    GameId = gameId,
+                    UserMove = userMove
+                };
+
+                var response = await _httpClient.PostAsJsonAsync("api/chessai/play", request);
+
+                var responseText = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Response: {response.StatusCode}, Body: {responseText}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = JsonSerializer.Deserialize<PlayAIResponse>(responseText,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    Console.WriteLine($"✅ Ход обработан: ИИ ответил {result?.AIMove}");
+                    return result;
+                }
+                else
+                {
+                    Console.WriteLine($"❌ Ошибка: {responseText}");
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Исключение: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Получить ход ИИ без создания игры (для тестирования)
+        /// </summary>
+        public async Task<string> GetAIMoveAsync(string fenPosition, string difficulty = "Medium")
+        {
+            try
+            {
+                Console.WriteLine($"=== ЗАПРОС ХОДА ИИ ===");
+
+                var request = new
+                {
+                    FenPosition = fenPosition,
+                    Difficulty = difficulty
+                };
+
+                var response = await _httpClient.PostAsJsonAsync("api/chessai/move", request);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    var result = JsonSerializer.Deserialize<JsonElement>(json);
+
+                    if (result.TryGetProperty("move", out var moveElement))
+                    {
+                        return moveElement.GetString();
+                    }
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Проверить валидность хода
+        /// </summary>
+        public async Task<bool> ValidateMoveAsync(string fenPosition, string move)
+        {
+            try
+            {
+                var request = new
+                {
+                    FenPosition = fenPosition,
+                    Move = move
+                };
+
+                var response = await _httpClient.PostAsJsonAsync("api/chessai/validate", request);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    var result = JsonSerializer.Deserialize<JsonElement>(json);
+
+                    return result.TryGetProperty("valid", out var validElement) &&
+                           validElement.GetBoolean();
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Получить результат игры из позиции
+        /// </summary>
+        public async Task<string> GetGameResultAsync(string fenPosition)
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync($"api/chessai/result?fen={Uri.EscapeDataString(fenPosition)}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    var result = JsonSerializer.Deserialize<JsonElement>(json);
+
+                    return result.TryGetProperty("result", out var resultElement)
+                        ? resultElement.GetString()
+                        : "InProgress";
+                }
+
+                return "Unknown";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка: {ex.Message}");
+                return "Unknown";
+            }
+        }
 
 
         // ========== СТАТИСТИКА ==========

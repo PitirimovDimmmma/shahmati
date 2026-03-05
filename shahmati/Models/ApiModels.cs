@@ -207,14 +207,47 @@ namespace shahmati.Models
         public DateTime CreatedAt { get; set; }
     }
 
-    
+    // ========== DTO ДЛЯ ИГРЫ С ИИ ==========
 
-    public class UpdateTrainingProgressDto
+    public class AIGameResponse
     {
-        public int Score { get; set; }
-        public int Mistakes { get; set; }
-        public int TimeSpent { get; set; }
-        public bool Completed { get; set; }
+        public bool Success { get; set; }
+        public int GameId { get; set; }
+        public string FenPosition { get; set; }
+        public string Difficulty { get; set; }
+        public string PlayerColor { get; set; }
+        public string CurrentPlayer { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public string Message { get; set; }
+    }
+
+    public class PlayAIResponse
+    {
+        public bool Success { get; set; }
+        public string UserMove { get; set; }
+        public string AIMove { get; set; }
+        public string FenAfterUserMove { get; set; }
+        public string FenAfterAIMove { get; set; }
+        public string CurrentPlayer { get; set; }
+        public string NextPlayer { get; set; }
+        public string Message { get; set; }
+        public bool GameFinished { get; set; }
+        public string Result { get; set; }
+        public string FinalPosition { get; set; }
+    }
+
+    public class AIMoveRequest
+    {
+        public string FenPosition { get; set; }
+        public string Difficulty { get; set; }
+        public int? GameId { get; set; }
+    }
+
+    public class CreateAIGameRequest
+    {
+        public int UserId { get; set; }
+        public string Difficulty { get; set; } = "Medium";
+        public string Color { get; set; } = "White";
     }
 
     // DTO для лидерборда

@@ -305,7 +305,7 @@
                                  Checked="HighlightMovesToggle_Checked"
                                  Unchecked="HighlightMovesToggle_Unchecked"/>
 
-                    
+
 
                 </StackPanel>
             </Grid>
@@ -435,7 +435,7 @@
                         <Border Background="#8B4513" 
                                Padding="12" 
                                Margin="0,0,0,20" 
-                               CornerRadius="8">
+                               CornerRadius="8" Height="2" Width="2">
                             <StackPanel>
                                 <TextBlock Text="СЕЙЧАС ХОДИТ:" 
                                           FontSize="11" 
@@ -500,20 +500,29 @@
                         <!-- Кнопки управления игрой -->
                         <StackPanel Margin="0,0,0,20">
                             <Button x:Name="NewGameButton" 
-                                   Content="♛ НОВАЯ ИГРА" 
-                                   Height="42"
-                                   Style="{StaticResource ControlButtonStyle}"
-                                   Background="#27AE60"
-                                   FontSize="13"
-                                   Click="NewGameButton_Click"/>
+           Content="♛ НОВАЯ ИГРА" 
+           Height="42"
+           Style="{StaticResource ControlButtonStyle}"
+           Background="#27AE60"
+           FontSize="13"
+           Click="NewGameButton_Click"/>
+
+                            <!-- ДОБАВЛЯЕМ КНОПКУ СДАЧИ -->
+                            <Button x:Name="ResignButton" 
+           Content="⚑ СДАТЬСЯ" 
+           Height="38"
+           Style="{StaticResource ControlButtonStyle}"
+           Background="#E74C3C"
+           Margin="0,10,0,0"
+           Click="ResignButton_Click"/>
 
                             <Button x:Name="HomeButton" 
-                                   Content="🏠 НА ГЛАВНУЮ" 
-                                   Height="38"
-                                   Style="{StaticResource ControlButtonStyle}"
-                                   Background="#9B59B6"
-                                   Margin="0,10,0,0"
-                                   Click="HomeButton_Click"/>
+           Content="🏠 НА ГЛАВНУЮ" 
+           Height="38"
+           Style="{StaticResource ControlButtonStyle}"
+           Background="#9B59B6"
+           Margin="0,10,0,0"
+           Click="HomeButton_Click"/>
                         </StackPanel>
 
                         <!-- Статистика игры -->
