@@ -5,11 +5,13 @@ using shahmati.Services;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
-using System.Windows;
-using System.Linq;
 
 namespace shahmati.ViewModels
 {
@@ -44,6 +46,7 @@ namespace shahmati.ViewModels
         private bool _isHumanVsHuman = false;
         private bool _isGameActive = false;
         private bool _userIsWhite = true;
+        private bool _userIsBlack = false;
 
         // Событие для уведомления MainWindow о смене хода
         public event Action<string> PlayerTurnChanged;
@@ -65,8 +68,8 @@ namespace shahmati.ViewModels
 
             // ИСПРАВЛЕНО: используем асинхронный метод
             StartNewGameCommand = new RelayCommand(async () => await StartNewGameAsync());
-
             CellClickCommand = new RelayCommand<Position>(HandleCellClick);
+            ResignCommand = new RelayCommand(async () => await ResignAsync()); // ДОБАВЛЕНО
 
             _gameManager.PropertyChanged += GameManager_PropertyChanged;
 
@@ -107,9 +110,44 @@ namespace shahmati.ViewModels
         public void SetUserIsWhite(bool isWhite)
         {
             _userIsWhite = isWhite;
+            _userIsBlack = !isWhite;
             if (_gameManager != null)
                 _gameManager.UserIsWhite = isWhite;
             OnPropertyChanged(nameof(CurrentPlayerDisplay));
+            OnPropertyChanged(nameof(UserIsWhite));
+            OnPropertyChanged(nameof(UserIsBlack));
+        }
+
+        public bool UserIsWhite
+        {
+            get => _userIsWhite;
+            set
+            {
+                if (_userIsWhite != value)
+                {
+                    _userIsWhite = value;
+                    _userIsBlack = !value;
+                    OnPropertyChanged(nameof(UserIsWhite));
+                    OnPropertyChanged(nameof(UserIsBlack));
+                    SetUserIsWhite(value);
+                }
+            }
+        }
+
+        public bool UserIsBlack
+        {
+            get => _userIsBlack;
+            set
+            {
+                if (_userIsBlack != value)
+                {
+                    _userIsBlack = value;
+                    _userIsWhite = !value;
+                    OnPropertyChanged(nameof(UserIsBlack));
+                    OnPropertyChanged(nameof(UserIsWhite));
+                    SetUserIsWhite(!value);
+                }
+            }
         }
 
         public string CurrentPlayerDisplay
@@ -131,6 +169,18 @@ namespace shahmati.ViewModels
                         ? "Противник (Белые)"
                         : "Ваш ход (Черные)";
                 }
+            }
+        }
+
+        public string AITurnStatus
+        {
+            get
+            {
+                if (IsAITurn)
+                    return "🤖 ИИ думает...";
+                if (_gameManager?.IsAITurn == true)
+                    return "🤖 ИИ думает...";
+                return "✅ Очередь игрока";
             }
         }
 
@@ -237,6 +287,7 @@ namespace shahmati.ViewModels
                 _isAITurn = value;
                 OnPropertyChanged(nameof(IsAITurn));
                 OnPropertyChanged(nameof(IsPlayerTurn));
+                OnPropertyChanged(nameof(AITurnStatus));
             }
         }
 
@@ -244,20 +295,92 @@ namespace shahmati.ViewModels
 
         public ICommand StartNewGameCommand { get; }
         public ICommand CellClickCommand { get; }
+        public ICommand ResignCommand { get; }
 
         public double AnimationProgress => _animationProgress;
         public bool IsAnimating => _animationTimer?.IsEnabled ?? false;
 
+        // ЗАМЕНИТЕ существующий метод TestAIConnection в MainViewModel.cs на этот:
+
+        public async Task TestAIConnection()
+        {
+            try
+            {
+                Console.WriteLine("=== ТЕСТ ПОДКЛЮЧЕНИЯ К ИИ ===");
+
+                // Тест 1: Проверка через ApiService
+                var isConnected = await _apiService.TestConnectionAsync();
+                Console.WriteLine($"Тест 1 - Общее подключение к API: {(isConnected ? "✅" : "❌")}");
+
+                // Тест 2: Проверка ChessAI endpoint
+                try
+                {
+                    var testResponse = await _apiService.GetAIDifficultiesAsync();
+                    Console.WriteLine($"Тест 2 - Получение уровней сложности: {(testResponse != null ? "✅" : "❌")}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Тест 2 - Ошибка: {ex.Message}");
+                }
+
+                // Тест 3: Создание тестовой игры
+                if (_currentUserId > 0)
+                {
+                    var game = await _apiService.CreateAIGameAsync(_currentUserId, "Easy", "White");
+                    if (game?.Success == true)
+                    {
+                        Console.WriteLine($"Тест 3 - Создание игры: ✅ (GameId={game.GameId})");
+
+                        // Тест 4: Тестовый ход
+                        var moveResult = await _apiService.PlayAgainstAIAsync(game.GameId, "e2e4");
+                        if (moveResult?.Success == true)
+                        {
+                            Console.WriteLine($"Тест 4 - Ход в игре: ✅ (Ответ ИИ: {moveResult.AIMove})");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Тест 4 - Ход в игре: ❌");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Тест 3 - Создание игры: ❌");
+                    }
+                }
+
+                Console.WriteLine("=== ТЕСТ ЗАВЕРШЕН ===");
+
+                MessageBox.Show("Тест API завершен. Проверьте консоль для деталей.\n\n" +
+                               "Если есть ошибки, проверьте:\n" +
+                               "1. Запущен ли API (https://localhost:7259)\n" +
+                               "2. Есть ли папка Engines с stockfish.exe\n" +
+                               "3. Логи в консоли API",
+                               "Тест API", MessageBoxButton.OK,
+                               isConnected ? MessageBoxImage.Information : MessageBoxImage.Warning);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка теста: {ex.Message}");
+                MessageBox.Show($"Ошибка теста API: {ex.Message}", "Ошибка",
+                               MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
         // ===== МЕТОД НОВОЙ ИГРЫ =====
         public async Task StartNewGameAsync()
         {
             try
             {
+                Console.WriteLine($"=== НАЧАЛО НОВОЙ ИГРЫ ===");
+                Console.WriteLine($"UserId: {_currentUserId}");
+                Console.WriteLine($"Difficulty: {_difficulty}");
+                Console.WriteLine($"UserIsWhite: {_userIsWhite}");
+                Console.WriteLine($"GameMode: {_gameMode}");
+
                 _isGameActive = true;
 
-                // Начинаем игру с ИИ
+                // Начинаем игру с выбранным режимом
                 await _gameManager.StartNewGameAsync(
-                    gameMode: "Человек vs Компьютер",
+                    gameMode: _gameMode,  // Используем текущий режим из переключателя
                     difficulty: _difficulty,
                     userIsWhite: _userIsWhite
                 );
@@ -275,14 +398,28 @@ namespace shahmati.ViewModels
                     CurrentPlayerColor = "Черные";
                 }
 
-                // Создаем игру на сервере
-                if (_currentUserId > 0)
+                // Создаем игру на сервере только для режима с ИИ
+                if (_gameMode == "Человек vs Компьютер" && _currentUserId > 0)
                 {
-                    await _gameManager.CreateAIGameOnServerAsync(
+                    Console.WriteLine($"Создание игры на сервере...");
+                    int gameId = await _gameManager.CreateAIGameOnServerAsync(
                         _currentUserId,
                         _difficulty,
                         _userIsWhite ? "White" : "Black"
                     );
+
+                    if (gameId > 0)
+                    {
+                        Console.WriteLine($"✅ Игра создана на сервере: ID={gameId}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"❌ Не удалось создать игру на сервере");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ Игра без сервера (режим: {_gameMode})");
                 }
 
                 // Уведомляем через события вместо прямого вызова
@@ -290,7 +427,7 @@ namespace shahmati.ViewModels
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка при создании игры: {ex.Message}");
+                Console.WriteLine($"❌ Ошибка при создании игры: {ex.Message}");
             }
         }
 
@@ -302,7 +439,15 @@ namespace shahmati.ViewModels
             _ = StartNewGameAsync();
         }
 
-        // ===== ОБРАБОТЧИК КЛИКА ПО КЛЕТКЕ =====
+        // ===== МЕТОД СДАЧИ =====
+        public async Task ResignAsync()
+        {
+            if (_gameManager != null && _isGameActive)
+            {
+                await _gameManager.ResignAsync(_gameManager.CurrentPlayer);
+            }
+        }
+
         public async void HandleCellClick(Position position)
         {
             if (IsAnimating || !position.IsValid() || !_isGameActive || IsAITurn)
@@ -310,22 +455,31 @@ namespace shahmati.ViewModels
 
             var clickedPiece = Board.GetPieceAt(position);
 
-            // Если кликаем на свою фигуру - выбираем ее
-            if (clickedPiece != null &&
-                clickedPiece.Color == _gameManager?.CurrentPlayer)
+            // Если кликаем на фигуру
+            if (clickedPiece != null)
             {
-                SelectPiece(position);
+                // Проверяем, что это фигура текущего игрока
+                if (clickedPiece.Color == _gameManager?.CurrentPlayer)
+                {
+                    // В режиме с ИИ, если сейчас ход ИИ - нельзя выбирать фигуры
+                    if (_gameMode == "Человек vs Компьютер" && IsAITurn)
+                        return;
+
+                    SelectPiece(position);
+                }
                 return;
             }
 
             // Если фигура выбрана и кликаем на клетку для хода
-            if (SelectedPosition.IsValid() &&
-                clickedPiece?.Color != _gameManager?.CurrentPlayer)
+            if (SelectedPosition.IsValid())
             {
-                await TryMakeMove(SelectedPosition, position);
+                var selectedPiece = Board.GetPieceAt(SelectedPosition);
+                if (selectedPiece?.Color == _gameManager?.CurrentPlayer)
+                {
+                    await TryMakeMove(SelectedPosition, position);
+                }
             }
         }
-
         private void SelectPiece(Position position)
         {
             ResetSelection();
@@ -371,15 +525,23 @@ namespace shahmati.ViewModels
         // ===== МЕТОД ХОДА =====
         private async Task<bool> TryMakeMove(Position from, Position to)
         {
+            Console.WriteLine($"=== ПОПЫТКА ХОДА ===");
+            Console.WriteLine($"From: {GetSquareNotation(from)}");
+            Console.WriteLine($"To: {GetSquareNotation(to)}");
+            Console.WriteLine($"GameMode: {_gameMode}");
+            Console.WriteLine($"CurrentUserId: {_currentUserId}");
+
             bool moveMade = false;
 
             if (_gameMode == "Человек vs Компьютер")
             {
                 moveMade = await _gameManager.MakeMoveVsAIAsync(from, to, _currentUserId);
+                Console.WriteLine($"Результат хода против ИИ: {moveMade}");
             }
             else
             {
                 moveMade = await _gameManager.MakeMove(from, to);
+                Console.WriteLine($"Результат обычного хода: {moveMade}");
             }
 
             if (moveMade)
@@ -394,6 +556,7 @@ namespace shahmati.ViewModels
             }
             else
             {
+                Console.WriteLine($"❌ Ход не удался");
                 ResetSelection();
                 return false;
             }
@@ -427,9 +590,6 @@ namespace shahmati.ViewModels
             OnPropertyChanged(nameof(Board));
         }
 
-        // ===== УДАЛЕНЫ ПРЯМЫЕ ВЫЗОВЫ MAINWINDOW =====
-        // Вместо них используем события AIMoveStarted, AIMoveCompleted, GameFinished
-
         // ===== МЕТОДЫ ДЛЯ РАБОТЫ С API =====
         public async Task<bool> CheckApiConnection()
         {
@@ -438,12 +598,18 @@ namespace shahmati.ViewModels
 
         public async Task<bool> LoginAsync(string username, string password)
         {
+            Console.WriteLine($"=== ПОПЫТКА ЛОГИНА ===");
+            Console.WriteLine($"Username: {username}");
+
             var user = await _apiService.LoginAsync(username, password);
             if (user != null)
             {
                 _currentUserId = user.Id;
+                Console.WriteLine($"✅ Логин успешен: UserId={_currentUserId}");
                 return true;
             }
+
+            Console.WriteLine($"❌ Логин failed");
             return false;
         }
 
@@ -467,6 +633,14 @@ namespace shahmati.ViewModels
         public void SelectGame(int gameId)
         {
             Console.WriteLine($"Выбрана игра: {gameId}");
+        }
+
+        // ===== ВСПОМОГАТЕЛЬНЫЙ МЕТОД =====
+        private string GetSquareNotation(Position position)
+        {
+            char file = (char)('a' + position.Column);
+            int rank = 8 - position.Row;
+            return $"{file}{rank}";
         }
 
         // ===== АНИМАЦИЯ =====

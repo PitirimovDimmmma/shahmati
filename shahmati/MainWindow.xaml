@@ -294,19 +294,57 @@
 
                 <!-- Кнопки управления -->
                 <StackPanel x:Name="ControlButtonsPanel" Grid.Column="2" 
-                           Orientation="Horizontal" 
-                           VerticalAlignment="Center">
+           Orientation="Horizontal" 
+           VerticalAlignment="Center">
+
+                    <!-- Переключатель режима игры -->
+                    <Border Background="#2C3E50" 
+            CornerRadius="20" 
+            Margin="0,0,10,0"
+            Padding="2">
+                        <StackPanel Orientation="Horizontal">
+                            <!-- Кнопка VS ИИ -->
+                            <Border x:Name="VsAIBorder"
+                  
+                    CornerRadius="18"
+                    Padding="10,5"
+                    MouseLeftButtonUp="VsAI_MouseLeftButtonUp">
+                                <TextBlock x:Name="VsAIText"
+                          Text="🤖 VS ИИ"
+                          Foreground="White"
+                          FontSize="12"
+                          FontWeight="Bold"/>
+                            </Border>
+
+                            <!-- Кнопка VS ЧЕЛОВЕК -->
+                            <Border x:Name="VsHumanBorder"
+                  
+                    CornerRadius="18"
+                    Padding="10,5"
+                    MouseLeftButtonUp="VsHuman_MouseLeftButtonUp">
+                                <TextBlock x:Name="VsHumanText"
+                          Text="👤 VS ЧЕЛОВЕК"
+                          Foreground="White"
+                          FontSize="12"
+                          FontWeight="Bold"/>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Скрытый ToggleButton для управления режимом -->
+                    <ToggleButton x:Name="VsAIToggle"
+                  IsChecked="True"
+                  Visibility="Collapsed"
+                  Checked="VsAIToggle_Checked"
+                  Unchecked="VsAIToggle_Unchecked"/>
 
                     <!-- Кнопка подсветки -->
                     <ToggleButton x:Name="HighlightMovesToggle"
-                                 Content="🔦 Подсветка"
-                                 Style="{StaticResource ToggleButtonStyle}"
-                                 IsChecked="True"
-                                 Checked="HighlightMovesToggle_Checked"
-                                 Unchecked="HighlightMovesToggle_Unchecked"/>
-
-
-
+                 Content="🔦 Подсветка"
+                 Style="{StaticResource ToggleButtonStyle}"
+                 IsChecked="True"
+                 Checked="HighlightMovesToggle_Checked"
+                 Unchecked="HighlightMovesToggle_Unchecked"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -506,7 +544,7 @@
            Background="#27AE60"
            FontSize="13"
            Click="NewGameButton_Click"/>
-
+       
                             <!-- ДОБАВЛЯЕМ КНОПКУ СДАЧИ -->
                             <Button x:Name="ResignButton" 
            Content="⚑ СДАТЬСЯ" 

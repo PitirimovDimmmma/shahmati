@@ -473,10 +473,10 @@ namespace shahmati
             MainGrid.Children.Add(_loadingPanel);
         }
 
-        // ===== КНОПКИ =====
         private async void NewGameButton_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show("Начать новую игру против Stockfish AI?",
+            string mode = _viewModel?.GameMode == "Человек vs Компьютер" ? "против Stockfish AI" : "с другом";
+            var result = MessageBox.Show($"Начать новую игру {mode}?",
                 "Новая игра", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
             if (result == MessageBoxResult.Yes)
@@ -485,7 +485,43 @@ namespace shahmati
                 _whiteTimeLeft = TimeSpan.FromMinutes(10);
                 _blackTimeLeft = TimeSpan.FromMinutes(10);
                 UpdateTimerDisplays();
-                await StartNewGameWithAIAsync();
+
+                if (_viewModel?.GameMode == "Человек vs Компьютер")
+                {
+                    await StartNewGameWithAIAsync();
+                }
+                else
+                {
+                    await StartNewGameWithHumanAsync();
+                }
+            }
+        }
+
+        private async Task StartNewGameWithHumanAsync()
+        {
+            try
+            {
+                ShowLoadingIndicator("Создание игры для двух игроков...");
+
+                _viewModel.SetUserIsWhite(true);
+                await _viewModel.StartNewGameAsync();
+
+                HideLoadingIndicator();
+                ShowGameStartNotification();
+                StartGameTimers();
+
+                // Обновляем UI
+                MovesCountText.Text = "0";
+                StatusText.Text = "Игра начата. Белые ходят первыми.";
+                StatusIcon.Text = "♔";
+                OpponentColorText.Text = "ЧЕРНЫЕ (игрок)";
+                GameInfoText.Text = "Режим: два игрока";
+            }
+            catch (Exception ex)
+            {
+                HideLoadingIndicator();
+                MessageBox.Show($"Ошибка создания игры: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -556,12 +592,72 @@ namespace shahmati
                 _viewModel.EnableMoveHighlighting = true;
         }
 
+
+        private void VsAIToggle_Checked(object sender, RoutedEventArgs e)
+        {
+            // Режим VS ИИ
+            if (_viewModel != null)
+            {
+                _viewModel.GameMode = "Человек vs Компьютер";
+                VsAIText.Foreground = new SolidColorBrush(Colors.White);
+                VsHumanText.Foreground = new SolidColorBrush(Colors.LightGray);
+
+                // Обновляем статус
+                StatusText.Text = "Режим: Игра против ИИ";
+
+                // Если игра уже идет, предложим начать новую
+                if (_viewModel.GameManager?.IsGameInProgress == true)
+                {
+                    var result = MessageBox.Show("Сменить режим игры? Текущая игра будет завершена.",
+                        "Смена режима", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        NewGameButton_Click(sender, e);
+                    }
+                }
+            }
+        }
+
+        private void VsAIToggle_Unchecked(object sender, RoutedEventArgs e)
+        {
+            // Режим VS ЧЕЛОВЕК
+            if (_viewModel != null)
+            {
+                _viewModel.GameMode = "Человек vs Человек";
+                VsHumanText.Foreground = new SolidColorBrush(Colors.White);
+                VsAIText.Foreground = new SolidColorBrush(Colors.LightGray);
+
+                // Обновляем статус
+                StatusText.Text = "Режим: Игра против человека";
+                OpponentColorText.Text = "ЧЕРНЫЕ";
+
+                // Если игра уже идет, предложим начать новую
+                if (_viewModel.GameManager?.IsGameInProgress == true)
+                {
+                    var result = MessageBox.Show("Сменить режим игры? Текущая игра будет завершена.",
+                        "Смена режима", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        NewGameButton_Click(sender, e);
+                    }
+                }
+            }
+        }
+
         private void HighlightMovesToggle_Unchecked(object sender, RoutedEventArgs e)
         {
             if (_viewModel != null)
                 _viewModel.EnableMoveHighlighting = false;
         }
+        private void VsAI_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            VsAIToggle.IsChecked = true;
+        }
 
+        private void VsHuman_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            VsAIToggle.IsChecked = false;
+        }
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             // Очистка ресурсов

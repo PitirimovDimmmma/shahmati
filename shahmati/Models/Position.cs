@@ -30,5 +30,23 @@ namespace shahmati.models
         public override string ToString() => $"{(char)('a' + Column)}{8 - Row}";
 
         public static Position Invalid => new Position(-1, -1);
+
+        // Добавьте этот метод прямо в структуру (не внутри вложенного класса)
+        public static Position FromString(string square)
+        {
+            if (string.IsNullOrEmpty(square) || square.Length < 2)
+                return Invalid;
+
+            char file = square[0];
+            char rank = square[1];
+
+            int col = file - 'a';
+            int row = 8 - (rank - '0');
+
+            if (row < 0 || row > 7 || col < 0 || col > 7)
+                return Invalid;
+
+            return new Position(row, col);
+        }
     }
 }

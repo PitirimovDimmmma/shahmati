@@ -40,18 +40,20 @@ namespace shahmati.Services
 
 
 
-        // ========== ТЕСТИРОВАНИЕ ПОДКЛЮЧЕНИЯ ==========
         public async Task<bool> TestConnectionAsync()
         {
             try
             {
-                var response = await _httpClient.GetAsync("weatherforecast");
                 Console.WriteLine($"=== CONNECTION TEST ===");
+                Console.WriteLine($"Base URL: {_httpClient.BaseAddress}");
+
+                var response = await _httpClient.GetAsync("weatherforecast");
                 Console.WriteLine($"Status: {response.StatusCode}");
 
                 if (response.IsSuccessStatusCode)
                 {
-                    Console.WriteLine($"✅ API доступен");
+                    var content = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"✅ API доступен, ответ: {content}");
                     return true;
                 }
                 else
@@ -61,9 +63,16 @@ namespace shahmati.Services
                     return false;
                 }
             }
+            catch (HttpRequestException ex)
+            {
+                Console.WriteLine($"❌ HTTP ошибка: {ex.Message}");
+                if (ex.InnerException != null)
+                    Console.WriteLine($"   Inner: {ex.InnerException.Message}");
+                return false;
+            }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Ошибка подключения: {ex.Message}");
+                Console.WriteLine($"❌ Общая ошибка: {ex.Message}");
                 return false;
             }
         }
@@ -1283,10 +1292,6 @@ namespace shahmati.Services
                 return null;
             }
         }
-
-        /// <summary>
-        /// Сделать ход в игре против ИИ
-        /// </summary>
         public async Task<PlayAIResponse> PlayAgainstAIAsync(int gameId, string userMove)
         {
             try
@@ -1300,17 +1305,22 @@ namespace shahmati.Services
                     UserMove = userMove
                 };
 
-                var response = await _httpClient.PostAsJsonAsync("api/chessai/play", request);
+                var json = JsonSerializer.Serialize(request);
+                Console.WriteLine($"Request JSON: {json}");
+
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync("api/chessai/play", content);
 
                 var responseText = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Response: {response.StatusCode}, Body: {responseText}");
+                Console.WriteLine($"Response Status: {response.StatusCode}");
+                Console.WriteLine($"Response Body: {responseText}");
 
                 if (response.IsSuccessStatusCode)
                 {
                     var result = JsonSerializer.Deserialize<PlayAIResponse>(responseText,
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                    Console.WriteLine($"✅ Ход обработан: ИИ ответил {result?.AIMove}");
+                    Console.WriteLine($"✅ Ход обработан: Успех={result?.Success}, ИИ ответил={result?.AIMove}");
                     return result;
                 }
                 else
@@ -1706,6 +1716,8 @@ namespace shahmati.Services
             public string FileName { get; set; } = string.Empty;
             public string ErrorMessage { get; set; } = string.Empty;
         }
+
+
 
         // В ApiService.cs добавьте:
         // ИСПРАВЛЕННЫЙ метод:

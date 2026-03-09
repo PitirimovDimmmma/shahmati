@@ -233,7 +233,6 @@ namespace shahmati.Models
         public string Message { get; set; }
         public bool GameFinished { get; set; }
         public string Result { get; set; }
-        public string FinalPosition { get; set; }
     }
 
     public class AIMoveRequest

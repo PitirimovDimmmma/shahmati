@@ -16,12 +16,21 @@ namespace shahmati.models
 
         public abstract List<Position> GetPossibleMoves(Position currentPosition, Board board);
 
-        protected bool IsValidMove(Position position, Board board)
+        // Добавляем метод IsValidMove обратно
+        protected bool IsValidMove(Position newPosition, Board board)
         {
-            if (!position.IsValid()) return false;
+            // Проверка на выход за границы доски
+            if (newPosition.Row < 0 || newPosition.Row >= 8 ||
+                newPosition.Column < 0 || newPosition.Column >= 8)
+                return false;
 
-            var pieceAtTarget = board.GetPieceAt(position);
-            return pieceAtTarget == null || pieceAtTarget.Color != this.Color;
+            var pieceAtTarget = board.GetPieceAt(newPosition);
+
+            // Если на целевой клетке есть фигура того же цвета - ход невозможен
+            if (pieceAtTarget != null && pieceAtTarget.Color == this.Color)
+                return false;
+
+            return true;
         }
 
         public override string ToString() => $"{Color} {Type}";
