@@ -4,11 +4,10 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:shahmati.Views"
-        xmlns:models="clr-namespace:shahmati.models"
         xmlns:converters="clr-namespace:shahmati.Converters"
         mc:Ignorable="d"
-        Title="🎯 Шахматный Тренажер" 
-        Height="800" Width="1100"
+        Title="Шахматный тренажер - Тренировка" 
+        Height="806" Width="1100"  
         WindowStartupLocation="CenterScreen"
         Background="#2C3E50"
         Closing="Window_Closing">
@@ -17,8 +16,8 @@
         <!-- Конвертер для путей к изображениям -->
         <converters:ImagePathConverter x:Key="ImagePathConverter"/>
 
-        <!-- Стиль для клеток доски (как в MainWindow) -->
-        <Style x:Key="BoardCellStyle" TargetType="Border">
+        <!-- Стиль для клеток доски -->
+        <Style x:Key="TrainingBoardCellStyle" TargetType="Border">
             <Setter Property="Background" Value="{Binding BackgroundColor}"/>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
@@ -30,56 +29,25 @@
             </Style.Triggers>
         </Style>
 
-        <!-- Стиль для информационных карточек -->
-        <Style x:Key="InfoCardStyle" TargetType="Border">
-            <Setter Property="Background">
-                <Setter.Value>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                        <GradientStop Color="#2C3E50" Offset="0"/>
-                        <GradientStop Color="#34495E" Offset="1"/>
-                    </LinearGradientBrush>
-                </Setter.Value>
-            </Setter>
-            <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="BorderBrush" Value="#4A6572"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="18"/>
-            <Setter Property="Margin" Value="0,0,0,15"/>
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect ShadowDepth="3" 
-                                     Color="#20000000" 
-                                     BlurRadius="6" 
-                                     Opacity="0.5"/>
-                </Setter.Value>
-            </Setter>
+        <!-- Стиль для карточек -->
+        <Style x:Key="TrainingInfoCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="#34495E"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="15"/>
+            <Setter Property="Margin" Value="5"/>
         </Style>
 
         <!-- Стиль для статистики -->
-        <Style x:Key="StatCardStyle" TargetType="Border">
-            <Setter Property="Background">
-                <Setter.Value>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                        <GradientStop Color="#1A252F" Offset="0"/>
-                        <GradientStop Color="#2C3E50" Offset="1"/>
-                    </LinearGradientBrush>
-                </Setter.Value>
-            </Setter>
+        <Style x:Key="TrainingStatCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="#34495E"/>
             <Setter Property="CornerRadius" Value="10"/>
-            <Setter Property="BorderBrush" Value="#4A6572"/>
-            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="12"/>
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect ShadowDepth="2" 
-                                     Color="#20000000" 
-                                     BlurRadius="4"/>
-                </Setter.Value>
-            </Setter>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="Width" Value="120"/>
         </Style>
 
         <!-- Стиль для кнопок управления -->
-        <Style x:Key="ControlButtonStyle" TargetType="Button">
+        <Style x:Key="TrainingControlButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="#3498DB"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -109,503 +77,423 @@
             </Setter>
         </Style>
 
-        <!-- Стиль для кнопки назад -->
-        <Style x:Key="BackButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#FF6A00"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="15,8"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="Transparent" 
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" 
-                                            VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Foreground" Value="#FFD700"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <!-- Стиль для прогресс бара -->
-        <Style x:Key="ProgressBarStyle" TargetType="ProgressBar">
-            <Setter Property="Height" Value="24"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#4A6572"/>
-            <Setter Property="Background" Value="#1A252F"/>
+        <Style x:Key="TrainingProgressBarStyle" TargetType="ProgressBar">
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Background" Value="#2C3E50"/>
+            <Setter Property="Foreground" Value="#27AE60"/>
+            <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ProgressBar">
-                        <Border x:Name="border" 
-                                Background="{TemplateBinding Background}" 
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="10">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="5">
                             <Grid x:Name="PART_Track">
                                 <Rectangle x:Name="PART_Indicator" 
-                                           HorizontalAlignment="Left">
-                                    <Rectangle.Fill>
-                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                            <GradientStop Color="#27AE60" Offset="0"/>
-                                            <GradientStop Color="#2ECC71" Offset="0.5"/>
-                                            <GradientStop Color="#27AE60" Offset="1"/>
-                                        </LinearGradientBrush>
-                                    </Rectangle.Fill>
-                                </Rectangle>
+                                           Fill="{TemplateBinding Foreground}"
+                                           HorizontalAlignment="Left"
+                                           RadiusX="5" RadiusY="5"/>
                             </Grid>
                         </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsIndeterminate" Value="True">
-                                <Setter TargetName="PART_Indicator" Property="Visibility" Value="Collapsed"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
     </Window.Resources>
 
-    <Border Background="#2C3E50" CornerRadius="10" BorderBrush="#4A6572" BorderThickness="2">
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+    <Grid x:Name="MainGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-            <!-- ШАПКА -->
-            <Border Grid.Row="0" 
-                    Background="#34495E" 
-                    Padding="20"
-                    BorderBrush="#4A6572"
-                    BorderThickness="0,0,0,2"
-                    CornerRadius="10,10,0,0">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- ИНФОРМАЦИЯ О ТРЕНИРОВКЕ -->
-                    <StackPanel Grid.Column="0" 
-                               Orientation="Horizontal" 
-                               VerticalAlignment="Center">
-
-                        <StackPanel>
-
-                        </StackPanel>
-                    </StackPanel>
-
-                    <!-- СТАТИСТИКА -->
-                    <StackPanel Grid.Column="1" 
-                               Orientation="Horizontal" 
-                               HorizontalAlignment="Center" 
-                               VerticalAlignment="Center"
-                               Margin="20,0,20,0">
-
-                        <!-- ТЕКУЩИЙ ИГРОК -->
-                        <Border Style="{StaticResource StatCardStyle}" 
-                               Margin="0,0,10,0" 
-                               Width="120">
-                            <StackPanel>
-                                <TextBlock Text="🎮 ХОД" 
-                                          FontSize="10" 
-                                          Foreground="#BDC3C7"
-                                          FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding CurrentPlayerText}" 
-                                          Foreground="#3498DB" 
-                                          FontSize="18" 
-                                          FontWeight="Bold"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- ОЧКИ -->
-                        <Border Style="{StaticResource StatCardStyle}" 
-                               Margin="0,0,10,0" 
-                               Width="120">
-                            <StackPanel>
-                                <TextBlock Text="⭐ ОЧКИ" 
-                                          FontSize="10" 
-                                          Foreground="#BDC3C7"
-                                          FontWeight="SemiBold"/>
-                                <TextBlock x:Name="ScoreText" 
-                                          Text="{Binding Score, FallbackValue='0'}" 
-                                          Foreground="#FFD700" 
-                                          FontSize="22" 
-                                          FontWeight="Bold"
-                                          FontFamily="Consolas"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- ТАЙМЕР -->
-                        <Border Style="{StaticResource StatCardStyle}" 
-                               Margin="0,0,10,0" 
-                               Width="120">
-                            <StackPanel>
-                                <TextBlock Text="⏱️ ВРЕМЯ" 
-                                          FontSize="10" 
-                                          Foreground="#BDC3C7"
-                                          FontWeight="SemiBold"/>
-                                <TextBlock x:Name="TimerText" 
-                                          Text="{Binding TimeElapsed, FallbackValue='00:00'}" 
-                                          Foreground="#00FF00" 
-                                          FontSize="22" 
-                                          FontWeight="Bold"
-                                          FontFamily="Consolas"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- ОШИБКИ -->
-                        <Border Style="{StaticResource StatCardStyle}" 
-                               Margin="0,0,10,0" 
-                               Width="120">
-                            <StackPanel>
-                                <TextBlock Text="💀 ОШИБКИ" 
-                                          FontSize="10" 
-                                          Foreground="#BDC3C7"
-                                          FontWeight="SemiBold"/>
-                                <TextBlock x:Name="MistakesText" 
-                                          Text="{Binding Mistakes, FallbackValue='0'}" 
-                                          Foreground="#E74C3C" 
-                                          FontSize="22" 
-                                          FontWeight="Bold"
-                                          FontFamily="Consolas"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- ПРОГРЕСС -->
-                        <Border Style="{StaticResource StatCardStyle}" 
-                               Width="120">
-                            <StackPanel>
-                                <TextBlock Text="📊 ПРОГРЕСС" 
-                                          FontSize="10" 
-                                          Foreground="#BDC3C7"
-                                          FontWeight="SemiBold"/>
-                                <TextBlock x:Name="ProgressText" 
-                                          Text="{Binding PositionProgress, FallbackValue='0/10'}" 
-                                          Foreground="#3498DB" 
-                                          FontSize="20" 
-                                          FontWeight="Bold"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-
-                    <!-- КНОПКИ УПРАВЛЕНИЯ -->
-                    <StackPanel Grid.Column="2" 
-                               Orientation="Horizontal" 
-                               VerticalAlignment="Center">
-                        <Button x:Name="HintButton" 
-                               Content="💡 ПОДСКАЗКА" 
-                               Style="{StaticResource ControlButtonStyle}"
-                                               Background="#27AE60"
-                               Margin="0,0,10,0"
-                               Click="HintButton_Click"/>
-
-                        <Button x:Name="SolutionButton" 
-                               Content="👁️ РЕШЕНИЕ" 
-                               Style="{StaticResource ControlButtonStyle}"
-                               Background="#F39C12"
-                               Margin="0,0,10,0"
-                               Click="ShowSolutionButton_Click" Height="2" Width="1"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <!-- Основная область -->
-            <Grid Grid.Row="1" Margin="10">
+        <!-- ШАПКА -->
+        <Border Grid.Row="0" Background="#34495E" Padding="20">
+            <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="350"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- ШАХМАТНАЯ ДОСКА ТОЧНО ТАКАЯ ЖЕ КАК В MAINWINDOW -->
-                <Viewbox Grid.Column="0" Stretch="Uniform" Margin="20" VerticalAlignment="Center" HorizontalAlignment="Center">
-                    <Border Background="#2C2C2C" CornerRadius="5" BorderBrush="#2C2C2C" BorderThickness="3" Padding="15">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="25"/>
-                                <ColumnDefinition Width="480"/>
-                                <ColumnDefinition Width="25"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="25"/>
-                                <RowDefinition Height="480"/>
-                                <RowDefinition Height="25"/>
-                            </Grid.RowDefinitions>
+                <!-- Кнопка назад -->
+                <Button Grid.Column="0" 
+                        Content="← НАЗАД" 
+                        Background="Transparent"
+                        Foreground="#BDC3C7"
+                        BorderThickness="0"
+                        FontSize="12"
+                        FontWeight="Bold"
+                        Cursor="Hand"
+                        Click="BackButton_Click">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="Transparent" 
+                                                Padding="15,8">
+                                            <ContentPresenter HorizontalAlignment="Center" 
+                                                            VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Foreground" Value="White"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
 
-                            <!-- САМА ДОСКА С КЛЕТКАМИ -->
-                            <Border Grid.Row="1" Grid.Column="1" Background="#2C2C2C">
-                                <ItemsControl ItemsSource="{Binding Board.CellsFlat}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <!-- ВАЖНО: Убедитесь что Rows="8" и Columns="8" -->
-                                            <UniformGrid Rows="8" Columns="8"/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
+                <!-- СТАТИСТИКА -->
+                <StackPanel Grid.Column="1" 
+                           HorizontalAlignment="Center" 
+                           Orientation="Horizontal">
 
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Width="60" Height="60" 
-                                                   BorderBrush="Transparent" BorderThickness="0"
-                                                   Style="{StaticResource BoardCellStyle}">
+                    <!-- ТЕКУЩИЙ ИГРОК -->
+                    <Border Style="{StaticResource TrainingStatCardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="ХОД" 
+                                      Foreground="#BDC3C7" 
+                                      FontSize="10"/>
+                            <TextBlock x:Name="CurrentPlayerText" 
+                                      Text="БЕЛЫЕ" 
+                                      Foreground="#3498DB" 
+                                      FontSize="18" 
+                                      FontWeight="Bold"/>
+                        </StackPanel>
+                    </Border>
 
-                                                <Border.InputBindings>
-                                                    <MouseBinding MouseAction="LeftClick" 
+                    <!-- ОЧКИ -->
+                    <Border Style="{StaticResource TrainingStatCardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="ОЧКИ" 
+                                      Foreground="#BDC3C7" 
+                                      FontSize="10"/>
+                            <TextBlock x:Name="ScoreText" 
+                                      Text="0" 
+                                      Foreground="#FFD700" 
+                                      FontSize="18" 
+                                      FontWeight="Bold"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ВРЕМЯ -->
+                    <Border Style="{StaticResource TrainingStatCardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="ВРЕМЯ" 
+                                      Foreground="#BDC3C7" 
+                                      FontSize="10"/>
+                            <TextBlock x:Name="TimerText" 
+                                      Text="00:00" 
+                                      Foreground="White" 
+                                      FontSize="18" 
+                                      FontWeight="Bold"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ОШИБКИ -->
+                    <Border Style="{StaticResource TrainingStatCardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="ОШИБКИ" 
+                                      Foreground="#BDC3C7" 
+                                      FontSize="10"/>
+                            <TextBlock x:Name="MistakesText" 
+                                      Text="0" 
+                                      Foreground="#E74C3C" 
+                                      FontSize="18" 
+                                      FontWeight="Bold"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ПРОГРЕСС -->
+                    <Border Style="{StaticResource TrainingStatCardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="ПРОГРЕСС" 
+                                      Foreground="#BDC3C7" 
+                                      FontSize="10"/>
+                            <TextBlock x:Name="ProgressText" 
+                                      Text="0/10" 
+                                      Foreground="#27AE60" 
+                                      FontSize="18" 
+                                      FontWeight="Bold"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- КНОПКИ УПРАВЛЕНИЯ -->
+                <StackPanel Grid.Column="2" 
+                           Orientation="Horizontal">
+                    <Button x:Name="HintButton" 
+                           Content="💡 ПОДСКАЗКА" 
+                           Style="{StaticResource TrainingControlButtonStyle}"
+                           Background="#27AE60"
+                           Margin="0,0,10,0"
+                           Click="HintButton_Click"/>
+                    <Button x:Name="SolutionButton" 
+                           Content="👁️ РЕШЕНИЕ" 
+                           Style="{StaticResource TrainingControlButtonStyle}"
+                           Background="#F39C12"
+                           Click="ShowSolutionButton_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Основная область -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="300"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ШАХМАТНАЯ ДОСКА -->
+            <Viewbox Grid.Column="0" Stretch="Uniform" Margin="20" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <Border Background="#2C2C2C" CornerRadius="5" BorderBrush="#2C2C2C" BorderThickness="3" Padding="15">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="25"/>
+                            <ColumnDefinition Width="480"/>
+                            <ColumnDefinition Width="25"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="25"/>
+                            <RowDefinition Height="480"/>
+                            <RowDefinition Height="25"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- САМА ДОСКА С КЛЕТКАМИ -->
+                        <Border Grid.Row="1" Grid.Column="1" Background="#2C2C2C">
+                            <ItemsControl ItemsSource="{Binding Board.CellsFlat}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Rows="8" Columns="8"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Width="60" Height="60" 
+                                               BorderBrush="Transparent" BorderThickness="0"
+                                               Style="{StaticResource TrainingBoardCellStyle}">
+
+                                            <Border.InputBindings>
+                                                <MouseBinding MouseAction="LeftClick" 
                                                              Command="{Binding DataContext.CellClickCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                              CommandParameter="{Binding Position}"/>
-                                                </Border.InputBindings>
+                                            </Border.InputBindings>
 
-                                                <!-- ИСПОЛЬЗУЙТЕ КОНВЕРТЕР ДЛЯ ПУТЕЙ К ИЗОБРАЖЕНИЯМ -->
-                                                <Image Source="{Binding Piece.ImagePath, Converter={StaticResource ImagePathConverter}}" 
-                                                       Width="45" Height="45"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"/>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </Border>
+                                            <!-- ВОЗВРАЩАЕМ КОНВЕРТЕР -->
+                                            <Image Source="{Binding Piece.ImagePath, Converter={StaticResource ImagePathConverter}}" 
+                                                   Width="45" Height="45"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
 
-                            <!-- ЦИФРЫ СЛЕВА (8-1) СВЕРХУ ВНИЗ -->
-                            <StackPanel Grid.Row="1" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Height="480">
-                                <TextBlock Text="8" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
-                                <TextBlock Text="7" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
-                                <TextBlock Text="6" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
-                                <TextBlock Text="5" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
-                                <TextBlock Text="4" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
-                                <TextBlock Text="3" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
-                                <TextBlock Text="2" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
-                                <TextBlock Text="1" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial"/>
-                            </StackPanel>
-
-                            <!-- ЦИФРЫ СПРАВА (8-1) СВЕРХУ ВНИЗ -->
-                            <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Height="480">
-                                <TextBlock Text="8" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
-                                <TextBlock Text="7" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
-                                <TextBlock Text="6" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
-                                <TextBlock Text="5" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
-                                <TextBlock Text="4" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
-                                <TextBlock Text="3" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
-                                <TextBlock Text="2" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
-                                <TextBlock Text="1" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial"/>
-                            </StackPanel>
-
-                            <!-- БУКВЫ СВЕРХУ (a-h) СЛЕВА НАПРАВО -->
-                            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <TextBlock Text="a" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="30,0,60,0"/>
-                                <TextBlock Text="b" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
-                                <TextBlock Text="c" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
-                                <TextBlock Text="d" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
-                                <TextBlock Text="e" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
-                                <TextBlock Text="f" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
-                                <TextBlock Text="g" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
-                                <TextBlock Text="h" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial"/>
-                            </StackPanel>
-
-                            <!-- БУКВЫ СНИЗУ (a-h) СЛЕВА НАПРАВО -->
-                            <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <TextBlock Text="a" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="30,0,60,0"/>
-                                <TextBlock Text="b" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
-                                <TextBlock Text="c" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
-                                <TextBlock Text="d" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
-                                <TextBlock Text="e" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
-                                <TextBlock Text="f" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
-                                <TextBlock Text="g" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
-                                <TextBlock Text="h" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial"/>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-                </Viewbox>
-
-                <!-- ПАНЕЛЬ ТРЕНИРОВКИ -->
-                <Border Grid.Column="1" 
-                       Background="#F8F9FA" 
-                       Margin="10" 
-                       CornerRadius="12"
-                       BorderBrush="#DEE2E6"
-                       BorderThickness="2">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" 
-                                 HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Margin="15">
-
-                            <!-- ТЕКУЩАЯ ПОЗИЦИЯ -->
-                            <Border Style="{StaticResource InfoCardStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="🎯 ТЕКУЩАЯ ПОЗИЦИЯ" 
-                                              FontSize="13" 
-                                              Foreground="#BDC3C7"
-                                              FontWeight="Bold"/>
-                                    <TextBlock x:Name="PositionTitleText" 
-                                              Text="{Binding CurrentPosition.Theme, FallbackValue='ПОЗИЦИЯ #1'}" 
-                                              FontSize="22" 
-                                              FontWeight="Bold"
-                                              Foreground="#FFD700"
-                                              Margin="0,5,0,0"/>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- ЗАДАНИЕ -->
-                            <Border Style="{StaticResource InfoCardStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="📝 ЗАДАНИЕ" 
-                                              FontSize="13" 
-                                              Foreground="#BDC3C7"
-                                              FontWeight="Bold"
-                                              Margin="0,0,0,8"/>
-                                    <TextBlock x:Name="PositionTaskText" 
-                                              Text="{Binding PositionTask, FallbackValue='Найдите лучший ход в данной позиции'}"
-                                              FontSize="14"
-                                              Foreground="White"
-                                              TextWrapping="Wrap"
-                                              TextAlignment="Left"
-                                              LineHeight="20"/>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- ПРОГРЕСС ТРЕНИРОВКИ -->
-                            <Border Style="{StaticResource InfoCardStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="📈 ПРОГРЕСС ТРЕНИРОВКИ" 
-                                              FontSize="13" 
-                                              Foreground="#BDC3C7"
-                                              FontWeight="Bold"
-                                              Margin="0,0,0,12"/>
-
-                                    <ProgressBar x:Name="TrainingProgressBar" 
-                                                Value="{Binding CurrentPositionIndex}"
-                                                Maximum="{Binding CurrentPositions.Count}"
-                                                Style="{StaticResource ProgressBarStyle}"/>
-
-                                    <Grid Margin="0,8,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="0%" 
-                                                  FontSize="11"
-                                                  Foreground="#BDC3C7"/>
-                                        <TextBlock Text="100%" 
-                                                  FontSize="11"
-                                                  Foreground="#BDC3C7"
-                                                  Grid.Column="1"
-                                                  HorizontalAlignment="Right"/>
-                                    </Grid>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- УПРАВЛЕНИЕ ТРЕНИРОВКОЙ -->
-                            <Border Style="{StaticResource InfoCardStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="⚙️ УПРАВЛЕНИЕ" 
-                                              FontSize="13" 
-                                              Foreground="#BDC3C7"
-                                              FontWeight="Bold"
-                                              Margin="0,0,0,8"/>
-
-                                    <StackPanel Margin="0,5,0,0">
-                                        <Button x:Name="NextButton" 
-                                               Content="➡️ СЛЕДУЮЩАЯ ПОЗИЦИЯ" 
-                                               Height="45"
-                                               Style="{StaticResource ControlButtonStyle}"
-                                               Background="#27AE60"
-                                               FontSize="13"
-                                               Click="NextButton_Click"
-                                               Margin="0,0,0,8"/>
-
-                                        <StackPanel Orientation="Horizontal" 
-                                                    Margin="0,0,0,8">
-
-
-                                            <Button x:Name="ShowSolutionButton" 
-                                                   Content="👁️ РЕШЕНИЕ" 
-                                                   Width="160"
-                                                   Height="40"
-                                                   Style="{StaticResource ControlButtonStyle}"
-                                               Background="#27AE60"
-                                                   FontSize="12"
-                                                   Click="ShowSolutionButton_Click"/>
-                                        </StackPanel>
-
-                                        <Button x:Name="CompleteTrainingButton" 
-                                               Content="🏁 ЗАВЕРШИТЬ ТРЕНИРОВКУ" 
-                                               Height="45"
-                                               Style="{StaticResource ControlButtonStyle}"
-                                               Background="#E74C3C"
-                                               FontSize="13"
-                                               Click="CompleteButton_Click"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- ПОДСКАЗКА И РЕШЕНИЕ -->
-                            <Border Style="{StaticResource InfoCardStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="💡 ПОДСКАЗКА И РЕШЕНИЕ" 
-                                              FontSize="13" 
-                                              Foreground="#BDC3C7"
-                                              FontWeight="Bold"
-                                              Margin="0,0,0,8"/>
-
-                                    <Border Height="160" 
-                                           CornerRadius="8"
-                                           Background="#2C3E50"
-                                           BorderBrush="#4A6572"
-                                           BorderThickness="1"
-                                           Padding="10">
-                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                            <TextBlock x:Name="HintTextBlock" 
-                                                      Text="{Binding HintText, FallbackValue='Нажмите на фигуру текущего игрока, чтобы увидеть возможные ходы'}"
-                                                      FontSize="12"
-                                                      Foreground="#ECF0F1"
-                                                      TextWrapping="Wrap"
-                                                      LineHeight="18"/>
-                                        </ScrollViewer>
-                                    </Border>
-                                </StackPanel>
-                            </Border>
+                        <!-- ЦИФРЫ СЛЕВА -->
+                        <StackPanel Grid.Row="1" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Height="480">
+                            <TextBlock Text="8" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
+                            <TextBlock Text="7" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
+                            <TextBlock Text="6" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
+                            <TextBlock Text="5" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
+                            <TextBlock Text="4" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
+                            <TextBlock Text="3" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
+                            <TextBlock Text="2" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
+                            <TextBlock Text="1" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial"/>
                         </StackPanel>
-                    </ScrollViewer>
-                </Border>
-            </Grid>
 
-            <!-- СТАТУС БАР -->
-            <Border Grid.Row="2" 
-                   Background="#34495E" 
-                   Padding="15"
-                   BorderBrush="#4A6572"
-                   BorderThickness="0,1,0,0"
-                   CornerRadius="0,0,10,10">
-                <StackPanel Orientation="Horizontal" 
-                           HorizontalAlignment="Center">
-                    <Border Width="28" 
-                           Height="28" 
-                           CornerRadius="14"
-                           Background="#27AE60"
-                           Margin="0,0,12,0">
-                        <TextBlock Text="●" 
-                                  FontSize="10"
-                                  HorizontalAlignment="Center"
-                                  VerticalAlignment="Center"
-                                  Foreground="White"/>
-                    </Border>
-                    <TextBlock x:Name="StatusText" 
-                              Text="{Binding StatusText, FallbackValue='Тренировка начата. Найдите лучший ход на доске.'}" 
-                              Foreground="#BDC3C7" 
-                              FontSize="12"
-                              VerticalAlignment="Center"
-                              FontWeight="SemiBold"/>
-                </StackPanel>
+                        <!-- ЦИФРЫ СПРАВА -->
+                        <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Height="480">
+                            <TextBlock Text="8" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
+                            <TextBlock Text="7" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
+                            <TextBlock Text="6" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
+                            <TextBlock Text="5" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
+                            <TextBlock Text="4" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
+                            <TextBlock Text="3" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
+                            <TextBlock Text="2" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,0,60"/>
+                            <TextBlock Text="1" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial"/>
+                        </StackPanel>
+
+                        <!-- БУКВЫ СВЕРХУ -->
+                        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="a" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="30,0,60,0"/>
+                            <TextBlock Text="b" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
+                            <TextBlock Text="c" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
+                            <TextBlock Text="d" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
+                            <TextBlock Text="e" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
+                            <TextBlock Text="f" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
+                            <TextBlock Text="g" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
+                            <TextBlock Text="h" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial"/>
+                        </StackPanel>
+
+                        <!-- БУКВЫ СНИЗУ -->
+                        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="a" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="30,0,60,0"/>
+                            <TextBlock Text="b" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
+                            <TextBlock Text="c" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
+                            <TextBlock Text="d" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
+                            <TextBlock Text="e" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
+                            <TextBlock Text="f" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
+                            <TextBlock Text="g" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial" Margin="0,0,60,0"/>
+                            <TextBlock Text="h" Foreground="#E8E8E8" FontWeight="SemiBold" FontSize="14" FontFamily="Arial"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Viewbox>
+
+            <!-- ПАНЕЛЬ ТРЕНИРОВКИ -->
+            <Border Grid.Column="1" 
+                   Background="#F5F5DC" 
+                   Margin="10" 
+                   CornerRadius="10">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="15">
+
+                        <!-- ТЕКУЩАЯ ПОЗИЦИЯ -->
+                        <Border Style="{StaticResource TrainingInfoCardStyle}" Margin="0,0,0,15">
+                            <StackPanel>
+                                <TextBlock Text="ТЕКУЩАЯ ПОЗИЦИЯ" 
+                                          FontSize="12" 
+                                          Foreground="#BDC3C7"
+                                          FontWeight="Bold"/>
+                                <TextBlock x:Name="PositionTitleText" 
+                                          Text="ПОЗИЦИЯ #1" 
+                                          FontSize="22" 
+                                          FontWeight="Bold"
+                                          Foreground="#FFD700"
+                                          Margin="0,5,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ЗАДАНИЕ -->
+                        <Border Style="{StaticResource TrainingInfoCardStyle}" Margin="0,0,0,15">
+                            <StackPanel>
+                                <TextBlock Text="ЗАДАНИЕ" 
+                                          FontSize="12" 
+                                          Foreground="#BDC3C7"
+                                          FontWeight="Bold"
+                                          Margin="0,0,0,8"/>
+                                <TextBlock x:Name="PositionTaskText" 
+                                          Text="Найдите лучший ход в данной позиции"
+                                          FontSize="14"
+                                          Foreground="White"
+                                          TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ПРОГРЕСС ТРЕНИРОВКИ -->
+                        <Border Style="{StaticResource TrainingInfoCardStyle}" Margin="0,0,0,15">
+                            <StackPanel>
+                                <TextBlock Text="ПРОГРЕСС ТРЕНИРОВКИ" 
+                                          FontSize="12" 
+                                          Foreground="#BDC3C7"
+                                          FontWeight="Bold"
+                                          Margin="0,0,0,12"/>
+
+                                <ProgressBar x:Name="TrainingProgressBar" 
+                                            Value="0" Maximum="10"
+                                            Style="{StaticResource TrainingProgressBarStyle}"/>
+
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" 
+                                              Text="{Binding ElementName=TrainingProgressBar, Path=Value, StringFormat={}{0}%}" 
+                                              FontSize="11"
+                                              Foreground="#BDC3C7"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- УПРАВЛЕНИЕ ТРЕНИРОВКОЙ -->
+                        <Border Style="{StaticResource TrainingInfoCardStyle}" Margin="0,0,0,15">
+                            <StackPanel>
+                                <TextBlock Text="УПРАВЛЕНИЕ" 
+                                          FontSize="12" 
+                                          Foreground="#BDC3C7"
+                                          FontWeight="Bold"
+                                          Margin="0,0,0,12"/>
+
+                                <Button x:Name="NextButton" 
+                                       Content="➡️ СЛЕДУЮЩАЯ ПОЗИЦИЯ" 
+                                       Height="42"
+                                       Style="{StaticResource TrainingControlButtonStyle}"
+                                       Background="#27AE60"
+                                       FontSize="13"
+                                       Click="NextButton_Click"
+                                       Margin="0,0,0,8"/>
+
+                                <Button x:Name="ShowSolutionButton" 
+                                       Content="👁️ ПОКАЗАТЬ РЕШЕНИЕ" 
+                                       Height="42"
+                                       Style="{StaticResource TrainingControlButtonStyle}"
+                                       Background="#F39C12"
+                                       FontSize="13"
+                                       Margin="0,0,0,8"
+                                       Click="ShowSolutionButton_Click"/>
+
+                                <Button x:Name="CompleteTrainingButton" 
+                                       Content="🏁 ЗАВЕРШИТЬ ТРЕНИРОВКУ" 
+                                       Height="42"
+                                       Style="{StaticResource TrainingControlButtonStyle}"
+                                       Background="#E74C3C"
+                                       FontSize="13"
+                                       Click="CompleteButton_Click"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ПОДСКАЗКА -->
+                        <Border Style="{StaticResource TrainingInfoCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="ПОДСКАЗКА" 
+                                          FontSize="12" 
+                                          Foreground="#BDC3C7"
+                                          FontWeight="Bold"
+                                          Margin="0,0,0,8"/>
+
+                                <Border Height="100" 
+                                       CornerRadius="8"
+                                       Background="#2C3E50"
+                                       Padding="10">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <TextBlock x:Name="HintTextBlock" 
+                                                  Text="Нажмите на фигуру текущего игрока, чтобы увидеть возможные ходы"
+                                                  FontSize="12"
+                                                  Foreground="#ECF0F1"
+                                                  TextWrapping="Wrap"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
             </Border>
         </Grid>
-    </Border>
+
+        <!-- Футер со статусом -->
+        <Border Grid.Row="2" 
+               Background="#34495E" 
+               Padding="12">
+            <StackPanel Orientation="Horizontal" 
+                       HorizontalAlignment="Center">
+                <TextBlock Text="♜" 
+                          Foreground="White" 
+                          FontSize="14"
+                          Margin="0,0,8,0"/>
+                <TextBlock x:Name="StatusText" 
+                          Text="Тренировка начата. Найдите лучший ход на доске." 
+                          Foreground="#BDC3C7" 
+                          FontSize="12"/>
+            </StackPanel>
+        </Border>
+    </Grid>
 </Window>

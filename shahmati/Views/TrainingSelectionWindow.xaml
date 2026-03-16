@@ -4,37 +4,30 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:shahmati.Views"
-        xmlns:converters="clr-namespace:shahmati.Converters"
         mc:Ignorable="d"
-        Title="🔥 ВЫБОР ТРЕНИРОВКИ" 
-        Height="750" Width="1100"
+        Title="Шахматный тренажер - Выбор тренировки" 
+        Height="806" Width="1100"  
         WindowStartupLocation="CenterScreen"
         Background="#2C3E50"
-        BorderThickness="1"
-        BorderBrush="#FF6A00"
-        WindowStyle="None"
-        AllowsTransparency="True"
-        ResizeMode="CanResizeWithGrip">
+        WindowStyle="SingleBorderWindow"
+        ResizeMode="CanResize">
 
     <Window.Resources>
-        <!-- Конвертеры -->
-
+        <!-- Стиль для карточек (как в MainWindow) -->
+        <Style x:Key="InfoCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="#34495E"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="15"/>
+            <Setter Property="Margin" Value="5"/>
+        </Style>
 
         <!-- Стиль для прямоугольных карточек тренировок -->
-        <Style x:Key="HorizontalTrainingCardStyle" TargetType="Border">
-            <Setter Property="Background">
-                <Setter.Value>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                        <GradientStop Color="#34495E" Offset="0"/>
-                        <GradientStop Color="#2C3E50" Offset="1"/>
-                    </LinearGradientBrush>
-                </Setter.Value>
-            </Setter>
+        <Style x:Key="TrainingCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="#34495E"/>
             <Setter Property="Height" Value="140"/>
-            <Setter Property="Width" Value="450"/>
-            <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="BorderBrush" Value="#4A6572"/>
-            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="20,15"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Margin" Value="10,8"/>
@@ -45,70 +38,40 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="BorderBrush" Value="#FF6A00"/>
-                    <Setter Property="Background">
-                        <Setter.Value>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#3C4E60" Offset="0"/>
-                                <GradientStop Color="#2C3843" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Setter.Value>
-                    </Setter>
+                    <Setter Property="Background" Value="#3C4E60"/>
                     <Setter Property="RenderTransform">
                         <Setter.Value>
-                            <TranslateTransform Y="-3"/>
+                            <TranslateTransform Y="-2"/>
                         </Setter.Value>
                     </Setter>
                 </Trigger>
             </Style.Triggers>
         </Style>
 
-        <!-- Стиль для фильтров -->
-        <Style x:Key="FilterPanelStyle" TargetType="Border">
-            <Setter Property="Background" Value="#34495E"/>
-            <Setter Property="CornerRadius" Value="10"/>
-            <Setter Property="BorderBrush" Value="#4A6572"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="15"/>
+        <!-- Стиль для панели фильтров -->
+        <Style x:Key="FilterPanelStyle" TargetType="Border" BasedOn="{StaticResource InfoCardStyle}">
             <Setter Property="Margin" Value="0,0,0,15"/>
-        </Style>
-
-        <!-- Стиль для заголовков фильтров -->
-        <Style x:Key="FilterHeaderStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#FFD700"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Margin" Value="0,0,0,8"/>
         </Style>
 
         <!-- Стиль для тегов сложности -->
         <Style x:Key="DifficultyTagStyle" TargetType="Border">
-            <Setter Property="Background" Value="#27AE60"/>
             <Setter Property="CornerRadius" Value="10"/>
             <Setter Property="Padding" Value="6,3"/>
             <Setter Property="Margin" Value="0,0,5,0"/>
             <Style.Triggers>
-                <DataTrigger Binding="{Binding Difficulty}" Value="Beginner">
+                <DataTrigger Binding="{Binding Difficulty}" Value="Новичок">
                     <Setter Property="Background" Value="#27AE60"/>
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Difficulty}" Value="Medium">
+                <DataTrigger Binding="{Binding Difficulty}" Value="Средний">
                     <Setter Property="Background" Value="#3498DB"/>
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Difficulty}" Value="Hard">
+                <DataTrigger Binding="{Binding Difficulty}" Value="Сложный">
                     <Setter Property="Background" Value="#E74C3C"/>
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Difficulty}" Value="Expert">
+                <DataTrigger Binding="{Binding Difficulty}" Value="Эксперт">
                     <Setter Property="Background" Value="#9B59B6"/>
                 </DataTrigger>
             </Style.Triggers>
-        </Style>
-
-        <!-- Стиль для тегов категории -->
-        <Style x:Key="CategoryTagStyle" TargetType="Border">
-            <Setter Property="Background" Value="#8E44AD"/>
-            <Setter Property="CornerRadius" Value="10"/>
-            <Setter Property="Padding" Value="6,3"/>
-            <Setter Property="Margin" Value="0,0,5,0"/>
         </Style>
 
         <!-- Стиль для кнопок управления -->
@@ -145,7 +108,7 @@
         <!-- Стиль для кнопки назад -->
         <Style x:Key="BackButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#FF6A00"/>
+            <Setter Property="Foreground" Value="#BDC3C7"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="15,8"/>
             <Setter Property="FontSize" Value="12"/>
@@ -161,12 +124,36 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Foreground" Value="#FFD700"/>
+                                <Setter Property="Foreground" Value="White"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <!-- Стиль для RadioButton -->
+        <Style x:Key="RadioButtonStyle" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="0,0,0,5"/>
+        </Style>
+
+        <!-- Стиль для CheckBox -->
+        <Style x:Key="CheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="0,0,0,5"/>
+        </Style>
+
+        <!-- Стиль для TextBox -->
+        <Style x:Key="SearchTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="#2C3E50"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#4A6572"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="12"/>
         </Style>
     </Window.Resources>
 
@@ -178,11 +165,7 @@
         </Grid.RowDefinitions>
 
         <!-- ШАПКА -->
-        <Border Grid.Row="0" 
-                Background="#34495E" 
-                Padding="20"
-                BorderBrush="#4A6572"
-                BorderThickness="0,0,0,1">
+        <Border Grid.Row="0" Background="#34495E" Padding="20">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -200,18 +183,16 @@
                 <StackPanel Grid.Column="1" 
                            HorizontalAlignment="Center" 
                            VerticalAlignment="Center">
-                    <TextBlock Text="🏋️ ВЫБОР ТРЕНИРОВКИ" 
-                                           Foreground="White" 
+                    <TextBlock Text="ВЫБОР ТРЕНИРОВКИ" 
+                              Foreground="White" 
                               FontSize="24" 
                               FontWeight="Bold"
-                              FontFamily="Segoe UI Black"/>
+                              HorizontalAlignment="Center"/>
                     <TextBlock Text="Выберите тренировку для улучшения навыков" 
                               Foreground="#BDC3C7" 
                               FontSize="12"
-                              FontWeight="SemiBold"/>
+                              HorizontalAlignment="Center"/>
                 </StackPanel>
-
-               
             </Grid>
         </Border>
 
@@ -234,62 +215,50 @@
                         <!-- ПОИСК -->
                         <Border Style="{StaticResource FilterPanelStyle}">
                             <StackPanel>
-                                <TextBlock Text="🔍 ПОИСК ТРЕНИРОВКИ" 
-                                           Foreground="White"/>
+                                <TextBlock Text="ПОИСК ТРЕНИРОВКИ" 
+                                          Foreground="#BDC3C7"
+                                          FontSize="12"
+                                          FontWeight="Bold"
+                                          Margin="0,0,0,8"/>
                                 <TextBox x:Name="SearchTextBox" 
-                                        Background="#2C3E50"
-                                        Foreground="White"
-                                        BorderBrush="#4A6572"
-                                        BorderThickness="1"
-                                        Padding="10,8"
-                                        FontSize="12"
-                                        TextChanged="SearchTextBox_TextChanged">
-                                    <TextBox.Effect>
-                                        <DropShadowEffect BlurRadius="5" Opacity="0.1" ShadowDepth="2"/>
-                                    </TextBox.Effect>
-                                </TextBox>
+                                        Style="{StaticResource SearchTextBoxStyle}"
+                                        TextChanged="SearchTextBox_TextChanged"/>
                             </StackPanel>
                         </Border>
 
                         <!-- КАТЕГОРИИ -->
                         <Border Style="{StaticResource FilterPanelStyle}">
                             <StackPanel>
-                                <TextBlock Text="📂 КАТЕГОРИИ" 
-                                           Foreground="White"/>
+                                <TextBlock Text="КАТЕГОРИИ" 
+                                          Foreground="#BDC3C7"
+                                          FontSize="12"
+                                          FontWeight="Bold"
+                                          Margin="0,0,0,8"/>
                                 <RadioButton x:Name="AllCategoryRadio" 
                                            Content="Все категории" 
                                            GroupName="Category"
-                                           Foreground="White"
-                                           FontSize="12"
-                                           Margin="0,0,0,5"
+                                           Style="{StaticResource RadioButtonStyle}"
                                            IsChecked="True"
                                            Checked="CategoryRadio_Checked"/>
                                 <RadioButton x:Name="TacticsCategoryRadio" 
                                            Content="Тактика" 
                                            GroupName="Category"
-                                           Foreground="White"
-                                           FontSize="12"
-                                           Margin="0,0,0,5"
+                                           Style="{StaticResource RadioButtonStyle}"
                                            Checked="CategoryRadio_Checked"/>
                                 <RadioButton x:Name="OpeningCategoryRadio" 
                                            Content="Дебюты" 
                                            GroupName="Category"
-                                           Foreground="White"
-                                           FontSize="12"
-                                           Margin="0,0,0,5"
+                                           Style="{StaticResource RadioButtonStyle}"
                                            Checked="CategoryRadio_Checked"/>
                                 <RadioButton x:Name="EndgameCategoryRadio" 
                                            Content="Эндшпиль" 
                                            GroupName="Category"
-                                           Foreground="White"
-                                           FontSize="12"
-                                           Margin="0,0,0,5"
+                                           Style="{StaticResource RadioButtonStyle}"
                                            Checked="CategoryRadio_Checked"/>
                                 <RadioButton x:Name="StrategyCategoryRadio" 
                                            Content="Стратегия" 
                                            GroupName="Category"
-                                           Foreground="White"
-                                           FontSize="12"
+                                           Style="{StaticResource RadioButtonStyle}"
                                            Checked="CategoryRadio_Checked"/>
                             </StackPanel>
                         </Border>
@@ -297,36 +266,32 @@
                         <!-- СЛОЖНОСТЬ -->
                         <Border Style="{StaticResource FilterPanelStyle}">
                             <StackPanel>
-                                <TextBlock Text="⚡ СЛОЖНОСТЬ" 
-                                           Foreground="White"/>
+                                <TextBlock Text="СЛОЖНОСТЬ" 
+                                          Foreground="#BDC3C7"
+                                          FontSize="12"
+                                          FontWeight="Bold"
+                                          Margin="0,0,0,8"/>
                                 <CheckBox x:Name="BeginnerCheckBox" 
                                         Content="Новичок" 
-                                        Foreground="White"
-                                        FontSize="12"
-                                        Margin="0,0,0,5"
+                                        Style="{StaticResource CheckBoxStyle}"
                                         IsChecked="True"
                                         Checked="DifficultyCheckBox_Checked"
                                         Unchecked="DifficultyCheckBox_Checked"/>
                                 <CheckBox x:Name="MediumCheckBox" 
                                         Content="Средний" 
-                                        Foreground="White"
-                                        FontSize="12"
-                                        Margin="0,0,0,5"
+                                        Style="{StaticResource CheckBoxStyle}"
                                         IsChecked="True"
                                         Checked="DifficultyCheckBox_Checked"
                                         Unchecked="DifficultyCheckBox_Checked"/>
                                 <CheckBox x:Name="HardCheckBox" 
                                         Content="Сложный" 
-                                        Foreground="White"
-                                        FontSize="12"
-                                        Margin="0,0,0,5"
+                                        Style="{StaticResource CheckBoxStyle}"
                                         IsChecked="True"
                                         Checked="DifficultyCheckBox_Checked"
                                         Unchecked="DifficultyCheckBox_Checked"/>
                                 <CheckBox x:Name="ExpertCheckBox" 
                                         Content="Эксперт" 
-                                        Foreground="White"
-                                        FontSize="12"
+                                        Style="{StaticResource CheckBoxStyle}"
                                         IsChecked="True"
                                         Checked="DifficultyCheckBox_Checked"
                                         Unchecked="DifficultyCheckBox_Checked"/>
@@ -335,7 +300,7 @@
 
                         <!-- КНОПКИ УПРАВЛЕНИЯ -->
                         <StackPanel Margin="0,10,0,0">
-                            <Button Content="🔄 СБРОСИТЬ ФИЛЬТРЫ" 
+                            <Button Content="СБРОСИТЬ ФИЛЬТРЫ" 
                                    Style="{StaticResource ControlButtonStyle}"
                                    Background="#E74C3C"
                                    Height="35"
@@ -350,9 +315,9 @@
             <ScrollViewer Grid.Column="1" 
                          VerticalScrollBarVisibility="Auto"
                          HorizontalScrollBarVisibility="Disabled"
-                         Padding="20">
+                         Padding="20"
+                         Background="#2C3E50">
 
-                <!-- Если есть тренировки -->
                 <ItemsControl x:Name="TrainingsList" 
                             ItemsSource="{Binding FilteredTrainings}">
                     <ItemsControl.ItemsPanel>
@@ -363,7 +328,7 @@
 
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Style="{StaticResource HorizontalTrainingCardStyle}"
+                            <Border Style="{StaticResource TrainingCardStyle}"
                                    MouseDown="TrainingCard_MouseDown"
                                    Tag="{Binding Id}">
                                 <Grid>
@@ -401,7 +366,8 @@
                                                   FontSize="12"
                                                   Foreground="#BDC3C7"
                                                   TextWrapping="Wrap"
-                                                  Margin="0,5,0,0"/>
+                                                  Margin="0,5,0,0"
+                                                  MaxWidth="250"/>
 
                                         <!-- ТЕГИ -->
                                         <WrapPanel Margin="0,8,0,0">
@@ -412,7 +378,9 @@
                                                           FontWeight="Bold"/>
                                             </Border>
 
-                                            <Border Style="{StaticResource CategoryTagStyle}">
+                                            <Border Background="#8E44AD" 
+                                                    CornerRadius="10" 
+                                                    Padding="6,3">
                                                 <TextBlock Text="{Binding Category}" 
                                                           Foreground="White"
                                                           FontSize="10"
@@ -426,9 +394,9 @@
                                                HorizontalAlignment="Right"
                                                VerticalAlignment="Center">
                                         <StackPanel Orientation="Horizontal" 
-                                                   Margin="0,0,0,10">
+                                                   Margin="0,0,0,5">
                                             <TextBlock Text="⏱️"
-                                                      FontSize="14"
+                                                      FontSize="12"
                                                       Foreground="#FFD700"
                                                       Margin="0,0,5,0"/>
                                             <TextBlock Text="{Binding MaxTime, StringFormat={}{0} сек}" 
@@ -438,40 +406,26 @@
 
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="♟️"
-                                                      FontSize="14"
+                                                      FontSize="12"
                                                       Foreground="#FFD700"
                                                       Margin="0,0,5,0"/>
                                             <TextBlock Text="{Binding MaxMoves, StringFormat={}{0} ходов}" 
                                                       FontSize="11"
                                                       Foreground="#BDC3C7"/>
                                         </StackPanel>
-
-                                        <!-- СТАТУС -->
-                                        <Border Background="#27AE60" 
-                                               CornerRadius="8" 
-                                               Padding="6,3"
-                                               Margin="0,10,0,0">
-                                            <TextBlock Text="✓ Пройдено" 
-                                                      Foreground="White"
-                                                      FontSize="10"
-                                                      FontWeight="Bold"/>
-                                        </Border>
                                     </StackPanel>
                                 </Grid>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-
             </ScrollViewer>
         </Grid>
 
         <!-- ФУТЕР -->
         <Border Grid.Row="2" 
                Background="#34495E" 
-               Padding="12"
-               BorderBrush="#4A6572"
-               BorderThickness="0,1,0,0">
+               Padding="12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -480,9 +434,9 @@
 
                 <!-- СТАТУС -->
                 <TextBlock Grid.Column="0" 
-                          Text="🎯 Выберите тренировку кликом мыши" 
+                          Text="Выберите тренировку кликом мыши" 
                           Foreground="#BDC3C7" 
-                          FontSize="11"
+                          FontSize="12"
                           HorizontalAlignment="Center"/>
 
                 <!-- КОЛИЧЕСТВО -->
@@ -490,12 +444,12 @@
                            Orientation="Horizontal">
                     <TextBlock Text="Найдено: " 
                               Foreground="#BDC3C7" 
-                              FontSize="11"/>
-                    <TextBlock Text="0" 
-                                           Foreground="White"
-                              FontSize="11"
-                              FontWeight="Bold"
-                              Margin="5,0,0,0"/>
+                              FontSize="12"/>
+                    <TextBlock x:Name="FoundCountText" 
+                              Text="0" 
+                              Foreground="White"
+                              FontSize="12"
+                              FontWeight="Bold"/>
                 </StackPanel>
             </Grid>
         </Border>

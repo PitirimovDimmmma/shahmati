@@ -79,19 +79,51 @@ namespace shahmati.Views
             }
         }
 
+        // ДОБАВЛЯЕМ ОБРАБОТЧИК ДЛЯ КНОПКИ НАЗАД
+        private void BackButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Проверяем, завершена ли тренировка
+                if (!_viewModel.IsTrainingCompleted)
+                {
+                    var result = MessageBox.Show(
+                        "Тренировка не завершена. Вы уверены, что хотите выйти?",
+                        "Подтверждение выхода",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+
+                    if (result != MessageBoxResult.Yes)
+                    {
+                        return;
+                    }
+                }
+
+                // Возвращаемся к окну выбора тренировок
+                var trainingSelectionWindow = new TrainingSelectionWindow(_userId);
+                trainingSelectionWindow.Show();
+
+                // Закрываем текущее окно
+                Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при возврате: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         // Обработчики событий кнопок
         private async void NextButton_Click(object sender, RoutedEventArgs e)
         {
             await _viewModel.NextPosition();
         }
 
-
         private void ShowSolutionButton_Click(object sender, RoutedEventArgs e)
         {
             // Изменено: вызываем метод для показа полного решения
             _viewModel.ShowFullSolution();
         }
-
 
         private void HintButton_Click(object sender, RoutedEventArgs e)
         {

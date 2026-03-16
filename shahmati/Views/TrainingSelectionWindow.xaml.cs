@@ -54,6 +54,10 @@ namespace shahmati.Views
                 SearchTextBox.Text = "Поиск тренировок...";
                 SearchTextBox.Foreground = Brushes.Gray;
                 SearchTextBox.FontStyle = FontStyles.Italic;
+
+                // Добавляем обработчики для плейсхолдера
+                SearchTextBox.GotFocus += SearchTextBox_GotFocus;
+                SearchTextBox.LostFocus += SearchTextBox_LostFocus;
             }
         }
 
@@ -89,20 +93,30 @@ namespace shahmati.Views
             if (TrainingsList != null)
             {
                 TrainingsList.ItemsSource = _viewModel.FilteredTrainings;
+
+                // Обновляем счетчик найденных тренировок
+                if (FoundCountText != null)
+                {
+                    FoundCountText.Text = _viewModel.FilteredTrainings.Count.ToString();
+                }
             }
         }
 
-        // Обработчики для кнопок навигации
+        // ИСПРАВЛЕННЫЙ обработчик для кнопки назад
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
+                // Создаем и открываем DashboardWindow
+                DashboardWindow dashboardWindow = new DashboardWindow(_userId);
+                dashboardWindow.Show();
+
                 // Закрываем текущее окно
                 this.Close();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка",
+                MessageBox.Show($"Ошибка при возврате на главную: {ex.Message}", "Ошибка",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
