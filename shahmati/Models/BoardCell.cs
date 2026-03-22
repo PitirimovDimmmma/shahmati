@@ -1,30 +1,84 @@
-﻿namespace shahmati.models
+﻿using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
+namespace shahmati.models
 {
-    public class BoardCell
+    public class BoardCell : INotifyPropertyChanged
     {
         public Position Position { get; set; }
-        public ChessPiece Piece { get; set; }
+
+        private ChessPiece _piece;
+        public ChessPiece Piece
+        {
+            get => _piece;
+            set
+            {
+                if (_piece != value)
+                {
+                    _piece = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(HasPiece));
+                    OnPropertyChanged(nameof(PieceImagePath));
+                }
+            }
+        }
+
         public string BackgroundColor { get; set; }
-        public bool IsSelected { get; set; }
-        public bool IsPossibleMove { get; set; }
+
+        private bool _isSelected;
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected != value)
+                {
+                    _isSelected = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        private bool _isPossibleMove;
+        public bool IsPossibleMove
+        {
+            get => _isPossibleMove;
+            set
+            {
+                if (_isPossibleMove != value)
+                {
+                    _isPossibleMove = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public bool IsAnimating { get; set; }
         public string AnimationColor { get; set; }
+
+        public bool HasPiece => _piece != null;
+
+        public string PieceImagePath => _piece?.ImagePath ?? string.Empty;
 
         public BoardCell(int row, int col, ChessPiece piece = null)
         {
             Position = new Position(row, col);
-            Piece = piece;
+            _piece = piece;
 
-            // НОВЫЕ ЦВЕТА: слоновая кость и светло-коричневый
             BackgroundColor = (row + col) % 2 == 0 ?
                 "#F0E0B0" : "#C19A6B";
 
-            IsSelected = false;
-            IsPossibleMove = false;
+            _isSelected = false;
+            _isPossibleMove = false;
             IsAnimating = false;
-            AnimationColor = "#90EE90"; // Нежный зеленый для анимации
+            AnimationColor = "#90EE90";
         }
 
-        public bool HasPiece => Piece != null;
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        public void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
     }
 }

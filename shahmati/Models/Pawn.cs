@@ -14,6 +14,7 @@ namespace shahmati.models
         {
             var moves = new List<Position>();
             int direction = Color == PieceColor.White ? -1 : 1;
+            int startRow = Color == PieceColor.White ? 6 : 1;
 
             // Ход вперед на одну клетку
             var oneForward = new Position(currentPosition.Row + direction, currentPosition.Column);
@@ -29,10 +30,8 @@ namespace shahmati.models
                 }
             }
 
-            // Взятие по диагонали
+            // Взятие по диагонали (влево)
             var captureLeft = new Position(currentPosition.Row + direction, currentPosition.Column - 1);
-            var captureRight = new Position(currentPosition.Row + direction, currentPosition.Column + 1);
-
             if (captureLeft.IsValid())
             {
                 var piece = board.GetPieceAt(captureLeft);
@@ -40,6 +39,8 @@ namespace shahmati.models
                     moves.Add(captureLeft);
             }
 
+            // Взятие по диагонали (вправо)
+            var captureRight = new Position(currentPosition.Row + direction, currentPosition.Column + 1);
             if (captureRight.IsValid())
             {
                 var piece = board.GetPieceAt(captureRight);

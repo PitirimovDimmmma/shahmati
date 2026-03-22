@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 
 namespace shahmati.models
 {
-    public class Board
+    public class Board : INotifyPropertyChanged
     {
         public ChessPiece[,] Squares { get; private set; }
         public BoardCell[,] Cells { get; private set; }
@@ -25,6 +26,7 @@ namespace shahmati.models
         }
 
         public event Action<Position, Position> PieceMoved;
+        public event PropertyChangedEventHandler PropertyChanged;
 
         public Board()
         {
@@ -76,12 +78,10 @@ namespace shahmati.models
                 Cells[6, col].Piece = new Pawn(PieceColor.White);
             }
 
-            // Обновляем Squares для обратной совместимости
             UpdateSquaresFromCells();
         }
 
-        // ИЗМЕНИТЕ ЭТОТ МЕТОД С private НА internal
-        internal void UpdateSquaresFromCells()
+        public void UpdateSquaresFromCells()
         {
             for (int row = 0; row < 8; row++)
             {
@@ -90,6 +90,13 @@ namespace shahmati.models
                     Squares[row, col] = Cells[row, col].Piece;
                 }
             }
+        }
+
+        public void ForceUpdate()
+        {
+            UpdateSquaresFromCells();
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CellsFlat)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Squares)));
         }
 
         public ChessPiece GetPieceAt(Position position)
@@ -103,14 +110,15 @@ namespace shahmati.models
             var piece = GetPieceAt(from);
             if (piece == null) return;
 
+            Console.WriteLine($"MovePiece: {GetSquareNotation(from)} -> {GetSquareNotation(to)}, Piece: {piece.Type} {piece.Color}");
+
             // Обновляем Cells
             Cells[to.Row, to.Column].Piece = piece;
             Cells[from.Row, from.Column].Piece = null;
             piece.HasMoved = true;
 
-            // Обновляем Squares
             UpdateSquaresFromCells();
-
+            ForceUpdate();
             PieceMoved?.Invoke(from, to);
         }
 
@@ -121,6 +129,14 @@ namespace shahmati.models
 
             var possibleMoves = piece.GetPossibleMoves(from, this);
             return possibleMoves.Contains(to);
+        }
+
+        // Вспомогательный метод для отладки
+        private string GetSquareNotation(Position position)
+        {
+            char file = (char)('a' + position.Column);
+            int rank = 8 - position.Row;
+            return $"{file}{rank}";
         }
     }
 }

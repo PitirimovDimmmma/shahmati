@@ -27,7 +27,6 @@ namespace shahmati
         private string _currentDifficulty = "Medium";
         private string _opponentName = "Stockfish AI";
 
-        // Таймеры
         private DispatcherTimer _whiteTimer;
         private DispatcherTimer _blackTimer;
         private TimeSpan _whiteTimeLeft;
@@ -43,16 +42,19 @@ namespace shahmati
             _viewModel = new MainViewModel(userId);
             DataContext = _viewModel;
 
-            // ПОДПИСКА НА СОБЫТИЯ VIEWMODEL
             _viewModel.PlayerTurnChanged += OnPlayerTurnChanged;
             _viewModel.AIMoveStarted += OnAIMoveStarted;
             _viewModel.AIMoveCompleted += OnAIMoveCompleted;
             _viewModel.GameFinished += OnGameFinishedHandler;
+            _viewModel.GameManager.MoveMade += OnMoveMade;
 
-            // Инициализация таймеров
             InitializeChessTimers();
 
-            Loaded += async (s, e) => await InitializeGameAsync();
+            Loaded += async (s, e) =>
+            {
+                await InitializeGameAsync();
+                await StartGameManually();
+            };
         }
 
         private async Task InitializeGameAsync()
@@ -61,10 +63,8 @@ namespace shahmati
             {
                 ShowLoadingIndicator("Загрузка данных пользователя...");
 
-                // Загружаем пользователя
                 await LoadUserDataAsync();
 
-                // Проверяем API
                 bool isConnected = await _apiService.TestConnectionAsync();
                 if (!isConnected)
                 {
@@ -73,9 +73,6 @@ namespace shahmati
                 }
 
                 HideLoadingIndicator();
-
-                // Автоматически начинаем игру
-                await StartNewGameWithAIAsync();
             }
             catch (Exception ex)
             {
@@ -84,6 +81,18 @@ namespace shahmati
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+        private void OnMoveMade(string move)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                Console.WriteLine($"=== MoveMade: {move} ===");
+                ForceRedrawBoard();
+            });
+        }
+        public async Task StartGameManually()
+        {
+            await StartNewGameWithAIAsync();
+        }
 
         private async Task StartNewGameWithAIAsync()
         {
@@ -91,34 +100,23 @@ namespace shahmati
             {
                 ShowLoadingIndicator("Создание игры с Stockfish AI...");
 
-                // Инициализируем GameManager с API
                 _viewModel.GameManager.InitializeApiService(_apiService);
+                _viewModel.SetUserIsWhite(true);
+                _viewModel.Difficulty = _currentDifficulty;
 
-                // Устанавливаем цвет игрока
-                _viewModel.SetUserIsWhite(true); // Пользователь играет белыми
-                _viewModel.Difficulty = _currentDifficulty; // Устанавливаем сложность
-
-                // Запускаем новую игру - БЕЗ ПАРАМЕТРОВ
-                await _viewModel.StartNewGameAsync();
-
-                // Создаем игру на сервере
                 _currentGameId = await _viewModel.GameManager.CreateAIGameOnServerAsync(
                     _userId,
                     _currentDifficulty,
-                    "White" // Пользователь играет белыми
+                    "White"
                 );
+
+                await _viewModel.StartNewGameAsync();
 
                 Console.WriteLine($"✅ Игра создана с ID: {_currentGameId}");
 
                 HideLoadingIndicator();
-
-                // Показываем уведомление
                 ShowGameStartNotification();
-
-                // Запускаем таймеры
                 StartGameTimers();
-
-                // Обновляем UI
                 UpdateUIForNewGame();
             }
             catch (Exception ex)
@@ -128,6 +126,7 @@ namespace shahmati
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
         private void UpdateUIForNewGame()
         {
             MovesCountText.Text = "0";
@@ -136,17 +135,68 @@ namespace shahmati
             OpponentColorText.Text = "ЧЕРНЫЕ (Stockfish AI)";
             GameInfoText.Text = $"Противник: Stockfish AI\nУровень: {GetDifficultyName(_currentDifficulty)}";
         }
+        private async Task UpdateStatusWithFadeAsync(string newText, string newIcon)
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                var fadeOut = new DoubleAnimation
+                {
+                    From = 1,
+                    To = 0,
+                    Duration = TimeSpan.FromSeconds(0.2)
+                };
 
+                fadeOut.Completed += (s, e) =>
+                {
+                    StatusText.Text = newText;
+                    StatusIcon.Text = newIcon;
+
+                    var fadeIn = new DoubleAnimation
+                    {
+                        From = 0,
+                        To = 1,
+                        Duration = TimeSpan.FromSeconds(0.2)
+                    };
+                    StatusText.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+                    StatusIcon.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+                };
+
+                StatusText.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+                StatusIcon.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+            });
+        }
         private void ShowGameStartNotification()
         {
             GameStartNotification.Visibility = Visibility.Visible;
+
             var fadeIn = new DoubleAnimation
             {
                 From = 0,
                 To = 1,
-                Duration = TimeSpan.FromSeconds(0.5)
+                Duration = TimeSpan.FromSeconds(0.5),
+                EasingFunction = new QuadraticEase()
             };
             GameStartNotification.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+
+            // Автоматическое исчезновение через 3 секунды
+            var timer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(3)
+            };
+            timer.Tick += (s, e) =>
+            {
+                timer.Stop();
+                var fadeOut = new DoubleAnimation
+                {
+                    From = 1,
+                    To = 0,
+                    Duration = TimeSpan.FromSeconds(0.5),
+                    EasingFunction = new QuadraticEase()
+                };
+                fadeOut.Completed += (s2, e2) => GameStartNotification.Visibility = Visibility.Collapsed;
+                GameStartNotification.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+            };
+            timer.Start();
         }
 
         private string GetDifficultyName(string difficulty)
@@ -162,7 +212,6 @@ namespace shahmati
             };
         }
 
-        // ===== ЗАГРУЗКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ =====
         private async Task LoadUserDataAsync()
         {
             try
@@ -240,7 +289,6 @@ namespace shahmati
             }
         }
 
-        // ===== ТАЙМЕРЫ =====
         private void InitializeChessTimers()
         {
             _whiteTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
@@ -260,7 +308,12 @@ namespace shahmati
         {
             _gameStartTime = DateTime.Now;
             _gameTimer.Start();
+
+            // Белые ходят первыми - запускаем таймер белых
             _whiteTimer.Start();
+            _blackTimer.Stop();
+
+            Console.WriteLine("⏱️ Игра начата, запущен таймер белых");
         }
 
         private void StopAllTimers()
@@ -310,22 +363,93 @@ namespace shahmati
             BlackTimerText.Text = $"{(int)_blackTimeLeft.TotalMinutes:00}:{_blackTimeLeft.Seconds:00}";
         }
 
-        // ===== ОБРАБОТЧИКИ СОБЫТИЙ ИЗ VIEWMODEL =====
         public void OnPlayerTurnChanged(string playerColor)
         {
             Dispatcher.Invoke(() =>
             {
+                Console.WriteLine($"=== OnPlayerTurnChanged: {playerColor} ===");
                 UpdateCurrentPlayer(playerColor);
+
+                if (playerColor.Contains("Белые") || playerColor.Contains("Ваш ход"))
+                {
+                    _blackTimer.Stop();
+                    _whiteTimer.Start();
+                    Console.WriteLine("⏱️ Таймер белых запущен, черных остановлен");
+                }
+                else
+                {
+                    _whiteTimer.Stop();
+                    _blackTimer.Start();
+                    Console.WriteLine("⏱️ Таймер черных запущен, белых остановлен");
+                }
             });
         }
-
         public void OnAIMoveStarted(string message)
         {
             Dispatcher.Invoke(() =>
             {
+                Console.WriteLine("=== OnAIMoveStarted: ИИ начинает думать ===");
+
                 AITurnIndicator.Visibility = Visibility.Visible;
-                StatusText.Text = "Stockfish AI думает...";
+                StatusText.Text = "🤖 Stockfish AI анализирует позицию...";
                 StatusIcon.Text = "🤖";
+
+                // Останавливаем таймер пользователя, запускаем таймер ИИ
+                _whiteTimer.Stop();
+                _blackTimer.Start();
+
+                // Обновляем отображение
+                if (CurrentPlayerText != null)
+                {
+                    CurrentPlayerText.Text = "ХОД ИИ (ЧЕРНЫЕ)";
+                    CurrentPlayerText.Foreground = Brushes.White;
+                    if (CurrentPlayerText.Parent is Border border)
+                        border.Background = new SolidColorBrush(Color.FromRgb(139, 0, 0));
+                }
+
+                // ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ ДОСКУ ДЛЯ НАГЛЯДНОСТИ
+                ForceRedrawBoard();
+
+                Console.WriteLine("🎲 Stockfish AI начал поиск хода");
+            });
+        }
+
+        private void ForceRedrawBoard()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (_viewModel?.GameManager?.Board != null)
+                {
+                    // Способ 1: Принудительно обновляем ItemsControl
+                    var boardItemsControl = FindName("BoardItemsControl") as ItemsControl;
+                    if (boardItemsControl != null)
+                    {
+                        boardItemsControl.ItemsSource = null;
+                        boardItemsControl.ItemsSource = _viewModel.GameManager.Board.CellsFlat;
+                    }
+
+                    // Способ 2: Обновляем каждую клетку
+                    for (int row = 0; row < 8; row++)
+                    {
+                        for (int col = 0; col < 8; col++)
+                        {
+                            var cell = _viewModel.GameManager.Board.Cells[row, col];
+                            cell.OnPropertyChanged(nameof(BoardCell.Piece));
+                            cell.OnPropertyChanged(nameof(BoardCell.PieceImagePath));
+                        }
+                    }
+
+                    // Способ 3: Обновляем через ViewModel
+                    _viewModel.GameManager.Board.ForceUpdate();
+                    _viewModel.ForceBoardUpdate();
+
+                    // Способ 4: Принудительно обновляем DataContext
+                    var temp = DataContext;
+                    DataContext = null;
+                    DataContext = temp;
+
+                    Console.WriteLine("🔄 Принудительная перерисовка доски выполнена");
+                }
             });
         }
 
@@ -333,16 +457,67 @@ namespace shahmati
         {
             Dispatcher.Invoke(() =>
             {
+                Console.WriteLine($"=== OnAIMoveCompleted: {move} ===");
+
+                // Скрываем индикатор ИИ
                 AITurnIndicator.Visibility = Visibility.Collapsed;
-                StatusText.Text = _viewModel?.GameManager?.UserIsWhite == true
-                    ? "Ваш ход (Белые)"
-                    : "Ход ИИ";
-                StatusIcon.Text = _viewModel?.GameManager?.CurrentPlayer == PieceColor.White ? "♔" : "♚";
+
+                // Обновляем статус
+                if (_viewModel?.GameManager?.UserIsWhite == true)
+                {
+                    StatusText.Text = "Ваш ход (Белые)";
+                    StatusIcon.Text = "♔";
+                }
+                else
+                {
+                    StatusText.Text = "Ваш ход (Черные)";
+                    StatusIcon.Text = "♚";
+                }
 
                 // Обновляем счетчик ходов
                 if (_viewModel?.GameManager?.MoveHistory != null)
                 {
                     MovesCountText.Text = _viewModel.GameManager.MoveHistory.Count.ToString();
+                }
+
+                // ПРИНУДИТЕЛЬНАЯ ПЕРЕРИСОВКА ДОСКИ
+                ForceRedrawBoard();
+
+                // Обновляем отображение текущего игрока
+                if (CurrentPlayerText != null)
+                {
+                    CurrentPlayerText.Text = "ВАШ ХОД (БЕЛЫЕ)";
+                    CurrentPlayerText.Foreground = Brushes.White;
+                    if (CurrentPlayerText.Parent is Border border)
+                        border.Background = new SolidColorBrush(Color.FromRgb(0, 100, 0));
+                }
+
+                Console.WriteLine($"✅ Ход ИИ завершен: {move}, доска должна обновиться");
+            });
+        }
+
+        // Добавьте этот метод в MainWindow.xaml.cs
+        private void ForceBoardRedraw()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (_viewModel?.GameManager?.Board != null)
+                {
+                    // Принудительно обновляем каждую клетку
+                    for (int row = 0; row < 8; row++)
+                    {
+                        for (int col = 0; col < 8; col++)
+                        {
+                            var cell = _viewModel.GameManager.Board.Cells[row, col];
+                            cell.OnPropertyChanged(nameof(BoardCell.Piece));
+                            cell.OnPropertyChanged(nameof(BoardCell.PieceImagePath));
+                        }
+                    }
+
+                    _viewModel.GameManager.Board.ForceUpdate();
+                    _viewModel.ForceBoardUpdate();
+
+                    Console.WriteLine("🔄 Принудительная перерисовка доски");
                 }
             });
         }
@@ -371,7 +546,6 @@ namespace shahmati
                 StatusText.Text = result;
                 StatusIcon.Text = "🏁";
 
-                // Обновляем рейтинг в UI
                 _ = UpdateRatingUIAsync();
             });
         }
@@ -389,8 +563,9 @@ namespace shahmati
                     if (CurrentPlayerText.Parent is Border border)
                         border.Background = new SolidColorBrush(Color.FromRgb(0, 100, 0));
 
-                    _whiteTimer.Start();
+                    // Останавливаем таймер черных, запускаем белых
                     _blackTimer.Stop();
+                    _whiteTimer.Start();
                 }
                 else
                 {
@@ -399,13 +574,12 @@ namespace shahmati
                     if (CurrentPlayerText.Parent is Border border)
                         border.Background = new SolidColorBrush(Color.FromRgb(139, 0, 0));
 
-                    _blackTimer.Start();
+                    // Останавливаем таймер белых, запускаем черных
                     _whiteTimer.Stop();
+                    _blackTimer.Start();
                 }
             });
         }
-
-        public void SwitchTurn(string newPlayer) => UpdateCurrentPlayer(newPlayer);
 
         private async Task UpdateRatingUIAsync()
         {
@@ -421,7 +595,6 @@ namespace shahmati
             catch { }
         }
 
-        // ===== ПОКАЗ/СКРЫТИЕ ИНДИКАТОРА =====
         private void ShowLoadingIndicator(string message)
         {
             if (_loadingPanel == null) CreateLoadingIndicator();
@@ -475,6 +648,12 @@ namespace shahmati
 
         private async void NewGameButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_viewModel.IsGameStarting)
+            {
+                Console.WriteLine("Игра уже создается, подождите...");
+                return;
+            }
+
             string mode = _viewModel?.GameMode == "Человек vs Компьютер" ? "против Stockfish AI" : "с другом";
             var result = MessageBox.Show($"Начать новую игру {mode}?",
                 "Новая игра", MessageBoxButton.YesNo, MessageBoxImage.Question);
@@ -485,6 +664,8 @@ namespace shahmati
                 _whiteTimeLeft = TimeSpan.FromMinutes(10);
                 _blackTimeLeft = TimeSpan.FromMinutes(10);
                 UpdateTimerDisplays();
+
+                _currentGameId = 0;
 
                 if (_viewModel?.GameMode == "Человек vs Компьютер")
                 {
@@ -510,7 +691,6 @@ namespace shahmati
                 ShowGameStartNotification();
                 StartGameTimers();
 
-                // Обновляем UI
                 MovesCountText.Text = "0";
                 StatusText.Text = "Игра начата. Белые ходят первыми.";
                 StatusIcon.Text = "♔";
@@ -592,20 +772,16 @@ namespace shahmati
                 _viewModel.EnableMoveHighlighting = true;
         }
 
-
         private void VsAIToggle_Checked(object sender, RoutedEventArgs e)
         {
-            // Режим VS ИИ
             if (_viewModel != null)
             {
                 _viewModel.GameMode = "Человек vs Компьютер";
                 VsAIText.Foreground = new SolidColorBrush(Colors.White);
                 VsHumanText.Foreground = new SolidColorBrush(Colors.LightGray);
 
-                // Обновляем статус
                 StatusText.Text = "Режим: Игра против ИИ";
 
-                // Если игра уже идет, предложим начать новую
                 if (_viewModel.GameManager?.IsGameInProgress == true)
                 {
                     var result = MessageBox.Show("Сменить режим игры? Текущая игра будет завершена.",
@@ -620,18 +796,15 @@ namespace shahmati
 
         private void VsAIToggle_Unchecked(object sender, RoutedEventArgs e)
         {
-            // Режим VS ЧЕЛОВЕК
             if (_viewModel != null)
             {
                 _viewModel.GameMode = "Человек vs Человек";
                 VsHumanText.Foreground = new SolidColorBrush(Colors.White);
                 VsAIText.Foreground = new SolidColorBrush(Colors.LightGray);
 
-                // Обновляем статус
                 StatusText.Text = "Режим: Игра против человека";
                 OpponentColorText.Text = "ЧЕРНЫЕ";
 
-                // Если игра уже идет, предложим начать новую
                 if (_viewModel.GameManager?.IsGameInProgress == true)
                 {
                     var result = MessageBox.Show("Сменить режим игры? Текущая игра будет завершена.",
@@ -649,6 +822,7 @@ namespace shahmati
             if (_viewModel != null)
                 _viewModel.EnableMoveHighlighting = false;
         }
+
         private void VsAI_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             VsAIToggle.IsChecked = true;
@@ -658,12 +832,11 @@ namespace shahmati
         {
             VsAIToggle.IsChecked = false;
         }
+
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            // Очистка ресурсов
         }
 
-        // Элементы UI - объявляем их здесь для доступа
         private Border _loadingPanel;
         private ProgressBar _loadingSpinner;
         private TextBlock _loadingText;

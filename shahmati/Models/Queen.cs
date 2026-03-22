@@ -15,8 +15,8 @@ namespace shahmati.models
             var moves = new List<Position>();
 
             int[,] directions = {
-                {1, 0}, {-1, 0}, {0, 1}, {0, -1},
-                {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
+                {1, 0}, {-1, 0}, {0, 1}, {0, -1},  // Вертикаль и горизонталь
+                {1, 1}, {1, -1}, {-1, 1}, {-1, -1} // Диагонали
             };
 
             for (int d = 0; d < directions.GetLength(0); d++)

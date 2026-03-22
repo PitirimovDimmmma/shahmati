@@ -31,7 +31,6 @@ namespace shahmati.models
 
         public static Position Invalid => new Position(-1, -1);
 
-        // Добавьте этот метод прямо в структуру (не внутри вложенного класса)
         public static Position FromString(string square)
         {
             if (string.IsNullOrEmpty(square) || square.Length < 2)

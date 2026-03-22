@@ -47,8 +47,8 @@ namespace shahmati.ViewModels
         private bool _isGameActive = false;
         private bool _userIsWhite = true;
         private bool _userIsBlack = false;
+        private bool _isGameStarting = false;
 
-        // Событие для уведомления MainWindow о смене хода
         public event Action<string> PlayerTurnChanged;
         public event Action<string> AIMoveStarted;
         public event Action<string> AIMoveCompleted;
@@ -61,19 +61,16 @@ namespace shahmati.ViewModels
             _selectedPosition = Position.Invalid;
             _apiService = new ApiService();
 
-            // ИНИЦИАЛИЗАЦИЯ API В GAMEMANAGER
             _gameManager.InitializeApiService(_apiService);
 
             InitializeAnimationTimer();
 
-            // ИСПРАВЛЕНО: используем асинхронный метод
             StartNewGameCommand = new RelayCommand(async () => await StartNewGameAsync());
             CellClickCommand = new RelayCommand<Position>(HandleCellClick);
-            ResignCommand = new RelayCommand(async () => await ResignAsync()); // ДОБАВЛЕНО
+            ResignCommand = new RelayCommand(async () => await ResignAsync());
 
             _gameManager.PropertyChanged += GameManager_PropertyChanged;
 
-            // ИСПРАВЛЕНО: перенаправляем события через ViewModel
             _gameManager.AIMoveStarted += (msg) => AIMoveStarted?.Invoke(msg);
             _gameManager.AIMoveCompleted += (move) => AIMoveCompleted?.Invoke(move);
             _gameManager.GameFinished += (result) => GameFinished?.Invoke(result);
@@ -94,8 +91,8 @@ namespace shahmati.ViewModels
         {
         }
 
-        // Публичное свойство для доступа к GameManager
         public GameManager GameManager => _gameManager;
+        public bool IsGameStarting => _isGameStarting;
 
         public Board Board
         {
@@ -300,19 +297,15 @@ namespace shahmati.ViewModels
         public double AnimationProgress => _animationProgress;
         public bool IsAnimating => _animationTimer?.IsEnabled ?? false;
 
-        // ЗАМЕНИТЕ существующий метод TestAIConnection в MainViewModel.cs на этот:
-
         public async Task TestAIConnection()
         {
             try
             {
                 Console.WriteLine("=== ТЕСТ ПОДКЛЮЧЕНИЯ К ИИ ===");
 
-                // Тест 1: Проверка через ApiService
                 var isConnected = await _apiService.TestConnectionAsync();
                 Console.WriteLine($"Тест 1 - Общее подключение к API: {(isConnected ? "✅" : "❌")}");
 
-                // Тест 2: Проверка ChessAI endpoint
                 try
                 {
                     var testResponse = await _apiService.GetAIDifficultiesAsync();
@@ -323,7 +316,6 @@ namespace shahmati.ViewModels
                     Console.WriteLine($"Тест 2 - Ошибка: {ex.Message}");
                 }
 
-                // Тест 3: Создание тестовой игры
                 if (_currentUserId > 0)
                 {
                     var game = await _apiService.CreateAIGameAsync(_currentUserId, "Easy", "White");
@@ -331,7 +323,6 @@ namespace shahmati.ViewModels
                     {
                         Console.WriteLine($"Тест 3 - Создание игры: ✅ (GameId={game.GameId})");
 
-                        // Тест 4: Тестовый ход
                         var moveResult = await _apiService.PlayAgainstAIAsync(game.GameId, "e2e4");
                         if (moveResult?.Success == true)
                         {
@@ -365,9 +356,12 @@ namespace shahmati.ViewModels
                                MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-        // ===== МЕТОД НОВОЙ ИГРЫ =====
+
         public async Task StartNewGameAsync()
         {
+            if (_isGameStarting) return;
+            _isGameStarting = true;
+
             try
             {
                 Console.WriteLine($"=== НАЧАЛО НОВОЙ ИГРЫ ===");
@@ -378,9 +372,8 @@ namespace shahmati.ViewModels
 
                 _isGameActive = true;
 
-                // Начинаем игру с выбранным режимом
                 await _gameManager.StartNewGameAsync(
-                    gameMode: _gameMode,  // Используем текущий режим из переключателя
+                    gameMode: _gameMode,
                     difficulty: _difficulty,
                     userIsWhite: _userIsWhite
                 );
@@ -398,8 +391,7 @@ namespace shahmati.ViewModels
                     CurrentPlayerColor = "Черные";
                 }
 
-                // Создаем игру на сервере только для режима с ИИ
-                if (_gameMode == "Человек vs Компьютер" && _currentUserId > 0)
+                if (_gameMode == "Человек vs Компьютер" && _currentUserId > 0 && _gameManager != null)
                 {
                     Console.WriteLine($"Создание игры на сервере...");
                     int gameId = await _gameManager.CreateAIGameOnServerAsync(
@@ -422,16 +414,18 @@ namespace shahmati.ViewModels
                     Console.WriteLine($"⚠️ Игра без сервера (режим: {_gameMode})");
                 }
 
-                // Уведомляем через события вместо прямого вызова
                 PlayerTurnChanged?.Invoke(CurrentPlayerColor);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Ошибка при создании игры: {ex.Message}");
             }
+            finally
+            {
+                _isGameStarting = false;
+            }
         }
 
-        // СТАРЫЙ МЕТОД - больше не используется
         [Obsolete("Используйте StartNewGameAsync()")]
         public void StartNewGame()
         {
@@ -439,7 +433,6 @@ namespace shahmati.ViewModels
             _ = StartNewGameAsync();
         }
 
-        // ===== МЕТОД СДАЧИ =====
         public async Task ResignAsync()
         {
             if (_gameManager != null && _isGameActive)
@@ -455,13 +448,10 @@ namespace shahmati.ViewModels
 
             var clickedPiece = Board.GetPieceAt(position);
 
-            // Если кликаем на фигуру
             if (clickedPiece != null)
             {
-                // Проверяем, что это фигура текущего игрока
                 if (clickedPiece.Color == _gameManager?.CurrentPlayer)
                 {
-                    // В режиме с ИИ, если сейчас ход ИИ - нельзя выбирать фигуры
                     if (_gameMode == "Человек vs Компьютер" && IsAITurn)
                         return;
 
@@ -470,7 +460,6 @@ namespace shahmati.ViewModels
                 return;
             }
 
-            // Если фигура выбрана и кликаем на клетку для хода
             if (SelectedPosition.IsValid())
             {
                 var selectedPiece = Board.GetPieceAt(SelectedPosition);
@@ -480,6 +469,7 @@ namespace shahmati.ViewModels
                 }
             }
         }
+
         private void SelectPiece(Position position)
         {
             ResetSelection();
@@ -522,7 +512,6 @@ namespace shahmati.ViewModels
             SelectedPosition = Position.Invalid;
         }
 
-        // ===== МЕТОД ХОДА =====
         private async Task<bool> TryMakeMove(Position from, Position to)
         {
             Console.WriteLine($"=== ПОПЫТКА ХОДА ===");
@@ -548,10 +537,7 @@ namespace shahmati.ViewModels
             {
                 StartAnimation(from, to);
                 ResetSelection();
-
-                // Уведомляем через события вместо прямого вызова
                 PlayerTurnChanged?.Invoke(CurrentPlayerColor);
-
                 return true;
             }
             else
@@ -590,7 +576,6 @@ namespace shahmati.ViewModels
             OnPropertyChanged(nameof(Board));
         }
 
-        // ===== МЕТОДЫ ДЛЯ РАБОТЫ С API =====
         public async Task<bool> CheckApiConnection()
         {
             return await _apiService.TestConnectionAsync();
@@ -635,7 +620,6 @@ namespace shahmati.ViewModels
             Console.WriteLine($"Выбрана игра: {gameId}");
         }
 
-        // ===== ВСПОМОГАТЕЛЬНЫЙ МЕТОД =====
         private string GetSquareNotation(Position position)
         {
             char file = (char)('a' + position.Column);
@@ -643,7 +627,6 @@ namespace shahmati.ViewModels
             return $"{file}{rank}";
         }
 
-        // ===== АНИМАЦИЯ =====
         private void InitializeAnimationTimer()
         {
             _animationTimer = new DispatcherTimer();
@@ -688,10 +671,8 @@ namespace shahmati.ViewModels
 
         private void PlayMoveSound()
         {
-            // System.Media.SystemSounds.Beep.Play();
         }
 
-        // ===== ОБРАБОТЧИК ИЗМЕНЕНИЙ GAMEMANAGER =====
         private void GameManager_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (_gameManager == null) return;
@@ -714,10 +695,53 @@ namespace shahmati.ViewModels
             }
         }
 
+        public void ForceBoardUpdate()
+        {
+            if (GameManager?.Board != null)
+            {
+                GameManager.Board.ForceUpdate();
+                OnPropertyChanged(nameof(GameManager));
+                OnPropertyChanged(nameof(GameManager.Board));
+                OnPropertyChanged(nameof(GameManager.Board.CellsFlat));
+                OnPropertyChanged(nameof(Board));
+                OnPropertyChanged(nameof(Board.CellsFlat));
+
+                Console.WriteLine("✅ Принудительное обновление доски выполнено");
+            }
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
-        protected void OnPropertyChanged(string propertyName = null)
+        public void OnPropertyChanged(string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+        // Добавьте этот метод в конец класса MainViewModel (перед последней скобкой)
+
+        public void RefreshBoard()
+        {
+            if (GameManager?.Board != null)
+            {
+                GameManager.Board.ForceUpdate();
+                OnPropertyChanged(nameof(GameManager));
+                OnPropertyChanged(nameof(GameManager.Board));
+                OnPropertyChanged(nameof(GameManager.Board.CellsFlat));
+                OnPropertyChanged(nameof(Board));
+                OnPropertyChanged(nameof(Board.CellsFlat));
+
+                // Обновляем каждую клетку
+                for (int row = 0; row < 8; row++)
+                {
+                    for (int col = 0; col < 8; col++)
+                    {
+                        var cell = GameManager.Board.Cells[row, col];
+                        cell.OnPropertyChanged(nameof(BoardCell.Piece));
+                        cell.OnPropertyChanged(nameof(BoardCell.PieceImagePath));
+                    }
+                }
+
+                Console.WriteLine("🔄 Доска обновлена через MainViewModel");
+            }
+        }
     }
+
 }

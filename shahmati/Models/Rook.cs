@@ -16,7 +16,7 @@ namespace shahmati.models
 
             int[] directions = { -1, 1 };
 
-            // Горизонталь
+            // Горизонталь (влево-вправо)
             foreach (var dir in directions)
             {
                 for (int i = 1; i < 8; i++)
@@ -38,7 +38,7 @@ namespace shahmati.models
                 }
             }
 
-            // Вертикаль
+            // Вертикаль (вверх-вниз)
             foreach (var dir in directions)
             {
                 for (int i = 1; i < 8; i++)

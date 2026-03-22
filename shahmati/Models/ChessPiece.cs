@@ -7,7 +7,21 @@ namespace shahmati.models
         public PieceType Type { get; protected set; }
         public PieceColor Color { get; protected set; }
         public bool HasMoved { get; set; } = false;
-        public string ImagePath { get; protected set; }
+
+        private string _imagePath;
+        public string ImagePath
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_imagePath))
+                {
+                    string colorStr = Color == PieceColor.White ? "White" : "Black";
+                    _imagePath = $"/Resources/Images/{colorStr}_{Type}.png";
+                }
+                return _imagePath;
+            }
+            protected set => _imagePath = value;
+        }
 
         protected ChessPiece(PieceColor color)
         {
@@ -16,17 +30,14 @@ namespace shahmati.models
 
         public abstract List<Position> GetPossibleMoves(Position currentPosition, Board board);
 
-        // Добавляем метод IsValidMove обратно
         protected bool IsValidMove(Position newPosition, Board board)
         {
-            // Проверка на выход за границы доски
             if (newPosition.Row < 0 || newPosition.Row >= 8 ||
                 newPosition.Column < 0 || newPosition.Column >= 8)
                 return false;
 
             var pieceAtTarget = board.GetPieceAt(newPosition);
 
-            // Если на целевой клетке есть фигура того же цвета - ход невозможен
             if (pieceAtTarget != null && pieceAtTarget.Color == this.Color)
                 return false;
 

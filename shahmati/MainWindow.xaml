@@ -25,6 +25,13 @@
             </Style.Triggers>
         </Style>
 
+        <Storyboard x:Key="FadeOutMessage">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                        From="1" To="0"
+                        Duration="0:0:1"
+                        AutoReverse="False"/>
+        </Storyboard>
+
         <!-- Стиль для карточек -->
         <Style x:Key="InfoCardStyle" TargetType="Border">
             <Setter Property="Background" Value="#34495E"/>
@@ -383,19 +390,20 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Width="60" Height="60" 
-                                               BorderBrush="Transparent" BorderThickness="0"
-                                               Style="{StaticResource BoardCellStyle}">
+                       BorderBrush="Transparent" BorderThickness="0"
+                       Style="{StaticResource BoardCellStyle}">
 
                                             <Border.InputBindings>
                                                 <MouseBinding MouseAction="LeftClick" 
-                                                             Command="{Binding DataContext.CellClickCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                             CommandParameter="{Binding Position}"/>
+                                     Command="{Binding DataContext.CellClickCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                     CommandParameter="{Binding Position}"/>
                                             </Border.InputBindings>
 
-                                            <Image Source="{Binding Piece.ImagePath}" 
-                                                   Width="45" Height="45"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center"/>
+                                            <!-- ИЗМЕНЕНО: Piece.ImagePath -> PieceImagePath -->
+                                            <Image Source="{Binding PieceImagePath}" 
+                           Width="45" Height="45"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
