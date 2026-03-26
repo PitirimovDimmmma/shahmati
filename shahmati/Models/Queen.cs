@@ -14,9 +14,16 @@ namespace shahmati.models
         {
             var moves = new List<Position>();
 
+            // Все 8 направлений
             int[,] directions = {
-                {1, 0}, {-1, 0}, {0, 1}, {0, -1},  // Вертикаль и горизонталь
-                {1, 1}, {1, -1}, {-1, 1}, {-1, -1} // Диагонали
+                {-1, 0},  // вверх
+                {1, 0},   // вниз
+                {0, -1},  // влево
+                {0, 1},   // вправо
+                {-1, -1}, // вверх-влево
+                {-1, 1},  // вверх-вправо
+                {1, -1},  // вниз-влево
+                {1, 1}    // вниз-вправо
             };
 
             for (int d = 0; d < directions.GetLength(0); d++)
@@ -35,12 +42,11 @@ namespace shahmati.models
                     {
                         moves.Add(newPos);
                     }
-                    else if (piece.Color != Color)
+                    else
                     {
-                        moves.Add(newPos);
+                        if (piece.Color != Color) moves.Add(newPos);
                         break;
                     }
-                    else break;
                 }
             }
 

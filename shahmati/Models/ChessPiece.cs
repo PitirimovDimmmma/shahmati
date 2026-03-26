@@ -37,11 +37,7 @@ namespace shahmati.models
                 return false;
 
             var pieceAtTarget = board.GetPieceAt(newPosition);
-
-            if (pieceAtTarget != null && pieceAtTarget.Color == this.Color)
-                return false;
-
-            return true;
+            return pieceAtTarget == null || pieceAtTarget.Color != Color;
         }
 
         public override string ToString() => $"{Color} {Type}";

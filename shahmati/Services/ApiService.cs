@@ -1320,19 +1320,31 @@ namespace shahmati.Services
                     var result = JsonSerializer.Deserialize<PlayAIResponse>(responseText,
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                    Console.WriteLine($"✅ Ход обработан: Успех={result?.Success}, ИИ ответил={result?.AIMove}");
+                    // Дополнительная отладочная информация
+                    Console.WriteLine($"Parsed: Success={result?.Success}, AIMove={result?.AIMove}");
+                    Console.WriteLine($"FenAfterUserMove length: {result?.FenAfterUserMove?.Length ?? 0}");
+                    Console.WriteLine($"FenAfterAIMove length: {result?.FenAfterAIMove?.Length ?? 0}");
+
                     return result;
                 }
                 else
                 {
                     Console.WriteLine($"❌ Ошибка: {responseText}");
-                    return null;
+                    return new PlayAIResponse
+                    {
+                        Success = false,
+                        Message = $"Ошибка сервера: {response.StatusCode}"
+                    };
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Исключение: {ex.Message}");
-                return null;
+                return new PlayAIResponse
+                {
+                    Success = false,
+                    Message = ex.Message
+                };
             }
         }
 

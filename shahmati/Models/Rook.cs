@@ -14,49 +14,75 @@ namespace shahmati.models
         {
             var moves = new List<Position>();
 
-            int[] directions = { -1, 1 };
-
-            // Горизонталь (влево-вправо)
-            foreach (var dir in directions)
+            // Вверх
+            for (int i = 1; i < 8; i++)
             {
-                for (int i = 1; i < 8; i++)
-                {
-                    var newPos = new Position(currentPosition.Row, currentPosition.Column + i * dir);
-                    if (!newPos.IsValid()) break;
+                var newPos = new Position(currentPosition.Row - i, currentPosition.Column);
+                if (!newPos.IsValid()) break;
 
-                    var piece = board.GetPieceAt(newPos);
-                    if (piece == null)
-                    {
-                        moves.Add(newPos);
-                    }
-                    else if (piece.Color != Color)
-                    {
-                        moves.Add(newPos);
-                        break;
-                    }
-                    else break;
+                var piece = board.GetPieceAt(newPos);
+                if (piece == null)
+                {
+                    moves.Add(newPos);
+                }
+                else
+                {
+                    if (piece.Color != Color) moves.Add(newPos);
+                    break;
                 }
             }
 
-            // Вертикаль (вверх-вниз)
-            foreach (var dir in directions)
+            // Вниз
+            for (int i = 1; i < 8; i++)
             {
-                for (int i = 1; i < 8; i++)
-                {
-                    var newPos = new Position(currentPosition.Row + i * dir, currentPosition.Column);
-                    if (!newPos.IsValid()) break;
+                var newPos = new Position(currentPosition.Row + i, currentPosition.Column);
+                if (!newPos.IsValid()) break;
 
-                    var piece = board.GetPieceAt(newPos);
-                    if (piece == null)
-                    {
-                        moves.Add(newPos);
-                    }
-                    else if (piece.Color != Color)
-                    {
-                        moves.Add(newPos);
-                        break;
-                    }
-                    else break;
+                var piece = board.GetPieceAt(newPos);
+                if (piece == null)
+                {
+                    moves.Add(newPos);
+                }
+                else
+                {
+                    if (piece.Color != Color) moves.Add(newPos);
+                    break;
+                }
+            }
+
+            // Влево
+            for (int i = 1; i < 8; i++)
+            {
+                var newPos = new Position(currentPosition.Row, currentPosition.Column - i);
+                if (!newPos.IsValid()) break;
+
+                var piece = board.GetPieceAt(newPos);
+                if (piece == null)
+                {
+                    moves.Add(newPos);
+                }
+                else
+                {
+                    if (piece.Color != Color) moves.Add(newPos);
+                    break;
+                }
+            }
+
+            // Вправо
+            for (int i = 1; i < 8; i++)
+            {
+                var newPos = new Position(currentPosition.Row, currentPosition.Column + i);
+                if (!newPos.IsValid()) break;
+
+                var piece = board.GetPieceAt(newPos);
+                if (piece == null)
+                {
+                    moves.Add(newPos);
+                }
+                else
+                {
+                    if (piece.Color != Color) moves.Add(newPos);
+                    break;
                 }
             }
 

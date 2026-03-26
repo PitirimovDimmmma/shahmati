@@ -48,6 +48,9 @@ namespace shahmati
             _viewModel.GameFinished += OnGameFinishedHandler;
             _viewModel.GameManager.MoveMade += OnMoveMade;
 
+            // Инициализация слайдера сложности
+            InitializeDifficultySlider();
+
             InitializeChessTimers();
 
             Loaded += async (s, e) =>
@@ -56,6 +59,88 @@ namespace shahmati
                 await StartGameManually();
             };
         }
+
+        // ========== МЕТОДЫ ДЛЯ РЕГУЛЯТОРА СЛОЖНОСТИ ==========
+
+        private void InitializeDifficultySlider()
+        {
+            if (DifficultySlider != null)
+            {
+                DifficultySlider.ValueChanged += DifficultySlider_ValueChanged;
+                UpdateDifficultyText();
+            }
+        }
+
+        private void DifficultySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            int value = (int)DifficultySlider.Value;
+
+            _currentDifficulty = value switch
+            {
+                0 => "Beginner",
+                1 => "Easy",
+                2 => "Medium",
+                3 => "Hard",
+                4 => "Expert",
+                _ => "Medium"
+            };
+
+            UpdateDifficultyText();
+
+            // Обновляем сложность в ViewModel
+            if (_viewModel != null)
+            {
+                _viewModel.Difficulty = _currentDifficulty;
+                Console.WriteLine($"🎮 Сложность изменена на: {_currentDifficulty}");
+
+                // Если игра уже идет, предлагаем начать новую
+                if (_viewModel.GameManager?.IsGameInProgress == true)
+                {
+                    var result = MessageBox.Show(
+                        $"Сложность изменена на {GetDifficultyName(_currentDifficulty)}.\n" +
+                        "Начать новую игру с новыми настройками?",
+                        "Изменение сложности",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        NewGameButton_Click(sender, e);
+                    }
+                }
+            }
+        }
+
+        private void UpdateDifficultyText()
+        {
+            if (DifficultyText != null)
+            {
+                string displayName = GetDifficultyName(_currentDifficulty);
+                DifficultyText.Text = displayName;
+
+                // Меняем цвет в зависимости от сложности
+                switch (_currentDifficulty)
+                {
+                    case "Beginner":
+                        DifficultyText.Foreground = new SolidColorBrush(Color.FromRgb(46, 204, 113));
+                        break;
+                    case "Easy":
+                        DifficultyText.Foreground = new SolidColorBrush(Color.FromRgb(52, 152, 219));
+                        break;
+                    case "Medium":
+                        DifficultyText.Foreground = new SolidColorBrush(Color.FromRgb(241, 196, 15));
+                        break;
+                    case "Hard":
+                        DifficultyText.Foreground = new SolidColorBrush(Color.FromRgb(230, 126, 34));
+                        break;
+                    case "Expert":
+                        DifficultyText.Foreground = new SolidColorBrush(Color.FromRgb(231, 76, 60));
+                        break;
+                }
+            }
+        }
+
+        // ========== ОСТАЛЬНЫЕ МЕТОДЫ (ВАШИ, НЕ ИЗМЕНЕНЫ) ==========
 
         private async Task InitializeGameAsync()
         {
@@ -81,6 +166,7 @@ namespace shahmati
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
         private void OnMoveMade(string move)
         {
             Dispatcher.Invoke(() =>
@@ -89,6 +175,7 @@ namespace shahmati
                 ForceRedrawBoard();
             });
         }
+
         public async Task StartGameManually()
         {
             await StartNewGameWithAIAsync();
@@ -135,6 +222,7 @@ namespace shahmati
             OpponentColorText.Text = "ЧЕРНЫЕ (Stockfish AI)";
             GameInfoText.Text = $"Противник: Stockfish AI\nУровень: {GetDifficultyName(_currentDifficulty)}";
         }
+
         private async Task UpdateStatusWithFadeAsync(string newText, string newIcon)
         {
             await Dispatcher.InvokeAsync(() =>
@@ -165,6 +253,7 @@ namespace shahmati
                 StatusIcon.BeginAnimation(UIElement.OpacityProperty, fadeOut);
             });
         }
+
         private void ShowGameStartNotification()
         {
             GameStartNotification.Visibility = Visibility.Visible;
@@ -178,10 +267,10 @@ namespace shahmati
             };
             GameStartNotification.BeginAnimation(UIElement.OpacityProperty, fadeIn);
 
-            // Автоматическое исчезновение через 3 секунды
+            // Автоматическое исчезновение через 2.5 секунды (без кнопки)
             var timer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromSeconds(3)
+                Interval = TimeSpan.FromSeconds(2.5)
             };
             timer.Tick += (s, e) =>
             {
@@ -384,6 +473,7 @@ namespace shahmati
                 }
             });
         }
+
         public void OnAIMoveStarted(string message)
         {
             Dispatcher.Invoke(() =>
@@ -528,25 +618,29 @@ namespace shahmati
             {
                 StopAllTimers();
 
-                bool whiteWon = result.Contains("Победа белых") || result.Contains("White wins");
+                bool whiteWon = result.Contains("Победа белых") || result.Contains("White wins") || result.Contains("Победа белых!");
                 bool isDraw = result.Contains("Ничья") || result.Contains("Draw");
+                bool userWon = (whiteWon && _viewModel?.GameManager?.UserIsWhite == true) ||
+                               (!whiteWon && !isDraw && _viewModel?.GameManager?.UserIsWhite == false);
 
-                string message = whiteWon
-                    ? $"🎉 ПОБЕДА! +15 рейтинга"
+                string message = userWon
+                    ? $"🎉 ПОБЕДА! +15 рейтинга\n\n{result}"
                     : isDraw
-                        ? $"🤝 НИЧЬЯ! Рейтинг не изменился"
-                        : $"😔 ПОРАЖЕНИЕ -10 рейтинга";
+                        ? $"🤝 НИЧЬЯ! Рейтинг не изменился\n\n{result}"
+                        : $"😔 ПОРАЖЕНИЕ -10 рейтинга\n\n{result}";
 
-                MessageBox.Show(message, "Игра окончена", MessageBoxButton.OK,
-                    whiteWon ? MessageBoxImage.Exclamation :
+                var msgBoxResult = MessageBox.Show(message, "Игра окончена",
+                    MessageBoxButton.OK,
+                    userWon ? MessageBoxImage.Exclamation :
                     isDraw ? MessageBoxImage.Information : MessageBoxImage.Exclamation);
 
-                GameOverPanel.Visibility = Visibility.Visible;
-                GameResultDescription.Text = result;
-                StatusText.Text = result;
-                StatusIcon.Text = "🏁";
-
-                _ = UpdateRatingUIAsync();
+                if (msgBoxResult == MessageBoxResult.OK)
+                {
+                    // Возвращаемся на дашборд
+                    var dashboard = new DashboardWindow(_userId);
+                    dashboard.Show();
+                    this.Close();
+                }
             });
         }
 
@@ -713,6 +807,11 @@ namespace shahmati
             if (result == MessageBoxResult.Yes && _viewModel?.GameManager != null)
             {
                 await _viewModel.GameManager.ResignAsync(PieceColor.White);
+
+                // После сдачи закрываем текущее окно и возвращаемся на дашборд
+                var dashboard = new DashboardWindow(_userId);
+                dashboard.Show();
+                this.Close();
             }
         }
 
@@ -780,6 +879,13 @@ namespace shahmati
                 VsAIText.Foreground = new SolidColorBrush(Colors.White);
                 VsHumanText.Foreground = new SolidColorBrush(Colors.LightGray);
 
+                // ПОКАЗЫВАЕМ регулятор сложности
+                if (DifficultyPanel != null)
+                    DifficultyPanel.Visibility = Visibility.Visible;
+
+                // Меняем текст противника
+                OpponentColorText.Text = "ЧЕРНЫЕ (Stockfish AI)";
+
                 StatusText.Text = "Режим: Игра против ИИ";
 
                 if (_viewModel.GameManager?.IsGameInProgress == true)
@@ -802,8 +908,14 @@ namespace shahmati
                 VsHumanText.Foreground = new SolidColorBrush(Colors.White);
                 VsAIText.Foreground = new SolidColorBrush(Colors.LightGray);
 
-                StatusText.Text = "Режим: Игра против человека";
+                // СКРЫВАЕМ регулятор сложности
+                if (DifficultyPanel != null)
+                    DifficultyPanel.Visibility = Visibility.Collapsed;
+
+                // Меняем текст противника
                 OpponentColorText.Text = "ЧЕРНЫЕ";
+
+                StatusText.Text = "Режим: Игра против человека";
 
                 if (_viewModel.GameManager?.IsGameInProgress == true)
                 {
@@ -822,6 +934,8 @@ namespace shahmati
             if (_viewModel != null)
                 _viewModel.EnableMoveHighlighting = false;
         }
+
+
 
         private void VsAI_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {

@@ -14,9 +14,16 @@ namespace shahmati.models
         {
             var moves = new List<Position>();
 
+            // Все 8 соседних клеток
             int[,] kingMoves = {
-                {1, 0}, {-1, 0}, {0, 1}, {0, -1},
-                {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
+                {-1, 0},  // вверх
+                {1, 0},   // вниз
+                {0, -1},  // влево
+                {0, 1},   // вправо
+                {-1, -1}, // вверх-влево
+                {-1, 1},  // вверх-вправо
+                {1, -1},  // вниз-влево
+                {1, 1}    // вниз-вправо
             };
 
             for (int i = 0; i < kingMoves.GetLength(0); i++)
@@ -26,8 +33,14 @@ namespace shahmati.models
                     currentPosition.Column + kingMoves[i, 1]
                 );
 
-                if (IsValidMove(newPos, board))
-                    moves.Add(newPos);
+                if (newPos.IsValid())
+                {
+                    var piece = board.GetPieceAt(newPos);
+                    if (piece == null || piece.Color != Color)
+                    {
+                        moves.Add(newPos);
+                    }
+                }
             }
 
             return moves;

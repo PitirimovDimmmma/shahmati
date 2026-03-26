@@ -297,6 +297,196 @@ namespace shahmati.ViewModels
         public double AnimationProgress => _animationProgress;
         public bool IsAnimating => _animationTimer?.IsEnabled ?? false;
 
+        // ========== МЕТОДЫ ДЛЯ ПОДСВЕТКИ ВСЕХ ХОДОВ ==========
+
+        /// <summary>
+        /// Получает ВСЕ возможные ходы для фигуры (включая заблокированные)
+        /// Используется для подсветки при планировании стратегии
+        /// </summary>
+        private List<Position> GetAllPossibleMovesForPiece(ChessPiece piece, Position position, Board board)
+        {
+            var allMoves = new List<Position>();
+
+            switch (piece.Type)
+            {
+                case PieceType.Pawn:
+                    allMoves = GetAllPawnMoves(position, piece.Color, board);
+                    break;
+                case PieceType.Knight:
+                    allMoves = GetAllKnightMoves(position, board);
+                    break;
+                case PieceType.Bishop:
+                    allMoves = GetAllBishopMoves(position, board);
+                    break;
+                case PieceType.Rook:
+                    allMoves = GetAllRookMoves(position, board);
+                    break;
+                case PieceType.Queen:
+                    allMoves = GetAllQueenMoves(position, board);
+                    break;
+                case PieceType.King:
+                    allMoves = GetAllKingMoves(position, board);
+                    break;
+            }
+
+            return allMoves;
+        }
+
+        // Пешка - показывает все диагонали и ходы вперед
+        private List<Position> GetAllPawnMoves(Position pos, PieceColor color, Board board)
+        {
+            var moves = new List<Position>();
+            int direction = color == PieceColor.White ? -1 : 1;
+            int startRow = color == PieceColor.White ? 6 : 1;
+
+            // Ход вперед на 1
+            var oneForward = new Position(pos.Row + direction, pos.Column);
+            if (oneForward.IsValid())
+            {
+                moves.Add(oneForward);
+
+                // Ход вперед на 2 с начальной позиции
+                if (pos.Row == startRow)
+                {
+                    var twoForward = new Position(pos.Row + 2 * direction, pos.Column);
+                    if (twoForward.IsValid())
+                    {
+                        moves.Add(twoForward);
+                    }
+                }
+            }
+
+            // Диагонали ВСЕГДА показываем (для планирования)
+            var leftDiag = new Position(pos.Row + direction, pos.Column - 1);
+            var rightDiag = new Position(pos.Row + direction, pos.Column + 1);
+
+            if (leftDiag.IsValid())
+            {
+                moves.Add(leftDiag);
+            }
+            if (rightDiag.IsValid())
+            {
+                moves.Add(rightDiag);
+            }
+
+            return moves;
+        }
+
+        // Конь - показывает все 8 ходов
+        private List<Position> GetAllKnightMoves(Position pos, Board board)
+        {
+            var moves = new List<Position>();
+            int[,] knightMoves = {
+                {2, 1}, {2, -1}, {-2, 1}, {-2, -1},
+                {1, 2}, {1, -2}, {-1, 2}, {-1, -2}
+            };
+
+            for (int i = 0; i < knightMoves.GetLength(0); i++)
+            {
+                var newPos = new Position(
+                    pos.Row + knightMoves[i, 0],
+                    pos.Column + knightMoves[i, 1]
+                );
+
+                if (newPos.IsValid())
+                {
+                    moves.Add(newPos);
+                }
+            }
+
+            return moves;
+        }
+
+        // Слон - показывает все диагонали ДО КОНЦА (игнорируя фигуры)
+        private List<Position> GetAllBishopMoves(Position pos, Board board)
+        {
+            var moves = new List<Position>();
+            int[,] directions = { { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } };
+
+            for (int d = 0; d < directions.GetLength(0); d++)
+            {
+                for (int i = 1; i < 8; i++)
+                {
+                    var newPos = new Position(
+                        pos.Row + i * directions[d, 0],
+                        pos.Column + i * directions[d, 1]
+                    );
+
+                    if (!newPos.IsValid()) break;
+                    moves.Add(newPos);
+                }
+            }
+
+            return moves;
+        }
+
+        // Ладья - показывает все вертикали и горизонтали ДО КОНЦА
+        private List<Position> GetAllRookMoves(Position pos, Board board)
+        {
+            var moves = new List<Position>();
+            int[] directions = { -1, 1 };
+
+            // Горизонталь
+            foreach (var dir in directions)
+            {
+                for (int i = 1; i < 8; i++)
+                {
+                    var newPos = new Position(pos.Row, pos.Column + i * dir);
+                    if (!newPos.IsValid()) break;
+                    moves.Add(newPos);
+                }
+            }
+
+            // Вертикаль
+            foreach (var dir in directions)
+            {
+                for (int i = 1; i < 8; i++)
+                {
+                    var newPos = new Position(pos.Row + i * dir, pos.Column);
+                    if (!newPos.IsValid()) break;
+                    moves.Add(newPos);
+                }
+            }
+
+            return moves;
+        }
+
+        // Ферзь - комбинация слона и ладьи
+        private List<Position> GetAllQueenMoves(Position pos, Board board)
+        {
+            var moves = new List<Position>();
+            moves.AddRange(GetAllRookMoves(pos, board));
+            moves.AddRange(GetAllBishopMoves(pos, board));
+            return moves.Distinct().ToList();
+        }
+
+        // Король - показывает все соседние клетки
+        private List<Position> GetAllKingMoves(Position pos, Board board)
+        {
+            var moves = new List<Position>();
+            int[,] kingMoves = {
+                {1, 0}, {-1, 0}, {0, 1}, {0, -1},
+                {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
+            };
+
+            for (int i = 0; i < kingMoves.GetLength(0); i++)
+            {
+                var newPos = new Position(
+                    pos.Row + kingMoves[i, 0],
+                    pos.Column + kingMoves[i, 1]
+                );
+
+                if (newPos.IsValid())
+                {
+                    moves.Add(newPos);
+                }
+            }
+
+            return moves;
+        }
+
+        // ========== ОСТАЛЬНЫЕ МЕТОДЫ ==========
+
         public async Task TestAIConnection()
         {
             try
@@ -448,18 +638,29 @@ namespace shahmati.ViewModels
 
             var clickedPiece = Board.GetPieceAt(position);
 
+            // Если кликнули на фигуру
             if (clickedPiece != null)
             {
+                // Если это своя фигура - выбираем её
                 if (clickedPiece.Color == _gameManager?.CurrentPlayer)
                 {
                     if (_gameMode == "Человек vs Компьютер" && IsAITurn)
                         return;
-
                     SelectPiece(position);
+                }
+                // Если это чужая фигура И есть выбранная фигура - пытаемся сделать ход
+                else if (SelectedPosition.IsValid())
+                {
+                    var selectedPiece = Board.GetPieceAt(SelectedPosition);
+                    if (selectedPiece?.Color == _gameManager?.CurrentPlayer)
+                    {
+                        await TryMakeMove(SelectedPosition, position);
+                    }
                 }
                 return;
             }
 
+            // Если кликнули на пустую клетку и есть выбранная фигура
             if (SelectedPosition.IsValid())
             {
                 var selectedPiece = Board.GetPieceAt(SelectedPosition);
@@ -473,7 +674,6 @@ namespace shahmati.ViewModels
         private void SelectPiece(Position position)
         {
             ResetSelection();
-
             SelectedPosition = position;
             var piece = Board.GetPieceAt(position);
 
@@ -481,8 +681,8 @@ namespace shahmati.ViewModels
             {
                 if (EnableMoveHighlighting)
                 {
-                    var possibleMoves = piece.GetPossibleMoves(position, Board);
-                    foreach (var move in possibleMoves)
+                    var validMoves = piece.GetPossibleMoves(position, Board);
+                    foreach (var move in validMoves)
                     {
                         var cell = GetCellAt(move);
                         if (cell != null)
@@ -562,7 +762,7 @@ namespace shahmati.ViewModels
                 var piece = Board.GetPieceAt(_selectedPosition);
                 if (piece != null && piece.Color == _gameManager?.CurrentPlayer)
                 {
-                    var possibleMoves = piece.GetPossibleMoves(_selectedPosition, Board);
+                    var possibleMoves = GetAllPossibleMovesForPiece(piece, _selectedPosition, Board);
                     foreach (var move in possibleMoves)
                     {
                         var cell = GetCellAt(move);
@@ -715,33 +915,5 @@ namespace shahmati.ViewModels
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-        // Добавьте этот метод в конец класса MainViewModel (перед последней скобкой)
-
-        public void RefreshBoard()
-        {
-            if (GameManager?.Board != null)
-            {
-                GameManager.Board.ForceUpdate();
-                OnPropertyChanged(nameof(GameManager));
-                OnPropertyChanged(nameof(GameManager.Board));
-                OnPropertyChanged(nameof(GameManager.Board.CellsFlat));
-                OnPropertyChanged(nameof(Board));
-                OnPropertyChanged(nameof(Board.CellsFlat));
-
-                // Обновляем каждую клетку
-                for (int row = 0; row < 8; row++)
-                {
-                    for (int col = 0; col < 8; col++)
-                    {
-                        var cell = GameManager.Board.Cells[row, col];
-                        cell.OnPropertyChanged(nameof(BoardCell.Piece));
-                        cell.OnPropertyChanged(nameof(BoardCell.PieceImagePath));
-                    }
-                }
-
-                Console.WriteLine("🔄 Доска обновлена через MainViewModel");
-            }
-        }
     }
-
 }

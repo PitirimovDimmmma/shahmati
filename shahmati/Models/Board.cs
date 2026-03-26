@@ -128,6 +128,15 @@ namespace shahmati.models
             if (piece == null || piece.Color != currentPlayerColor) return false;
 
             var possibleMoves = piece.GetPossibleMoves(from, this);
+
+            // Добавим отладочный вывод
+            Console.WriteLine($"IsValidMove: from={GetSquareNotation(from)} to={GetSquareNotation(to)}");
+            Console.WriteLine($"Possible moves count: {possibleMoves.Count}");
+            foreach (var move in possibleMoves)
+            {
+                Console.WriteLine($"  Possible: {GetSquareNotation(move)}");
+            }
+
             return possibleMoves.Contains(to);
         }
 

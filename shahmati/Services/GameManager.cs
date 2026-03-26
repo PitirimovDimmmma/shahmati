@@ -220,7 +220,7 @@ namespace shahmati.Services
         {
             try
             {
-                Console.WriteLine($"=== MakeMoveVsAIAsync CALLED ===");
+                System.Diagnostics.Debug.WriteLine($"=== MakeMoveVsAIAsync CALLED ===");
                 Console.WriteLine($"From: {GetSquareNotation(from)} To: {GetSquareNotation(to)}");
                 Console.WriteLine($"IsGameActive: {_isGameActive}, IsAITurn: {_isAITurn}");
                 Console.WriteLine($"CurrentPlayer: {CurrentPlayer}, UserIsWhite: {UserIsWhite}");
@@ -298,22 +298,46 @@ namespace shahmati.Services
 
                 var response = await _apiService.PlayAgainstAIAsync(_currentGameId, moveNotation);
                 Console.WriteLine($"Ответ от API: Success={response?.Success}, AIMove={response?.AIMove}");
-                Console.WriteLine($"FenAfterUserMove: {response?.FenAfterUserMove}");
-                Console.WriteLine($"FenAfterAIMove: {response?.FenAfterAIMove}");
+                Console.WriteLine($"GameFinished: {response?.GameFinished}, Result: {response?.Result}");
 
                 if (response?.Success == true)
                 {
-                    // ВАЖНО: Обновляем доску из FEN, который вернул API
-                    // Это гарантирует, что доска будет в правильном состоянии
+                    // Проверяем, не закончилась ли игра
+                    if (response.GameFinished)
+                    {
+                        Console.WriteLine($"🎮 Игра завершена! Результат: {response.Result}");
 
-                    // 1. Обновляем доску после хода пользователя (используем FEN от API)
+                        // Загружаем финальную позицию
+                        if (!string.IsNullOrEmpty(response.FenAfterUserMove))
+                        {
+                            LoadBoardFromFen(response.FenAfterUserMove);
+                        }
+
+                        string resultMessage = response.Result switch
+                        {
+                            "White" => "Победа белых!",
+                            "Black" => "Победа черных!",
+                            "Draw" => "Ничья!",
+                            _ => "Игра завершена"
+                        };
+
+                        EndGame(resultMessage);
+
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            AIMoveCompleted?.Invoke("");
+                        });
+
+                        _isAITurn = false;
+                        return true;
+                    }
+
+                    // Если игра не закончена, продолжаем как обычно
                     if (!string.IsNullOrEmpty(response.FenAfterUserMove))
                     {
-                        Console.WriteLine($"Обновляем доску из FEN после хода пользователя");
                         LoadBoardFromFen(response.FenAfterUserMove);
                     }
 
-                    // Добавляем ход пользователя в историю
                     string userFrom = moveNotation.Substring(0, 2);
                     string userTo = moveNotation.Substring(2, 2);
                     string userNotation = $"{userFrom}{userTo}";
@@ -326,11 +350,12 @@ namespace shahmati.Services
                         ForceUpdateAllCells();
                     });
 
-                    // 2. Обновляем доску после хода ИИ (используем FEN от API)
-                    if (!string.IsNullOrEmpty(response.FenAfterAIMove))
+                    if (!string.IsNullOrEmpty(response.AIMove) && response.AIMove.Length >= 4)
                     {
-                        Console.WriteLine($"Обновляем доску из FEN после хода ИИ: {response.FenAfterAIMove}");
-                        LoadBoardFromFen(response.FenAfterAIMove);
+                        if (!string.IsNullOrEmpty(response.FenAfterAIMove))
+                        {
+                            LoadBoardFromFen(response.FenAfterAIMove);
+                        }
 
                         string aiNotation = response.AIMove;
                         _moveHistory.Add($"{_moveHistory.Count + 1}. {aiNotation}");
@@ -344,7 +369,6 @@ namespace shahmati.Services
                         });
                     }
 
-                    // 3. Переключаем ход на белых
                     CurrentPlayer = PieceColor.White;
 
                     await Application.Current.Dispatcher.InvokeAsync(() =>
@@ -355,13 +379,26 @@ namespace shahmati.Services
                     });
 
                     Console.WriteLine($"Текущий игрок: {CurrentPlayer}");
-
                     _isAITurn = false;
                     return true;
                 }
                 else
                 {
-                    Console.WriteLine($"❌ Ошибка API");
+                    string errorMessage = response?.Message ?? "Неизвестная ошибка";
+                    Console.WriteLine($"❌ Ошибка: {errorMessage}");
+
+                    // Если ошибка из-за того, что игра уже завершена
+                    if (errorMessage.Contains("завершена") || errorMessage.Contains("finished"))
+                    {
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            MessageBox.Show("Игра уже завершена. Начните новую игру.",
+                                           "Игра окончена",
+                                           MessageBoxButton.OK,
+                                           MessageBoxImage.Information);
+                        });
+                    }
+
                     _isAITurn = false;
                     await Application.Current.Dispatcher.InvokeAsync(() =>
                     {
@@ -373,7 +410,6 @@ namespace shahmati.Services
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Ошибка: {ex.Message}");
-                Console.WriteLine($"StackTrace: {ex.StackTrace}");
                 _isAITurn = false;
                 await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
@@ -387,12 +423,15 @@ namespace shahmati.Services
         {
             try
             {
-                Console.WriteLine($"Загрузка доски из FEN: {fen}");
+                Console.WriteLine($"=== ЗАГРУЗКА ДОСКИ ИЗ FEN ===");
+                Console.WriteLine($"FEN: {fen}");
 
                 // Разбираем FEN строку
                 string[] parts = fen.Split(' ');
                 string boardPart = parts[0];
                 string[] rows = boardPart.Split('/');
+
+                Console.WriteLine($"Количество рядов: {rows.Length}");
 
                 // Очищаем текущую доску
                 for (int row = 0; row < 8; row++)
@@ -408,6 +447,7 @@ namespace shahmati.Services
                 {
                     string rowStr = rows[row];
                     int col = 0;
+                    Console.WriteLine($"Ряд {row}: {rowStr}");
 
                     for (int i = 0; i < rowStr.Length; i++)
                     {
@@ -415,13 +455,12 @@ namespace shahmati.Services
 
                         if (char.IsDigit(c))
                         {
-                            // Пропускаем пустые клетки
                             int emptyCount = int.Parse(c.ToString());
+                            Console.WriteLine($"  Пропускаем {emptyCount} пустых клеток");
                             col += emptyCount;
                         }
                         else
                         {
-                            // Определяем фигуру
                             PieceColor color = char.IsUpper(c) ? PieceColor.White : PieceColor.Black;
                             PieceType type = char.ToLower(c) switch
                             {
@@ -434,7 +473,8 @@ namespace shahmati.Services
                                 _ => PieceType.Pawn
                             };
 
-                            // Создаем фигуру
+                            Console.WriteLine($"  Клетка ({row},{col}): {c} -> {color} {type}");
+
                             ChessPiece piece = type switch
                             {
                                 PieceType.King => new King(color),
@@ -451,14 +491,45 @@ namespace shahmati.Services
                     }
                 }
 
+                // Определяем чей ход
+                if (parts.Length > 1)
+                {
+                    string turn = parts[1];
+                    Console.WriteLine($"Чей ход: {turn}");
+                    if (turn == "w")
+                    {
+                        CurrentPlayer = PieceColor.White;
+                    }
+                    else if (turn == "b")
+                    {
+                        CurrentPlayer = PieceColor.Black;
+                    }
+                }
+
                 Board.UpdateSquaresFromCells();
                 Board.ForceUpdate();
 
                 Console.WriteLine("✅ Доска загружена из FEN");
+
+                // Выводим текущее состояние доски для проверки
+                for (int row = 0; row < 8; row++)
+                {
+                    string rowStr = "";
+                    for (int col = 0; col < 8; col++)
+                    {
+                        var piece = Board.Cells[row, col].Piece;
+                        if (piece == null)
+                            rowStr += ".";
+                        else
+                            rowStr += piece.Type.ToString()[0];
+                    }
+                    Console.WriteLine($"Доска ряд {row}: {rowStr}");
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Ошибка загрузки FEN: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
             }
         }
 
@@ -595,7 +666,26 @@ namespace shahmati.Services
                     return false;
                 }
 
+                var targetPiece = Board.GetPieceAt(to);
                 Console.WriteLine($"Фигура: {piece.Type} {piece.Color}");
+                if (targetPiece != null)
+                {
+                    Console.WriteLine($"Целевая клетка содержит: {targetPiece.Type} {targetPiece.Color}");
+                }
+
+                // Проверяем, что ход валиден
+                if (!Board.IsValidMove(from, to, CurrentPlayer))
+                {
+                    Console.WriteLine("❌ Ход невалиден");
+                    return false;
+                }
+
+                // Проверяем, что на целевой клетке нет своей фигуры
+                if (targetPiece != null && targetPiece.Color == piece.Color)
+                {
+                    Console.WriteLine("❌ Нельзя ходить на свою фигуру");
+                    return false;
+                }
 
                 // Делаем ход
                 Board.MovePiece(from, to);
@@ -605,6 +695,10 @@ namespace shahmati.Services
                 _moveHistory.Add($"{_moveHistory.Count + 1}. {moveNotation}");
 
                 Console.WriteLine($"Ход добавлен в историю: {moveNotation}");
+                if (targetPiece != null)
+                {
+                    Console.WriteLine($"✅ Фигура {targetPiece.Type} {targetPiece.Color} съедена!");
+                }
 
                 Application.Current.Dispatcher.Invoke(() =>
                 {
@@ -713,33 +807,42 @@ namespace shahmati.Services
             {
                 if (!_isGameActive) return;
 
+                Console.WriteLine($"=== RESIGN CALLED ===");
+                Console.WriteLine($"Resigning color: {resigningColor}");
+                Console.WriteLine($"User is white: {UserIsWhite}");
+
                 string result = "";
                 string apiResult = "";
+                string ratingMessage = "";
 
                 if (UserIsWhite)
                 {
                     if (resigningColor == PieceColor.White)
                     {
-                        result = "Черные победили (белые сдались)";
+                        result = "Вы сдались. Победа черных!";
                         apiResult = "Black";
+                        ratingMessage = "\n\n-10 рейтинга";
                     }
                     else
                     {
-                        result = "Белые победили (черные сдались)";
+                        result = "Противник сдался. Победа белых!";
                         apiResult = "White";
+                        ratingMessage = "\n\n+15 рейтинга";
                     }
                 }
                 else
                 {
                     if (resigningColor == PieceColor.White)
                     {
-                        result = "Черные победили (белые сдались)";
+                        result = "Вы сдались. Победа черных!";
                         apiResult = "Black";
+                        ratingMessage = "\n\n-10 рейтинга";
                     }
                     else
                     {
-                        result = "Белые победили (черные сдались)";
+                        result = "Противник сдался. Победа белых!";
                         apiResult = "White";
+                        ratingMessage = "\n\n+15 рейтинга";
                     }
                 }
 
@@ -756,7 +859,8 @@ namespace shahmati.Services
                     }
                 }
 
-                EndGame(result);
+                string finalMessage = result + ratingMessage;
+                EndGame(finalMessage);
             }
             catch (Exception ex)
             {
@@ -773,7 +877,6 @@ namespace shahmati.Services
             EndGame("Ничья по соглашению игроков.");
         }
 
-        // ========== ЗАВЕРШЕНИЕ ИГРЫ ==========
         private void EndGame(string result)
         {
             _isGameActive = false;
@@ -781,11 +884,30 @@ namespace shahmati.Services
             _isAITurn = false;
 
             Console.WriteLine($"Game ended: {result}");
-            GameFinished?.Invoke(result);
+
+            // Определяем изменение рейтинга
+            string ratingMessage = "";
+            if (result.Contains("Победа белых") || result.Contains("White wins") ||
+                (result.Contains("белые") && result.Contains("победили")))
+            {
+                ratingMessage = "\n\n+15 рейтинга!";
+            }
+            else if (result.Contains("Победа черных") || result.Contains("Black wins") ||
+                     (result.Contains("черные") && result.Contains("победили")))
+            {
+                ratingMessage = "\n\n-10 рейтинга";
+            }
+            else if (result.Contains("Ничья"))
+            {
+                ratingMessage = "\n\nРейтинг не изменился";
+            }
+
+            string finalMessage = result + ratingMessage;
+            GameFinished?.Invoke(finalMessage);
 
             Application.Current.Dispatcher.Invoke(() =>
             {
-                MessageBox.Show(result, "Игра окончена",
+                MessageBox.Show(finalMessage, "Игра окончена",
                     MessageBoxButton.OK, MessageBoxImage.Information);
             });
         }
