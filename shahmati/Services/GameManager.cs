@@ -1132,11 +1132,20 @@ namespace shahmati.Services
             return false;
         }
 
+        public void SetCurrentPlayer(PieceColor player)
+        {
+            _currentPlayer = player;
+            OnPropertyChanged(nameof(CurrentPlayer));
+            OnPropertyChanged(nameof(CurrentPlayerDisplay));
+        }
+
         protected virtual void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
+
+
 
     public class Move
     {

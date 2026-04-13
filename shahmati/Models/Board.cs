@@ -129,7 +129,6 @@ namespace shahmati.models
 
             var possibleMoves = piece.GetPossibleMoves(from, this);
 
-            // Добавим отладочный вывод
             Console.WriteLine($"IsValidMove: from={GetSquareNotation(from)} to={GetSquareNotation(to)}");
             Console.WriteLine($"Possible moves count: {possibleMoves.Count}");
             foreach (var move in possibleMoves)
@@ -138,6 +137,74 @@ namespace shahmati.models
             }
 
             return possibleMoves.Contains(to);
+        }
+
+        public void LoadFromFen(string fen)
+        {
+            try
+            {
+                for (int row = 0; row < 8; row++)
+                {
+                    for (int col = 0; col < 8; col++)
+                    {
+                        Cells[row, col].Piece = null;
+                    }
+                }
+
+                string[] parts = fen.Split(' ');
+                string boardPart = parts[0];
+                string[] rows = boardPart.Split('/');
+
+                for (int row = 0; row < 8; row++)
+                {
+                    string rowStr = rows[row];
+                    int col = 0;
+
+                    for (int i = 0; i < rowStr.Length; i++)
+                    {
+                        char c = rowStr[i];
+
+                        if (char.IsDigit(c))
+                        {
+                            col += int.Parse(c.ToString());
+                        }
+                        else
+                        {
+                            PieceColor color = char.IsUpper(c) ? PieceColor.White : PieceColor.Black;
+                            PieceType type = char.ToLower(c) switch
+                            {
+                                'k' => PieceType.King,
+                                'q' => PieceType.Queen,
+                                'r' => PieceType.Rook,
+                                'b' => PieceType.Bishop,
+                                'n' => PieceType.Knight,
+                                'p' => PieceType.Pawn,
+                                _ => PieceType.Pawn
+                            };
+
+                            ChessPiece piece = type switch
+                            {
+                                PieceType.King => new King(color),
+                                PieceType.Queen => new Queen(color),
+                                PieceType.Rook => new Rook(color),
+                                PieceType.Bishop => new Bishop(color),
+                                PieceType.Knight => new Knight(color),
+                                _ => new Pawn(color)
+                            };
+
+                            Cells[row, col].Piece = piece;
+                            col++;
+                        }
+                    }
+                }
+
+                UpdateSquaresFromCells();
+                ForceUpdate();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка загрузки FEN: {ex.Message}");
+            }
         }
 
         // Вспомогательный метод для отладки
