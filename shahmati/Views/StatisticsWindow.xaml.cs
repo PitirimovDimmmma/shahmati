@@ -2,9 +2,9 @@
 using shahmati.Services;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Media;
 
 namespace shahmati.Views
 {
@@ -12,7 +12,6 @@ namespace shahmati.Views
     {
         private readonly ApiService _apiService;
         private readonly int _userId;
-        private ExtendedGameStatsDto _currentStats;
 
         public StatisticsWindow(int userId)
         {
@@ -29,18 +28,14 @@ namespace shahmati.Views
             {
                 ShowLoading(true);
 
-                // Загружаем пользователя
-                var user = await _apiService.GetUserAsync(_userId);
-                if (user != null)
-                {
-                    UserNameText.Text = user.Profile?.Nickname ?? user.Username;
-                    UserRatingText.Text = $"Рейтинг: {user.Profile?.Rating ?? 0}";
-                }
+                // Загружаем информацию о пользователе
+                await LoadUserInfo();
 
-                // Загружаем детальную статистику
-                await LoadDetailedStatistics();
+                // Загружаем статистику игр
+                await LoadGameStats();
 
-
+                // Загружаем историю рейтинга
+                await LoadRatingHistory();
             }
             catch (Exception ex)
             {
@@ -53,101 +48,94 @@ namespace shahmati.Views
             }
         }
 
-        private async Task LoadDetailedStatistics()
+        private async Task LoadUserInfo()
         {
             try
             {
-                // Получаем статистику пользователя
-                var basicStats = await _apiService.GetUserStatsAsync(_userId);
-                if (basicStats != null)
+                var user = await _apiService.GetUserAsync(_userId);
+                if (user != null)
                 {
-                    _currentStats = new ExtendedGameStatsDto
-                    {
-                        Overall = basicStats,
-                        VsHuman = basicStats, // Для локальных игр считаем как против людей
-                        Performance = new PerformanceMetricsDto()
-                    };
+                    UserNameText.Text = user.Profile?.Nickname ?? user.Username;
+                    UserRatingText.Text = $"Рейтинг: {user.Profile?.Rating ?? 0}";
 
-                    UpdateOverallStats(basicStats);
-                }
-                else
-                {
-                    MessageBox.Show("Не удалось загрузить статистику. Возможно, у вас еще нет сыгранных игр.",
-                        "Информация", MessageBoxButton.OK, MessageBoxImage.Information);
+                    // Пытаемся загрузить серии, если они есть в профиле
+                    if (user.Profile != null)
+                    {
+                        // Используем рефлексию или проверяем наличие свойств
+                        var currentStreak = user.Profile.GetType().GetProperty("CurrentStreak")?.GetValue(user.Profile, null);
+                        var bestStreak = user.Profile.GetType().GetProperty("BestStreak")?.GetValue(user.Profile, null);
+
+                        CurrentStreakText.Text = currentStreak?.ToString() ?? "0";
+                        BestStreakText.Text = bestStreak?.ToString() ?? "0";
+                    }
+                    else
+                    {
+                        CurrentStreakText.Text = "0";
+                        BestStreakText.Text = "0";
+                    }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка загрузки статистики: {ex.Message}",
-                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                Console.WriteLine($"Ошибка загрузки пользователя: {ex.Message}");
+                UserNameText.Text = "Игрок";
+                UserRatingText.Text = "Рейтинг: 1200";
+                CurrentStreakText.Text = "0";
+                BestStreakText.Text = "0";
             }
         }
 
-        private void UpdateOverallStats(GameStatsDto stats)
+        private async Task LoadGameStats()
         {
-            TotalGamesText.Text = stats.TotalGames.ToString();
-            WinsText.Text = stats.Wins.ToString();
-            LossesText.Text = stats.Losses.ToString();
-            DrawsText.Text = stats.Draws.ToString();
-
-            // Рассчитываем процент побед
-            double winPercentage = stats.TotalGames > 0
-                ? (stats.Wins * 100.0 / stats.TotalGames)
-                : 0;
-            WinRateText.Text = $"{winPercentage:F1}%";
-
-            CurrentRatingText.Text = stats.CurrentRating.ToString();
-            BestRatingText.Text = stats.HighestRating.ToString();
-        }
-
-        // ЗАКОММЕНТИРОВАНО: Статистика против ИИ
-        // private void UpdateVsAIStats(GameStatsDto stats)
-        // {
-        //     VsAIGamesText.Text = stats.TotalGames.ToString();
-        //     VsAIWinsText.Text = stats.Wins.ToString();
-        // 
-        //     double winPercentage = stats.TotalGames > 0
-        //         ? (stats.Wins * 100.0 / stats.TotalGames)
-        //         : 0;
-        //     VsAIWinRateText.Text = $"{winPercentage:F1}%";
-        // }
-
-        private void UpdateVsHumanStats(GameStatsDto stats)
-        {
-            VsHumanGamesText.Text = stats.TotalGames.ToString();
-            VsHumanWinsText.Text = stats.Wins.ToString();
-
-            double winPercentage = stats.TotalGames > 0
-                ? (stats.Wins * 100.0 / stats.TotalGames)
-                : 0;
-            VsHumanWinRateText.Text = $"{winPercentage:F1}%";
-        }
-
-        private void UpdatePerformanceMetrics(PerformanceMetricsDto metrics)
-        {
-            CurrentStreakText.Text = metrics.CurrentStreak.ToString();
-            BestStreakText.Text = metrics.BestStreak.ToString();
-
-            // Игры по сложности
-            if (metrics.GamesByDifficulty != null && metrics.GamesByDifficulty.Count > 0)
+            try
             {
-                var difficultyStats = new List<KeyValuePair<string, int>>();
-                foreach (var kvp in metrics.GamesByDifficulty)
+                var stats = await _apiService.GetUserStatsAsync(_userId);
+                if (stats != null)
                 {
-                    difficultyStats.Add(new KeyValuePair<string, int>(kvp.Key, kvp.Value));
+                    TotalGamesText.Text = stats.TotalGames.ToString();
+                    WinsText.Text = stats.Wins.ToString();
+                    LossesText.Text = stats.Losses.ToString();
+                    DrawsText.Text = stats.Draws.ToString();
+
+                    double winPercentage = stats.TotalGames > 0
+                        ? (stats.Wins * 100.0 / stats.TotalGames)
+                        : 0;
+                    WinRateText.Text = $"{winPercentage:F1}%";
+
+                    CurrentRatingText.Text = stats.CurrentRating.ToString();
+                    BestRatingText.Text = stats.HighestRating.ToString();
+
+                    VsHumanGamesText.Text = stats.TotalGames.ToString();
+                    VsHumanWinsText.Text = stats.Wins.ToString();
                 }
-                DifficultyStatsList.ItemsSource = difficultyStats;
-            }
-            else
-            {
-                DifficultyStatsList.ItemsSource = new List<KeyValuePair<string, int>>
+                else
                 {
-                    new KeyValuePair<string, int>("Нет данных", 0)
-                };
+                    SetEmptyStats();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка загрузки статистики игр: {ex.Message}");
+                SetEmptyStats();
             }
         }
 
-        /*private async Task LoadRatingHistory()
+        private void SetEmptyStats()
+        {
+            TotalGamesText.Text = "0";
+            WinsText.Text = "0";
+            LossesText.Text = "0";
+            DrawsText.Text = "0";
+            WinRateText.Text = "0%";
+            CurrentRatingText.Text = "1200";
+            BestRatingText.Text = "1200";
+            VsHumanGamesText.Text = "0";
+            VsHumanWinsText.Text = "0";
+            CurrentStreakText.Text = "0";
+            BestStreakText.Text = "0";
+        }
+
+        private async Task LoadRatingHistory()
         {
             try
             {
@@ -158,109 +146,15 @@ namespace shahmati.Views
                 }
                 else
                 {
-                    RatingHistoryGrid.ItemsSource = new List<RatingHistoryDto>
-                    {
-                        new RatingHistoryDto
-                        {
-                            GameId = 0,
-                            OpponentName = "Нет данных",
-                            Result = "N/A",
-                            OldRating = 0,
-                            NewRating = 0,
-                            RatingChange = 0,
-                            CreatedAt = DateTime.Now
-                        }
-                    };
+                    RatingHistoryGrid.ItemsSource = new List<RatingHistoryDto>();
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка загрузки истории рейтинга: {ex.Message}",
-                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-        }*/
-
-        // ЗАКОММЕНТИРОВАНО: Метод для применения фильтров
-        /*
-        private async void ApplyFiltersButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                ShowLoading(true);
-
-                var filter = new FilterStatsRequest
-                {
-                    GameMode = GetSelectedGameMode(),
-                    Difficulty = GetSelectedDifficulty(),
-                    Color = "All"
-                };
-
-                var filteredStats = await _apiService.GetFilteredUserStatsAsync(_userId, filter);
-                if (filteredStats != null)
-                {
-                    // Обновляем UI с отфильтрованными данными
-                    UpdateOverallStats(filteredStats);
-
-                    // Показываем какой фильтр активен
-                    string filterInfo = GetFilterInfo();
-                    MessageBox.Show($"Применен фильтр: {filterInfo}\n\n" +
-                                  $"Показано: {filteredStats.TotalGames} игр",
-                                  "Фильтр применен",
-                                  MessageBoxButton.OK,
-                                  MessageBoxImage.Information);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка применения фильтров: {ex.Message}",
-                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            finally
-            {
-                ShowLoading(false);
+                Console.WriteLine($"Ошибка загрузки истории рейтинга: {ex.Message}");
+                RatingHistoryGrid.ItemsSource = new List<RatingHistoryDto>();
             }
         }
-
-        private string GetSelectedGameMode()
-        {
-            // ЗАКОММЕНТИРОВАНО: Против ИИ
-            // if (VsAIRadio.IsChecked == true) return "AI";
-            if (VsHumanRadio.IsChecked == true) return "Human";
-            return "All";
-        }
-
-        private string GetSelectedDifficulty()
-        {
-            if (EasyRadio.IsChecked == true) return "Easy";
-            if (MediumRadio.IsChecked == true) return "Medium";
-            if (HardRadio.IsChecked == true) return "Hard";
-            return "All";
-        }
-
-        private string GetFilterInfo()
-        {
-            string gameMode = GetSelectedGameMode();
-            string difficulty = GetSelectedDifficulty();
-
-            string gameModeText = gameMode switch
-            {
-                // ЗАКОММЕНТИРОВАНО: Против ИИ
-                // "AI" => "Против ИИ",
-                "Human" => "Против людей",
-                _ => "Все игры"
-            };
-
-            string difficultyText = difficulty switch
-            {
-                "Easy" => "Легкий",
-                "Medium" => "Средний",
-                "Hard" => "Сложный",
-                _ => "Все уровни"
-            };
-
-            return $"{gameModeText}, {difficultyText}";
-        }
-        */
 
         private void ShowLoading(bool show)
         {
@@ -271,12 +165,7 @@ namespace shahmati.Views
         {
             DashboardWindow dashboardWindow = new DashboardWindow(_userId);
             dashboardWindow.Show();
-            this.Close();
-        }
-
-        private void RatingHistoryGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-        {
-
+            Close();
         }
     }
 }

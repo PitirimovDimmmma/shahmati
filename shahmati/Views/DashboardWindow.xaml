@@ -8,7 +8,6 @@
         Background="#2C3E50">
 
     <Window.Resources>
-        <!-- Стиль для карточек меню -->
         <Style x:Key="MenuCardStyle" TargetType="Border">
             <Setter Property="Background" Value="White"/>
             <Setter Property="CornerRadius" Value="15"/>
@@ -22,14 +21,12 @@
             </Setter>
         </Style>
 
-        <!-- Стиль для иконок -->
         <Style x:Key="IconStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="40"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
 
-        <!-- Стиль для заголовков карточек -->
         <Style x:Key="CardTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="18"/>
             <Setter Property="FontWeight" Value="Bold"/>
@@ -37,7 +34,6 @@
             <Setter Property="Foreground" Value="#2C3E50"/>
         </Style>
 
-        <!-- Стиль для описания -->
         <Style x:Key="CardDescriptionStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
@@ -64,24 +60,18 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Text="Шахматный тренажёр" 
-          FontSize="28" FontWeight="Bold" 
-          Foreground="White" 
-          HorizontalAlignment="Left"
-          Margin="182,8,0,21" Grid.Column="1"/>
+                          FontSize="28" FontWeight="Bold" 
+                          Foreground="White" 
+                          HorizontalAlignment="Left"
+                          Margin="182,8,0,21" Grid.Column="1"/>
 
-                <!-- Аватар и информация (кликабельные) -->
+                <!-- Информация пользователя (без фото) -->
                 <Border Grid.Column="0" 
                        Background="Transparent" 
                        Cursor="Hand"
-                       MouseDown="UserProfileArea_MouseDown" Margin="-3,-1,3,1">
+                       MouseDown="UserProfileArea_MouseDown">
                     <StackPanel Orientation="Horizontal">
-                        <Border Width="60" Height="60" Background="#ECF0F1" CornerRadius="30">
-                            <Border.Clip>
-                                <EllipseGeometry RadiusX="30" RadiusY="30" Center="30,30"/>
-                            </Border.Clip>
-                            <Image x:Name="UserAvatarImage" Stretch="UniformToFill"/>
-                        </Border>
-                        <StackPanel Margin="15,0,0,0" VerticalAlignment="Center">
+                        <StackPanel VerticalAlignment="Center">
                             <TextBlock x:Name="UserNameText" Text="Гость" 
                                       Foreground="White" FontSize="16" FontWeight="Bold"/>
                             <TextBlock x:Name="UserRatingText" Text="Рейтинг: 0" 
@@ -105,81 +95,59 @@
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="30" Height="462">
 
-
                 <!-- Первая строка меню -->
                 <UniformGrid Columns="3" Margin="0,0,0,20">
-                    <!-- Игра -->
-                    <Border Style="{StaticResource MenuCardStyle}" 
-                           MouseDown="GameCard_MouseDown">
+                    <Border Style="{StaticResource MenuCardStyle}" MouseDown="GameCard_MouseDown">
                         <StackPanel>
                             <TextBlock Text="♟" Style="{StaticResource IconStyle}"/>
                             <TextBlock Text="Игра" Style="{StaticResource CardTitleStyle}"/>
-                            <TextBlock Text="Начать новую шахматную партию" 
-                                      Style="{StaticResource CardDescriptionStyle}"/>
+                            <TextBlock Text="Начать новую шахматную партию" Style="{StaticResource CardDescriptionStyle}"/>
                         </StackPanel>
                     </Border>
 
-                    <!-- Тренировка -->
-                    <Border Style="{StaticResource MenuCardStyle}" 
-                           MouseDown="TrainingCard_MouseDown">
+                    <Border Style="{StaticResource MenuCardStyle}" MouseDown="TrainingCard_MouseDown">
                         <StackPanel>
                             <TextBlock Text="🏋️" Style="{StaticResource IconStyle}"/>
                             <TextBlock Text="Тренировка" Style="{StaticResource CardTitleStyle}"/>
-                            <TextBlock Text="Упражнения для улучшения навыков" 
-                                      Style="{StaticResource CardDescriptionStyle}"/>
+                            <TextBlock Text="Упражнения для улучшения навыков" Style="{StaticResource CardDescriptionStyle}"/>
                         </StackPanel>
                     </Border>
 
-                    <!-- Правила -->
-                    <Border Style="{StaticResource MenuCardStyle}" 
-                           MouseDown="RulesCard_MouseDown">
+                    <Border Style="{StaticResource MenuCardStyle}" MouseDown="RulesCard_MouseDown">
                         <StackPanel>
                             <TextBlock Text="📚" Style="{StaticResource IconStyle}"/>
                             <TextBlock Text="Правила" Style="{StaticResource CardTitleStyle}"/>
-                            <TextBlock Text="Изучить правила шахмат" 
-                                      Style="{StaticResource CardDescriptionStyle}"/>
+                            <TextBlock Text="Изучить правила шахмат" Style="{StaticResource CardDescriptionStyle}"/>
                         </StackPanel>
                     </Border>
                 </UniformGrid>
 
                 <!-- Вторая строка меню -->
                 <UniformGrid Columns="3">
-                    <!-- История игр -->
-                    <Border Style="{StaticResource MenuCardStyle}" 
-                           MouseDown="HistoryCard_MouseDown">
+                    <Border Style="{StaticResource MenuCardStyle}" MouseDown="HistoryCard_MouseDown">
                         <StackPanel>
                             <TextBlock Text="📊" Style="{StaticResource IconStyle}"/>
                             <TextBlock Text="История" Style="{StaticResource CardTitleStyle}"/>
-                            <TextBlock Text="Просмотр истории ваших игр" 
-                                      Style="{StaticResource CardDescriptionStyle}"/>
+                            <TextBlock Text="Просмотр истории ваших игр" Style="{StaticResource CardDescriptionStyle}"/>
                         </StackPanel>
                     </Border>
 
-                    <!-- Статистика -->
-                    <Border Style="{StaticResource MenuCardStyle}" 
-                           MouseDown="StatisticsCard_MouseDown">
+                    <Border Style="{StaticResource MenuCardStyle}" MouseDown="StatisticsCard_MouseDown">
                         <StackPanel>
                             <TextBlock Text="📈" Style="{StaticResource IconStyle}"/>
                             <TextBlock Text="Статистика" Style="{StaticResource CardTitleStyle}"/>
-                            <TextBlock Text="Детальная статистика игрока" 
-                                      Style="{StaticResource CardDescriptionStyle}"/>
+                            <TextBlock Text="Детальная статистика игрока" Style="{StaticResource CardDescriptionStyle}"/>
                         </StackPanel>
                     </Border>
 
-                    <!-- Таблица лидеров -->
-                    <Border Style="{StaticResource MenuCardStyle}" 
-                           MouseDown="LeaderboardCard_MouseDown">
+                    <Border Style="{StaticResource MenuCardStyle}" MouseDown="LeaderboardCard_MouseDown">
                         <StackPanel>
                             <TextBlock Text="🏆" Style="{StaticResource IconStyle}"/>
                             <TextBlock Text="Таблица лидеров" Style="{StaticResource CardTitleStyle}"/>
-                            <TextBlock Text="Рейтинг лучших игроков" 
-                                      Style="{StaticResource CardDescriptionStyle}"/>
+                            <TextBlock Text="Рейтинг лучших игроков" Style="{StaticResource CardDescriptionStyle}"/>
                         </StackPanel>
                     </Border>
                 </UniformGrid>
-
-
-
             </StackPanel>
         </ScrollViewer>
 

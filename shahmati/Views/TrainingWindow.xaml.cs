@@ -2,7 +2,6 @@
 using shahmati.ViewModels;
 using System;
 using System.ComponentModel;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Threading;
@@ -13,11 +12,11 @@ namespace shahmati.Views
     {
         private readonly TrainingViewModel _viewModel;
         private DispatcherTimer _timer;
-        private int _userId;
+        private readonly int _userId;
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
-        public TrainingWindow(int userId, TrainingTypeDto training = null)
+        public TrainingWindow(int userId, TrainingTypeDto? training = null)
         {
             _userId = userId;
             InitializeComponent();
@@ -29,26 +28,25 @@ namespace shahmati.Views
             }
 
             DataContext = _viewModel;
-
             InitializeTimer();
-            LoadTraining();
+
+            _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+            Loaded += async (s, e) => await LoadTrainingAsync();
         }
 
-        private async void LoadTraining()
+        private async System.Threading.Tasks.Task LoadTrainingAsync()
         {
             try
             {
-                // Загружаем все тренировки
                 await _viewModel.LoadTrainingsAsync();
 
-                // Если передана конкретная тренировка, начинаем ее
                 if (_viewModel.SelectedTraining != null)
                 {
                     await _viewModel.StartTraining();
                 }
                 else
                 {
-                    // Если тренировка не выбрана, показываем сообщение
                     _viewModel.StatusText = "Выберите тренировку для начала";
                 }
             }
@@ -61,86 +59,88 @@ namespace shahmati.Views
 
         private void InitializeTimer()
         {
-            _timer = new DispatcherTimer();
-            _timer.Interval = TimeSpan.FromSeconds(1);
+            _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _timer.Tick += Timer_Tick;
             _timer.Start();
         }
 
         private void Timer_Tick(object sender, EventArgs e)
         {
-            try
+            _viewModel.UpdateTimer();
+
+            Dispatcher.Invoke(() =>
             {
-                _viewModel.UpdateTimer();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка таймера: {ex.Message}");
-            }
+                if (_viewModel.CurrentPositions.Count > 0)
+                {
+                    double progress = (double)(_viewModel.CurrentPositionIndex) / _viewModel.CurrentPositions.Count * 100;
+                    TrainingProgressBar.Value = progress;
+                    ProgressPercentageText.Text = $"{progress:F0}%";
+                }
+            });
         }
 
-        // ДОБАВЛЯЕМ ОБРАБОТЧИК ДЛЯ КНОПКИ НАЗАД
+        private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                switch (e.PropertyName)
+                {
+                    case nameof(TrainingViewModel.PositionProgress):
+                        ProgressText.Text = _viewModel.PositionProgress;
+                        break;
+                    case nameof(TrainingViewModel.TimeElapsed):
+                        TimerText.Text = _viewModel.TimeElapsed ?? "00:00";
+                        break;
+                    case nameof(TrainingViewModel.PositionTask):
+                        PositionTaskText.Text = _viewModel.PositionTask;
+                        break;
+                    case nameof(TrainingViewModel.ExplanationText):
+                        ExplanationTextBlock.Text = _viewModel.ExplanationText;
+                        break;
+                    case nameof(TrainingViewModel.StatusText):
+                        StatusText.Text = _viewModel.StatusText;
+                        break;
+                    case nameof(TrainingViewModel.CurrentPosition):
+                        if (_viewModel.CurrentPosition != null)
+                        {
+                            PositionTitleText.Text = $"ПОЗИЦИЯ #{_viewModel.CurrentPositionIndex + 1}";
+                        }
+                        break;
+                }
+            });
+        }
+
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
-            try
+            if (!_viewModel.IsTrainingCompleted)
             {
-                // Проверяем, завершена ли тренировка
-                if (!_viewModel.IsTrainingCompleted)
-                {
-                    var result = MessageBox.Show(
-                        "Тренировка не завершена. Вы уверены, что хотите выйти?",
-                        "Подтверждение выхода",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Question);
+                var result = MessageBox.Show(
+                    "Тренировка не завершена. Вы уверены, что хотите выйти?",
+                    "Подтверждение выхода",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
 
-                    if (result != MessageBoxResult.Yes)
-                    {
-                        return;
-                    }
-                }
-
-                // Возвращаемся к окну выбора тренировок
-                var trainingSelectionWindow = new TrainingSelectionWindow(_userId);
-                trainingSelectionWindow.Show();
-
-                // Закрываем текущее окно
-                Close();
+                if (result != MessageBoxResult.Yes) return;
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка при возврате: {ex.Message}", "Ошибка",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
 
-        // Обработчики событий кнопок
-        private async void NextButton_Click(object sender, RoutedEventArgs e)
-        {
-            await _viewModel.NextPosition();
-        }
-
-        private void ShowSolutionButton_Click(object sender, RoutedEventArgs e)
-        {
-            // Изменено: вызываем метод для показа полного решения
-            _viewModel.ShowFullSolution();
-        }
-
-        private void HintButton_Click(object sender, RoutedEventArgs e)
-        {
-            _viewModel.ShowHint();
+            var trainingSelectionWindow = new TrainingSelectionWindow(_userId);
+            trainingSelectionWindow.Show();
+            Close();
         }
 
         private async void CompleteButton_Click(object sender, RoutedEventArgs e)
         {
-            await _viewModel.CompleteTraining();
+            var result = MessageBox.Show(
+                "Вы уверены, что хотите досрочно завершить тренировку?",
+                "Досрочное завершение",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
 
-            if (_viewModel.IsTrainingCompleted)
+            if (result == MessageBoxResult.Yes)
             {
-                // Создаем и открываем окно выбора тренировок
+                await _viewModel.CompleteTrainingEarly();
                 var trainingSelectionWindow = new TrainingSelectionWindow(_userId);
                 trainingSelectionWindow.Show();
-
-                // Закрываем текущее окно
                 Close();
             }
         }
@@ -154,16 +154,12 @@ namespace shahmati.Views
                     "Подтверждение выхода",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question);
-
                 e.Cancel = result != MessageBoxResult.Yes;
             }
-
             _timer?.Stop();
         }
 
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
-        {
+        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
     }
 }

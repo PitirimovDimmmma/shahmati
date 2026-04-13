@@ -2,8 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Мой профиль" 
-        Height="751" Width="500"  
-    WindowStartupLocation="CenterOwner"
+        Height="550" Width="500"  
+        WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="#2C3E50">
 
@@ -38,7 +38,6 @@
 
         <Style x:Key="AdminButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
             <Setter Property="Background" Value="#9B59B6"/>
-            <!-- Фиолетовый для админ-кнопок -->
         </Style>
 
         <!-- Стиль для текстовых полей -->
@@ -67,26 +66,8 @@
                 <!-- Карточка профиля -->
                 <Border Background="#FFFFFF" CornerRadius="10" Padding="25" Margin="0,0,0,20">
                     <StackPanel>
-                        <!-- Аватар -->
-                        <StackPanel HorizontalAlignment="Center" Margin="0,0,0,20">
-                            <Border Width="120" Height="120" 
-                                   Background="#F0F0F0" 
-                                   BorderBrush="#CCCCCC" BorderThickness="3"
-                                   CornerRadius="60">
-                                <Border.Clip>
-                                    <EllipseGeometry RadiusX="60" RadiusY="60" Center="60,60"/>
-                                </Border.Clip>
-                                <Image x:Name="ProfileAvatarImage" Stretch="UniformToFill"/>
-                            </Border>
-                            <Button x:Name="ChangeAvatarButton" 
-                                   Content="Изменить фото" 
-                                   Style="{StaticResource PrimaryButtonStyle}"
-                                   Width="120" Margin="0,10,0,0"
-                                   Click="ChangeAvatarButton_Click"/>
-                        </StackPanel>
-
                         <!-- Информация о пользователе -->
-                        <Grid Margin="0,20,0,0">
+                        <Grid Margin="0,10,0,0">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
@@ -105,9 +86,9 @@
                                       FontWeight="SemiBold" 
                                       Margin="0,0,10,10"/>
                             <TextBox x:Name="NicknameTextBox" 
-                                    Grid.Row="0" Grid.Column="1"
+                                    Grid.Row="0"
                                     Style="{StaticResource InputFieldStyle}"
-                                    TextChanged="NicknameTextBox_TextChanged"/>
+                                    TextChanged="NicknameTextBox_TextChanged" Grid.ColumnSpan="2" Margin="83,-7,0,5"/>
 
                             <!-- Email -->
                             <TextBlock Grid.Row="1" Grid.Column="0" 
@@ -166,14 +147,6 @@
                                    Style="{StaticResource SuccessButtonStyle}"
                                    Click="SaveButton_Click"
                                    IsEnabled="False"/>
-
-                           
-
-                            <Button x:Name="DeleteAccountButton" 
-                                   Content="🗑️ Удалить аккаунт" 
-                                   Style="{StaticResource DangerButtonStyle}"
-                                   Margin="0,10,0,0"
-                                   Click="DeleteAccountButton_Click"/>
                         </StackPanel>
 
                         <!-- Административная секция (только для админов) -->
