@@ -521,7 +521,47 @@
                                Margin="0,8,0,0"/>
                             </StackPanel>
                         </Border>
+                        <!-- Временные режимы для игры против человека (появляются только при выборе VS ЧЕЛОВЕК) -->
+                        <Border x:Name="TimeModesPanel" Background="#2C3E50" CornerRadius="8" Padding="12" Margin="0,0,0,15" Visibility="Collapsed">
+                            <StackPanel>
+                                <TextBlock Text="ВРЕМЕННЫЕ РЕЖИМЫ" 
+                   FontSize="12" 
+                   FontWeight="Bold"
+                   Foreground="White"
+                   HorizontalAlignment="Center"
+                   Margin="0,0,0,10"/>
 
+                                <UniformGrid Columns="2" Rows="2" Margin="0,5">
+
+                                    <Button x:Name="PerMoveModeButton" 
+                    Content="⏱ 30 сек на ход" 
+                    Background="#F39C12"
+                    Foreground="White"
+                    FontWeight="Bold"
+                    Padding="8,5"
+                    Margin="2"
+                    Click="PerMoveModeButton_Click"/>
+
+                                    <Button x:Name="BonusModeButton" 
+                    Content="➕ Бонус +5 сек за ход" 
+                    Background="#9B59B6"
+                    Foreground="White"
+                    FontWeight="Bold"
+                    Padding="8,5"
+                    Margin="2"
+                    Click="BonusModeButton_Click"/>
+
+                                    <Button x:Name="StandardTimeModeButton" 
+                    Content="⏰ 10 мин на партию" 
+                    Background="#3498DB"
+                    Foreground="White"
+                    FontWeight="Bold"
+                    Padding="8,5"
+                    Margin="2"
+                    Click="StandardTimeModeButton_Click"/>
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
                         <!-- Текущий игрок -->
                         <Border Background="#8B4513" 
                    Padding="12" 

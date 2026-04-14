@@ -29,6 +29,9 @@ namespace shahmati
         private string _currentDifficulty = "Medium";
         private string _opponentName = "Stockfish AI";
         private bool _isExiting = false;
+        private string _currentTimeMode = "Classic";
+        private DispatcherTimer _moveTimer;
+        private TimeSpan _moveTimeLeft;
 
         private DispatcherTimer _whiteTimer;
         private DispatcherTimer _blackTimer;
@@ -59,6 +62,106 @@ namespace shahmati
                 await InitializeGameAsync();
                 await StartGameManually();
             };
+        }
+
+        // ========== РЕЖИМЫ ИГРЫ ПРОТИВ ЧЕЛОВЕКА ==========
+
+        private void ClassicModeButton_Click(object sender, RoutedEventArgs e)
+        {
+            _currentTimeMode = "Classic";
+            _whiteTimeLeft = TimeSpan.FromMinutes(10);
+            _blackTimeLeft = TimeSpan.FromMinutes(10);
+            UpdateTimerDisplays();
+            StartNewGameWithHumanAsync();
+            StatusText.Text = "Классический режим. 10 минут на партию.";
+        }
+
+        private void PerMoveModeButton_Click(object sender, RoutedEventArgs e)
+        {
+            _currentTimeMode = "PerMove";
+            _whiteTimeLeft = TimeSpan.FromMinutes(10);
+            _blackTimeLeft = TimeSpan.FromMinutes(10);
+            UpdateTimerDisplays();
+            StartNewGameWithHumanAsync();
+            StartMoveTimer();
+            StatusText.Text = "Режим: 30 секунд на ход! Спешите!";
+        }
+
+        private void BonusModeButton_Click(object sender, RoutedEventArgs e)
+        {
+            _currentTimeMode = "Bonus";
+            _whiteTimeLeft = TimeSpan.FromMinutes(5);
+            _blackTimeLeft = TimeSpan.FromMinutes(5);
+            UpdateTimerDisplays();
+            StartNewGameWithHumanAsync();
+            StatusText.Text = "Режим: +5 секунд за каждый ход!";
+        }
+
+        private void StartMoveTimer()
+        {
+            if (_moveTimer == null)
+            {
+                _moveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+                _moveTimer.Tick += MoveTimer_Tick;
+            }
+
+            _moveTimeLeft = TimeSpan.FromSeconds(30);
+            _moveTimer.Start();
+        }
+
+        private void StopMoveTimer()
+        {
+            if (_moveTimer != null && _moveTimer.IsEnabled)
+            {
+                _moveTimer.Stop();
+            }
+        }
+
+        private void MoveTimer_Tick(object sender, EventArgs e)
+        {
+            if (_moveTimeLeft.TotalSeconds > 0)
+            {
+                _moveTimeLeft = _moveTimeLeft.Subtract(TimeSpan.FromSeconds(1));
+
+                if (_moveTimeLeft.TotalSeconds <= 10 && _moveTimeLeft.TotalSeconds > 0)
+                {
+                    StatusText.Text = $"⚠️ Осталось {_moveTimeLeft.Seconds} секунд!";
+                }
+
+                if (_moveTimeLeft.TotalSeconds <= 0)
+                {
+                    _moveTimer.Stop();
+                    OnGameFinishedHandler("Время на ход вышло! Поражение.");
+                }
+            }
+        }
+
+        private void AddTimeBonus()
+        {
+            if (_currentTimeMode == "Bonus")
+            {
+                if (_viewModel.GameManager.CurrentPlayer == PieceColor.White)
+                {
+                    _whiteTimeLeft = _whiteTimeLeft.Add(TimeSpan.FromSeconds(5));
+                }
+                else
+                {
+                    _blackTimeLeft = _blackTimeLeft.Add(TimeSpan.FromSeconds(5));
+                }
+                UpdateTimerDisplays();
+                StatusText.Text = "+5 секунд!";
+
+                var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+                timer.Tick += (s, args) =>
+                {
+                    timer.Stop();
+                    if (_currentTimeMode == "PerMove")
+                        StatusText.Text = $"Осталось {_moveTimeLeft.Seconds} секунд на ход";
+                    else
+                        StatusText.Text = "Продолжайте игру";
+                };
+                timer.Start();
+            }
         }
 
         // ========== НАЧИСЛЕНИЕ РЕЙТИНГА ==========
@@ -151,29 +254,24 @@ namespace shahmati
         {
             if (string.IsNullOrEmpty(move) || move == "...") return move;
 
-            // Если ход уже в шахматной нотации (содержит буквы N, B, R, Q, K или O)
             if (move.Length >= 2 && (move[0] == 'N' || move[0] == 'B' || move[0] == 'R' || move[0] == 'Q' || move[0] == 'K' || move[0] == 'O'))
             {
                 return move;
             }
 
-            // Если ход уже в формате e2-e4
             if (move.Contains("-"))
             {
                 return move;
             }
 
-            // Если ход в формате координат (4 символа, например e2e4)
             if (move.Length == 4)
             {
                 string from = move.Substring(0, 2);
                 string to = move.Substring(2, 2);
 
-                // Рокировка
                 if ((from == "e1" && to == "g1") || (from == "e8" && to == "g8")) return "O-O";
                 if ((from == "e1" && to == "c1") || (from == "e8" && to == "c8")) return "O-O-O";
 
-                // Пробуем определить фигуру
                 try
                 {
                     int fromRow = 8 - int.Parse(from[1].ToString());
@@ -184,7 +282,6 @@ namespace shahmati
 
                     if (piece.Type == PieceType.Pawn)
                     {
-                        // Взятие пешкой
                         if (from[0] != to[0])
                         {
                             return $"{from[0]}x{to}";
@@ -202,7 +299,6 @@ namespace shahmati
                         _ => ""
                     };
 
-                    // Проверяем взятие
                     int toRow = 8 - int.Parse(to[1].ToString());
                     int toCol = to[0] - 'a';
                     var targetPiece = _viewModel?.GameManager?.Board?.GetPieceAt(new Position(toRow, toCol));
@@ -216,7 +312,6 @@ namespace shahmati
                 }
                 catch
                 {
-                    // Если ошибка при парсинге - возвращаем простой формат
                     return $"{from}-{to}";
                 }
             }
@@ -329,6 +424,7 @@ namespace shahmati
             try
             {
                 StopAllTimers();
+                StopMoveTimer();
 
                 _viewModel.GameMode = "Человек vs Человек";
                 _viewModel.SetUserIsWhite(true);
@@ -369,6 +465,11 @@ namespace shahmati
                 StatusText.Text = $"Игра загружена. {savedGame.SavedAt:dd.MM.yyyy HH:mm}";
                 StatusIcon.Text = currentPlayer == PieceColor.White ? "♔" : "♚";
                 HumanGameButtons.Visibility = Visibility.Visible;
+
+                if (_currentTimeMode == "PerMove")
+                {
+                    StartMoveTimer();
+                }
 
                 MessageBox.Show($"✅ Игра успешно загружена!\n\n📅 Сохранена: {savedGame.SavedAt:dd.MM.yyyy HH:mm}\n🎮 Ход: {(currentPlayer == PieceColor.White ? "Белых" : "Черных")}\n📝 Всего ходов: {_viewModel.GameManager.MoveHistory.Count}",
                     "Загрузка игры", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -612,6 +713,17 @@ namespace shahmati
             {
                 ForceRedrawBoard();
                 UpdateMoveHistoryDisplay();
+
+                if (_currentTimeMode == "PerMove")
+                {
+                    StopMoveTimer();
+                    StartMoveTimer();
+                }
+
+                if (_currentTimeMode == "Bonus")
+                {
+                    AddTimeBonus();
+                }
             });
         }
 
@@ -681,7 +793,7 @@ namespace shahmati
                 StatusText.Text = "Игра начата. Белые ходят первыми.";
                 StatusIcon.Text = "♔";
                 OpponentColorText.Text = "ЧЕРНЫЕ (игрок)";
-                GameInfoText.Text = "Режим: два игрока";
+                GameInfoText.Text = $"Режим: {GetTimeModeName()}";
 
                 MoveHistoryList.ItemsSource = null;
                 UpdateMoveHistoryDisplay();
@@ -694,6 +806,17 @@ namespace shahmati
                 MessageBox.Show($"Ошибка создания игры: {ex.Message}", "Ошибка",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private string GetTimeModeName()
+        {
+            return _currentTimeMode switch
+            {
+                "Classic" => "Классический (10 минут на партию)",
+                "PerMove" => "30 секунд на ход",
+                "Bonus" => "Бонус +5 секунд за ход",
+                _ => "Классический"
+            };
         }
 
         private void ShowGameStartNotification()
@@ -863,6 +986,7 @@ namespace shahmati
             Dispatcher.Invoke(async () =>
             {
                 StopAllTimers();
+                StopMoveTimer();
 
                 bool whiteWon = result.Contains("Победа белых") || result.Contains("White wins") || result.Contains("Победа белых!");
                 bool isDraw = result.Contains("Ничья") || result.Contains("Draw");
@@ -1094,6 +1218,9 @@ namespace shahmati
                 if (DifficultyPanel != null)
                     DifficultyPanel.Visibility = Visibility.Visible;
 
+                if (TimeModesPanel != null)
+                    TimeModesPanel.Visibility = Visibility.Collapsed;
+
                 if (HumanGameButtons != null)
                     HumanGameButtons.Visibility = Visibility.Collapsed;
 
@@ -1123,11 +1250,14 @@ namespace shahmati
                 if (DifficultyPanel != null)
                     DifficultyPanel.Visibility = Visibility.Collapsed;
 
+                if (TimeModesPanel != null)
+                    TimeModesPanel.Visibility = Visibility.Visible;
+
                 if (HumanGameButtons != null)
                     HumanGameButtons.Visibility = Visibility.Visible;
 
                 OpponentColorText.Text = "ЧЕРНЫЕ (игрок)";
-                StatusText.Text = "Режим: Игра против человека";
+                StatusText.Text = "Выберите режим игры";
 
                 if (_viewModel.GameManager?.IsGameInProgress == true)
                 {
@@ -1135,7 +1265,7 @@ namespace shahmati
                         "Смена режима", MessageBoxButton.YesNo, MessageBoxImage.Question);
                     if (result == MessageBoxResult.Yes)
                     {
-                        NewGameButton_Click(sender, e);
+                        GameOverPanel.Visibility = Visibility.Collapsed;
                     }
                 }
             }
@@ -1201,10 +1331,19 @@ namespace shahmati
             _loadingPanel.Child = stackPanel;
             MainGrid.Children.Add(_loadingPanel);
         }
-
+        private void StandardTimeModeButton_Click(object sender, RoutedEventArgs e)
+        {
+            _currentTimeMode = "Standard";
+            _whiteTimeLeft = TimeSpan.FromMinutes(10);
+            _blackTimeLeft = TimeSpan.FromMinutes(10);
+            UpdateTimerDisplays();
+            StartNewGameWithHumanAsync();
+            StatusText.Text = "Обычный режим. 10 минут на партию.";
+        }
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             StopAllTimers();
+            StopMoveTimer();
         }
 
         private Border _loadingPanel;
